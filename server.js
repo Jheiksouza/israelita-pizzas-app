@@ -184,14 +184,12 @@ app.post('/login', (req, res) => {
   res.status(401).json({ autenticado: false, erro: 'Senha incorreta' })
 })
 
-// Servir frontend buildado (apenas local; no Vercel quem serve é o próprio Vercel)
-if (!process.env.VERCEL) {
-  const distDir = path.resolve(__dirname, 'client', 'dist')
-  app.use(express.static(distDir))
-  app.get('*', (req, res) => {
-    res.sendFile(path.join(distDir, 'index.html'))
-  })
-}
+// Servir frontend buildado
+const distDir = path.resolve(__dirname, 'client', 'dist')
+app.use(express.static(distDir))
+app.get('*', (req, res) => {
+  res.sendFile(path.join(distDir, 'index.html'))
+})
 
 module.exports = app
 
