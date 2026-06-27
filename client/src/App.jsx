@@ -8,6 +8,7 @@ function App() {
   const [adminAutenticado, setAdminAutenticado] = useState(false)
   const [theme, setTheme] = useState(() => localStorage.getItem('appTheme') || 'classic')
   const [font, setFont] = useState(() => localStorage.getItem('appFont') || 'classico')
+  const [pizzaEditando, setPizzaEditando] = useState(null)
 
   useEffect(() => {
     const saved = sessionStorage.getItem('adminAuth')
@@ -30,11 +31,17 @@ function App() {
   const removerDoCarrinho = (itemId) => {
     setCarrinho(prev => {
       const existente = prev.find(i => i.id === itemId)
-      if (existente.qtd > 1) {
+      if (existente?.qtd > 1) {
         return prev.map(i => i.id === itemId ? { ...i, qtd: i.qtd - 1 } : i)
       }
       return prev.filter(i => i.id !== itemId)
     })
+  }
+
+  const editarPizza = (pizza) => {
+    setCarrinho(prev => prev.filter(i => i.id !== pizza.id))
+    setPizzaEditando(pizza)
+    setPagina('cardapio')
   }
 
   const limparCarrinho = () => setCarrinho([])
@@ -68,7 +75,7 @@ function App() {
       </header>
 
       <main className="main">
-        {pagina === 'cardapio' && <Cardapio onAdicionar={adicionarAoCarrinho} />}
+        {pagina === 'cardapio' && <Cardapio onAdicionar={adicionarAoCarrinho} pizzaEditando={pizzaEditando} onPizzaEditDone={() => setPizzaEditando(null)} />}
         {pagina === 'carrinho' && (
           <CarrinhoView
             itens={carrinho}
@@ -77,6 +84,7 @@ function App() {
             onLimparCarrinho={limparCarrinho}
             total={totalCarrinho}
             onVoltar={() => setPagina('cardapio')}
+            onEditarPizza={editarPizza}
           />
         )}
         {pagina === 'admin' && (
@@ -95,13 +103,25 @@ function App() {
   )
 }
 
-function Cardapio({ onAdicionar }) {
+function Cardapio({ onAdicionar, pizzaEditando, onPizzaEditDone }) {
   const [menu, setMenu] = useState([])
   const [categoria, setCategoria] = useState('Todas')
   const [busca, setBusca] = useState('')
   const [tamanhoSel, setTamanhoSel] = useState(null)
   const [saboresSel, setSaboresSel] = useState([])
   const [erro, setErro] = useState('')
+
+  useEffect(() => {
+    if (!pizzaEditando || menu.length === 0) return
+    const tamanhoMatch = menu.find(i => i.tipo === 'tamanho' && i.nome === pizzaEditando.tamanho)
+    if (tamanhoMatch) {
+      setTamanhoSel(tamanhoMatch)
+      const saboresIds = pizzaEditando.sabores
+        .map(nome => menu.find(i => i.tipo === 'sabor' && i.nome === nome)?.id)
+        .filter(Boolean)
+      setSaboresSel(saboresIds)
+    }
+  }, [pizzaEditando, menu])
 
   const settingsCover = localStorage.getItem('cardapioCoverUrl') || ''
   const settingsLogo = localStorage.getItem('cardapioLogoUrl') || ''
@@ -178,8 +198,10 @@ function Cardapio({ onAdicionar }) {
       sabores: nomesSabores,
       preco: precoFinal
     })
+    setTamanhoSel(null)
     setSaboresSel([])
     setErro('')
+    if (onPizzaEditDone) onPizzaEditDone()
   }
 
   return (
@@ -304,7 +326,7 @@ function Cardapio({ onAdicionar }) {
   )
 }
 
-function CarrinhoView({ itens, onRemover, onAdicionar, onLimparCarrinho, total, onVoltar }) {
+function CarrinhoView({ itens, onRemover, onAdicionar, onLimparCarrinho, total, onVoltar, onEditarPizza }) {
   const [cliente, setCliente] = useState({ nome: '', telefone: '', endereco: '' })
   const [enviado, setEnviado] = useState(false)
 
@@ -366,6 +388,11 @@ function CarrinhoView({ itens, onRemover, onAdicionar, onLimparCarrinho, total, 
               <button onClick={() => onAdicionar(item)}>+</button>
               <span className="item-subtotal">R$ {(item.preco * item.qtd).toFixed(2)}</span>
             </div>
+            {item.tipo === 'pizza' && (
+              <button className="btn-edit-pizza" onClick={() => onEditarPizza(item)} title="Editar pizza">
+                ✏️ Editar
+              </button>
+            )}
           </div>
         ))}
       </div>
