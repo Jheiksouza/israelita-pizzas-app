@@ -42,6 +42,14 @@ function App() {
 
   return (
     <div className="app">
+      <div className="bg-decoration" aria-hidden="true">
+        <span className="float-pizza">🍕</span>
+        <span className="float-pizza">🍕</span>
+        <span className="float-pizza">🍕</span>
+        <span className="float-pizza">🧀</span>
+        <span className="float-pizza">🌿</span>
+        <span className="float-pizza">🍕</span>
+      </div>
       <header className="header">
         <div className="header-content">
           <h1 className="logo" onClick={() => setPagina('cardapio')}>🍕 Pizzaria Israelita</h1>
@@ -143,9 +151,14 @@ function Cardapio({ onAdicionar }) {
 
   return (
     <div className="cardapio-page">
-      <div className="cardapio-header">
-        <h2>Nosso Cardápio</h2>
-        <div className="filtros">
+      <div className="cardapio-hero">
+        <div className="hero-overlay"></div>
+        <div className="hero-content">
+          <h2>Nosso Cardápio</h2>
+          <p>As melhores pizzas artesanais da cidade</p>
+        </div>
+      </div>
+      <div className="filtros">
           <input
             type="text"
             placeholder="Buscar item..."
@@ -163,7 +176,6 @@ function Cardapio({ onAdicionar }) {
             ))}
           </div>
         </div>
-      </div>
 
       <div className="pizza-montar">
         <h3 className="montar-title">🍕 Monte sua Pizza</h3>
