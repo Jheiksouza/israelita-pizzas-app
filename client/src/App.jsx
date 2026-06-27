@@ -6,6 +6,7 @@ function App() {
   const [pagina, setPagina] = useState('cardapio')
   const [carrinho, setCarrinho] = useState([])
   const [adminAutenticado, setAdminAutenticado] = useState(false)
+  const [theme, setTheme] = useState(() => localStorage.getItem('appTheme') || 'classic')
 
   useEffect(() => {
     const saved = sessionStorage.getItem('adminAuth')
@@ -41,7 +42,7 @@ function App() {
   const qtdCarrinho = carrinho.reduce((sum, i) => sum + i.qtd, 0)
 
   return (
-    <div className="app">
+    <div className={`app theme-${theme}`}>
       <div className="bg-decoration" aria-hidden="true">
         <span className="float-pizza">🍕</span>
         <span className="float-pizza">🍕</span>
@@ -84,6 +85,7 @@ function App() {
               setAdminAutenticado(true)
               sessionStorage.setItem('adminAuth', 'true')
             }}
+            onThemeChange={setTheme}
           />
         )}
       </main>
@@ -106,6 +108,7 @@ function Cardapio({ onAdicionar }) {
   const logoSize = parseFloat(localStorage.getItem('cardapioLogoSize')) || 100
   const settingsTitle = localStorage.getItem('cardapioTitle')
   const settingsSubtitle = localStorage.getItem('cardapioSubtitle')
+  const layout = localStorage.getItem('cardapioLayout') || 'classic'
   const overlayRaw = parseFloat(localStorage.getItem('cardapioOverlay'))
   const overlayValue = isNaN(overlayRaw) ? 0 : overlayRaw
 
@@ -164,7 +167,7 @@ function Cardapio({ onAdicionar }) {
   }
 
   return (
-    <div className="cardapio-page">
+    <div className={`cardapio-page layout-${layout}`}>
       <div className="cardapio-hero" style={settingsCover ? { backgroundImage: `url("${settingsCover}")` } : {}}>
         <div className="hero-overlay" style={{ background: overlayBg }}></div>
         {settingsTitle !== '' && (
@@ -350,7 +353,7 @@ function CarrinhoView({ itens, onRemover, onAdicionar, onLimparCarrinho, total, 
   )
 }
 
-function AdminPanel({ autenticado, onLogin }) {
+function AdminPanel({ autenticado, onLogin, onThemeChange }) {
   const [aba, setAba] = useState('cardapio')
 
   if (!autenticado) return <AdminLogin onLogin={onLogin} />
@@ -362,14 +365,14 @@ function AdminPanel({ autenticado, onLogin }) {
         <button className={`tab-btn ${aba === 'pedidos' ? 'active' : ''}`} onClick={() => setAba('pedidos')}>Pedidos</button>
         <button className={`tab-btn ${aba === 'financeiro' ? 'active' : ''}`} onClick={() => setAba('financeiro')}>Financeiro</button>
       </div>
-      {aba === 'cardapio' && <AdminMenu />}
+      {aba === 'cardapio' && <AdminMenu onThemeChange={onThemeChange} />}
       {aba === 'pedidos' && <AdminOrders />}
       {aba === 'financeiro' && <AdminFinanceiro />}
     </div>
   )
 }
 
-function AdminMenu() {
+function AdminMenu({ onThemeChange }) {
   const [menu, setMenu] = useState([])
   const [editando, setEditando] = useState(null)
   const [mostrarForm, setMostrarForm] = useState(false)
@@ -398,7 +401,7 @@ function AdminMenu() {
           <button className="btn-add" onClick={() => { setEditando(null); setMostrarForm(true) }}>+ Novo Item</button>
         </div>
       </div>
-      {mostrarConfig && <CardapioSettings onClose={handleConfigSaved} />}
+      {mostrarConfig && <CardapioSettings onClose={handleConfigSaved} onThemeChange={onThemeChange} />}
       {mostrarForm && (
         <MenuItemForm
           item={editando}
@@ -447,7 +450,7 @@ function AdminMenu() {
   )
 }
 
-function CardapioSettings({ onClose }) {
+function CardapioSettings({ onClose, onThemeChange }) {
   const [coverUrl, setCoverUrl] = useState(() => localStorage.getItem('cardapioCoverUrl') || '')
   const [logoUrl, setLogoUrl] = useState(() => localStorage.getItem('cardapioLogoUrl') || '')
   const [logoX, setLogoX] = useState(() => {
@@ -468,6 +471,8 @@ function CardapioSettings({ onClose }) {
     const saved = localStorage.getItem('cardapioOverlay')
     return saved !== null ? parseFloat(saved) : 0
   })
+  const [selTheme, setSelTheme] = useState(() => localStorage.getItem('appTheme') || 'classic')
+  const [selLayout, setSelLayout] = useState(() => localStorage.getItem('cardapioLayout') || 'classic')
   const previewRef = useRef(null)
   const dragging = useRef(false)
 
@@ -527,133 +532,141 @@ function CardapioSettings({ onClose }) {
     localStorage.setItem('cardapioTitle', title)
     localStorage.setItem('cardapioSubtitle', subtitle)
     localStorage.setItem('cardapioOverlay', overlay.toString())
+    localStorage.setItem('appTheme', selTheme)
+    localStorage.setItem('cardapioLayout', selLayout)
+    if (onThemeChange) onThemeChange(selTheme)
     onClose()
   }
 
-  const overlayLabel = overlay === 0 ? 'Normal' : overlay > 0 ? `Mais escura ${overlay}%` : `Mais clara ${Math.abs(overlay)}%`
+  const overlayLabel = overlay === 0 ? 'Normal' : overlay > 0 ? `+${overlay}%` : `${overlay}%`
+
+  const themes = [
+    { id: 'classic', name: 'Clássico', desc: 'Vermelho e laranja', icon: '🔴', colors: ['#E53935', '#FF8F00'] },
+    { id: 'elegance', name: 'Elegance', desc: 'Azul escuro e dourado', icon: '🌙', colors: ['#D4AF37', '#1A1A2E'] },
+    { id: 'italian', name: 'Italiano', desc: 'Verde e vermelho', icon: '🇮🇹', colors: ['#1B8A3A', '#E53935'] },
+  ]
+
+  const layouts = [
+    { id: 'classic', name: 'Clássico', desc: 'Centralizado', icon: '🎯' },
+    { id: 'modern', name: 'Moderno', desc: 'Texto em card', icon: '💎' },
+    { id: 'compact', name: 'Compacto', desc: 'Mais enxuto', icon: '📐' },
+  ]
 
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal modal-config" onClick={e => e.stopPropagation()}>
         <h3>⚙️ Configurações do Cardápio</h3>
 
-        <p className="settings-label">📷 Imagem de Capa</p>
-        <div className="settings-file-row">
-          <input
-            className="settings-file-input"
-            id="coverFile"
-            type="file"
-            accept="image/*"
-            onChange={handleCoverFile}
-          />
-          <label className="settings-file-label" htmlFor="coverFile">📂 Escolher arquivo</label>
-          <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
-            {coverUrl ? (coverUrl.startsWith('data:') ? 'Arquivo carregado' : 'URL externa') : 'Nenhum'}
-          </span>
-        </div>
-        <input
-          placeholder="Ou cole uma URL..."
-          value={coverUrl}
-          onChange={e => setCoverUrl(e.target.value)}
-        />
+        <div className="settings-two-cols">
 
-        <div className="settings-divider"></div>
+          <div>
+            <p className="settings-label">📷 Imagem de Capa</p>
+            <div className="settings-file-row">
+              <input className="settings-file-input" id="coverFile" type="file" accept="image/*" onChange={handleCoverFile} />
+              <label className="settings-file-label" htmlFor="coverFile">📂 Escolher</label>
+              <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+                {coverUrl ? (coverUrl.startsWith('data:') ? 'Arquivo' : 'URL') : 'Nenhum'}
+              </span>
+            </div>
+            <input placeholder="Ou cole uma URL..." value={coverUrl} onChange={e => setCoverUrl(e.target.value)} />
 
-        <p className="settings-label">🖼️ Logo</p>
-        <div className="settings-file-row">
-          <input
-            className="settings-file-input"
-            id="logoFile"
-            type="file"
-            accept="image/*"
-            onChange={handleLogoFile}
-          />
-          <label className="settings-file-label" htmlFor="logoFile">📂 Escolher arquivo</label>
-          <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
-            {logoUrl ? (logoUrl.startsWith('data:') ? 'Arquivo carregado' : 'URL externa') : 'Nenhum'}
-          </span>
-        </div>
-        <input
-          placeholder="Ou cole uma URL..."
-          value={logoUrl}
-          onChange={e => setLogoUrl(e.target.value)}
-        />
+            <div className="settings-divider"></div>
 
-        <div className="settings-range-row">
-          <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Tamanho da logo:</span>
-          <input
-            type="range"
-            className="settings-range"
-            min="30"
-            max="200"
-            value={logoSize}
-            onChange={e => setLogoSize(parseFloat(e.target.value))}
-          />
-          <span className="settings-range-value">{logoSize}%</span>
-        </div>
+            <p className="settings-label">🖼️ Logo</p>
+            <div className="settings-file-row">
+              <input className="settings-file-input" id="logoFile" type="file" accept="image/*" onChange={handleLogoFile} />
+              <label className="settings-file-label" htmlFor="logoFile">📂 Escolher</label>
+              <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+                {logoUrl ? (logoUrl.startsWith('data:') ? 'Arquivo' : 'URL') : 'Nenhum'}
+              </span>
+            </div>
+            <input placeholder="Ou cole uma URL..." value={logoUrl} onChange={e => setLogoUrl(e.target.value)} />
 
-        <div className="settings-divider"></div>
+            <div className="settings-range-row">
+              <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>Tamanho:</span>
+              <input type="range" className="settings-range" min="30" max="200" value={logoSize} onChange={e => setLogoSize(parseFloat(e.target.value))} />
+              <span className="settings-range-value">{logoSize}%</span>
+            </div>
 
-        <p className="settings-label">✏️ Texto do Topo</p>
-        <input
-          placeholder="Título (deixe vazio para ocultar)"
-          value={title}
-          onChange={e => setTitle(e.target.value)}
-        />
-        <input
-          placeholder="Subtítulo"
-          value={subtitle}
-          onChange={e => setSubtitle(e.target.value)}
-        />
+            <div className="settings-divider"></div>
 
-        <div className="settings-divider"></div>
+            <p className="settings-label">✏️ Texto</p>
+            <input placeholder="Título (vazio = ocultar)" value={title} onChange={e => setTitle(e.target.value)} />
+            <input placeholder="Subtítulo" value={subtitle} onChange={e => setSubtitle(e.target.value)} />
 
-        <p className="settings-label">🎚️ Escurecimento da Capa</p>
-        <div className="settings-range-row">
-          <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Mais claro</span>
-          <input
-            type="range"
-            className="settings-range"
-            min="-100"
-            max="100"
-            value={overlay}
-            onChange={e => setOverlay(parseFloat(e.target.value))}
-          />
-          <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Mais escuro</span>
-          <span className="settings-range-value">{overlayLabel}</span>
-        </div>
+            <div className="settings-divider"></div>
 
-        {(coverUrl || logoUrl) && (
-          <div className="settings-preview" ref={previewRef}>
-            {coverUrl ? (
-              <img src={coverUrl} alt="capa" className="settings-preview-bg" />
-            ) : (
-              <div className="settings-preview-bg settings-preview-placeholder">🖼️ Capa aparecerá aqui</div>
-            )}
-            <div
-              className="settings-preview-overlay"
-              style={{
-                background: overlay > 0 ? `rgba(0,0,0,${overlay / 100})` : overlay < 0 ? `rgba(255,255,255,${Math.abs(overlay) / 100})` : 'transparent'
-              }}
-            ></div>
-            {logoUrl && (
-              <img
-                src={logoUrl}
-                alt="logo"
-                className="settings-preview-logo"
-                style={{
-                  left: `${logoX}%`,
-                  top: `${logoY}%`,
-                  maxWidth: `${logoSize * 1.2}px`,
-                  maxHeight: `${logoSize * 0.5}px`
-                }}
-                onMouseDown={handleMouseDown}
-                draggable={false}
-              />
-            )}
-            <div className="settings-preview-hint">↕ Arraste a logo para posicionar</div>
+            <p className="settings-label">🎚️ Escurecimento</p>
+            <div className="settings-range-row">
+              <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Claro</span>
+              <input type="range" className="settings-range" min="-100" max="100" value={overlay} onChange={e => setOverlay(parseFloat(e.target.value))} />
+              <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Escuro</span>
+              <span className="settings-range-value">{overlayLabel}</span>
+            </div>
           </div>
-        )}
+
+          <div>
+            <p className="settings-label">🎨 Tema</p>
+            <div className="settings-selector-grid">
+              {themes.map(t => (
+                <div
+                  key={t.id}
+                  className={`settings-selector-card ${selTheme === t.id ? 'active' : ''}`}
+                  onClick={() => setSelTheme(t.id)}
+                >
+                  <div className="theme-swatch">
+                    <span>{t.icon}</span>
+                    <span style={{ background: t.colors[0] }}></span>
+                    <span style={{ background: t.colors[1] }}></span>
+                  </div>
+                  <span className="selector-name">{t.name}</span>
+                  <span className="selector-desc">{t.desc}</span>
+                </div>
+              ))}
+            </div>
+
+            <p className="settings-label">📐 Layout do Topo</p>
+            <div className="settings-selector-grid">
+              {layouts.map(l => (
+                <div
+                  key={l.id}
+                  className={`settings-selector-card ${selLayout === l.id ? 'active' : ''}`}
+                  onClick={() => setSelLayout(l.id)}
+                >
+                  <span className="selector-icon">{l.icon}</span>
+                  <span className="selector-name">{l.name}</span>
+                  <span className="selector-desc">{l.desc}</span>
+                </div>
+              ))}
+            </div>
+
+            <div className="settings-divider"></div>
+
+            <p className="settings-label">👁️ Prévia</p>
+            <div className="settings-preview" ref={previewRef} style={{ height: '160px' }}>
+              {coverUrl ? (
+                <img src={coverUrl} alt="capa" className="settings-preview-bg" />
+              ) : (
+                <div className="settings-preview-bg settings-preview-placeholder">🖼️ Capa</div>
+              )}
+              <div className="settings-preview-overlay" style={{
+                background: overlay > 0 ? `rgba(0,0,0,${overlay / 100})` : overlay < 0 ? `rgba(255,255,255,${Math.abs(overlay) / 100})` : 'transparent'
+              }}></div>
+              {logoUrl && (
+                <img
+                  src={logoUrl}
+                  alt="logo"
+                  className="settings-preview-logo"
+                  style={{ left: `${logoX}%`, top: `${logoY}%`, maxWidth: `${logoSize * 1.2}px`, maxHeight: `${logoSize * 0.5}px` }}
+                  onMouseDown={handleMouseDown}
+                  draggable={false}
+                />
+              )}
+              <div className="settings-preview-hint">↕ Arraste a logo</div>
+            </div>
+          </div>
+
+        </div>
 
         <div className="form-actions">
           <button className="btn-add" onClick={handleSave}>Salvar</button>

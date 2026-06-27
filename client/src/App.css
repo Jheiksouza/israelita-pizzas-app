@@ -29,6 +29,52 @@
   --font-body: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
+.theme-elegance {
+  --primary: #D4AF37;
+  --primary-dark: #B8962F;
+  --primary-light: #E8C84A;
+  --primary-soft: #2A2515;
+  --secondary: #C0A060;
+  --accent: #FFD700;
+  --accent-soft: #2A2515;
+  --bg: #0F0F1A;
+  --bg-card: #1A1A2E;
+  --bg-surface: #222240;
+  --bg-elevated: #2A2A45;
+  --text-primary: #FFFFFF;
+  --text-secondary: #B0B0C8;
+  --text-muted: #707088;
+  --border: #2A2A45;
+  --border-light: #3A3A55;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.3);
+  --shadow-md: 0 4px 16px rgba(0,0,0,0.4);
+  --shadow-lg: 0 12px 40px rgba(0,0,0,0.5);
+  --shadow-glow: 0 4px 20px rgba(212,175,55,0.2);
+}
+
+.theme-italian {
+  --primary: #1B8A3A;
+  --primary-dark: #156B2D;
+  --primary-light: #4CAF50;
+  --primary-soft: #E8F5E9;
+  --secondary: #E53935;
+  --accent: #FFD700;
+  --accent-soft: #FFF8E1;
+  --bg: #FCFAF5;
+  --bg-card: #FFFFFF;
+  --bg-surface: #F5F3EE;
+  --bg-elevated: #FFFFFF;
+  --text-primary: #1D1D1D;
+  --text-secondary: #5F5F5F;
+  --text-muted: #9E9E9E;
+  --border: #E0DCD4;
+  --border-light: #EDE9E0;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.05);
+  --shadow-md: 0 4px 16px rgba(0,0,0,0.08);
+  --shadow-lg: 0 12px 40px rgba(0,0,0,0.1);
+  --shadow-glow: 0 4px 20px rgba(27,138,58,0.15);
+}
+
 * {
   margin: 0;
   padding: 0;
@@ -280,6 +326,53 @@ body {
   cursor: default;
   pointer-events: none;
   user-select: none;
+}
+
+.layout-modern .cardapio-hero {
+  min-height: 300px;
+  align-items: flex-end;
+  justify-content: flex-start;
+}
+
+.layout-modern .hero-content {
+  text-align: left;
+  padding: 24px 32px;
+  background: rgba(255,255,255,0.88);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-radius: 0 var(--radius-lg) 0 0;
+  max-width: 55%;
+  margin-right: auto;
+  align-self: flex-end;
+  margin-bottom: 0;
+}
+
+.layout-modern .hero-content h2 {
+  font-size: 2rem;
+}
+
+.layout-modern .hero-content p {
+  font-size: 1rem;
+}
+
+.layout-compact .cardapio-hero {
+  min-height: 140px;
+}
+
+.layout-compact .hero-content {
+  text-align: right;
+  padding: 20px 28px;
+  align-self: flex-end;
+  margin-left: auto;
+}
+
+.layout-compact .hero-content h2 {
+  font-size: 1.4rem;
+  margin-bottom: 4px;
+}
+
+.layout-compact .hero-content p {
+  font-size: 0.85rem;
 }
 
 .hero-content h2 {
@@ -1197,7 +1290,32 @@ body {
 }
 
 .modal-config {
-  max-width: 560px;
+  max-width: 640px;
+  max-height: 88vh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+
+.modal-config::-webkit-scrollbar {
+  width: 4px;
+}
+
+.modal-config::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 2px;
+}
+
+.modal-config .settings-two-cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px 24px;
+}
+
+@media (max-width: 600px) {
+  .modal-config .settings-two-cols {
+    grid-template-columns: 1fr;
+  }
 }
 
 .settings-label {
@@ -1361,6 +1479,79 @@ body {
   color: var(--text-secondary);
   min-width: 50px;
   text-align: center;
+}
+
+.settings-selector-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.settings-selector-card {
+  background: var(--bg-surface);
+  border: 2px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 14px 12px;
+  cursor: pointer;
+  text-align: center;
+  transition: var(--transition);
+  font-family: var(--font-body);
+}
+
+.settings-selector-card:hover {
+  border-color: var(--primary-light);
+  transform: translateY(-2px);
+}
+
+.settings-selector-card.active {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+  box-shadow: 0 0 0 3px rgba(229,57,53,0.08);
+}
+
+.settings-selector-card .selector-icon {
+  font-size: 1.5rem;
+  display: block;
+  margin-bottom: 6px;
+}
+
+.settings-selector-card .selector-name {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  display: block;
+}
+
+.settings-selector-card .selector-desc {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  display: block;
+  margin-top: 2px;
+}
+
+.theme-swatch {
+  display: flex;
+  justify-content: center;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.theme-swatch span {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+}
+
+.theme-swatch span:first-child {
+  border-color: transparent;
+  font-size: 14px;
+  line-height: 18px;
+  text-align: center;
+  width: auto;
+  height: auto;
+  border: none;
 }
 
 .filtro-status {
