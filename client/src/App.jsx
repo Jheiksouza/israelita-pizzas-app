@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 
 const API = '/api'
 
@@ -99,6 +99,11 @@ function Cardapio({ onAdicionar }) {
   const [saboresSel, setSaboresSel] = useState([])
   const [erro, setErro] = useState('')
 
+  const settingsCover = localStorage.getItem('cardapioCoverUrl') || ''
+  const settingsLogo = localStorage.getItem('cardapioLogoUrl') || ''
+  const logoX = parseFloat(localStorage.getItem('cardapioLogoX')) || 50
+  const logoY = parseFloat(localStorage.getItem('cardapioLogoY')) || 50
+
   useEffect(() => {
     fetch(`${API}/menu`)
       .then(r => r.json())
@@ -151,12 +156,20 @@ function Cardapio({ onAdicionar }) {
 
   return (
     <div className="cardapio-page">
-      <div className="cardapio-hero">
+      <div className="cardapio-hero" style={settingsCover ? { backgroundImage: `url("${settingsCover}")` } : {}}>
         <div className="hero-overlay"></div>
         <div className="hero-content">
           <h2>Nosso Cardápio</h2>
           <p>As melhores pizzas artesanais da cidade</p>
         </div>
+        {settingsLogo && (
+          <img
+            src={settingsLogo}
+            alt="logo"
+            className="hero-logo"
+            style={{ left: `${logoX}%`, top: `${logoY}%` }}
+          />
+        )}
       </div>
       <div className="filtros">
           <input
@@ -349,6 +362,7 @@ function AdminMenu() {
   const [menu, setMenu] = useState([])
   const [editando, setEditando] = useState(null)
   const [mostrarForm, setMostrarForm] = useState(false)
+  const [mostrarConfig, setMostrarConfig] = useState(false)
 
   const carregar = () => fetch(`${API}/menu`).then(r => r.json()).then(setMenu)
 
@@ -360,12 +374,20 @@ function AdminMenu() {
     carregar()
   }
 
+  const handleConfigSaved = () => {
+    setMostrarConfig(false)
+  }
+
   return (
     <>
       <div className="admin-header">
         <h2>Gerenciar Cardápio</h2>
-        <button className="btn-add" onClick={() => { setEditando(null); setMostrarForm(true) }}>+ Novo Item</button>
+        <div className="admin-header-actions">
+          <button className="btn-add btn-config" onClick={() => setMostrarConfig(true)}>⚙️ Configurações</button>
+          <button className="btn-add" onClick={() => { setEditando(null); setMostrarForm(true) }}>+ Novo Item</button>
+        </div>
       </div>
+      {mostrarConfig && <CardapioSettings onClose={handleConfigSaved} />}
       {mostrarForm && (
         <MenuItemForm
           item={editando}
@@ -411,6 +433,114 @@ function AdminMenu() {
         </tbody>
       </table>
     </>
+  )
+}
+
+function CardapioSettings({ onClose }) {
+  const [coverUrl, setCoverUrl] = useState(() => localStorage.getItem('cardapioCoverUrl') || '')
+  const [logoUrl, setLogoUrl] = useState(() => localStorage.getItem('cardapioLogoUrl') || '')
+  const [logoX, setLogoX] = useState(() => {
+    const saved = localStorage.getItem('cardapioLogoX')
+    return saved !== null ? parseFloat(saved) : 50
+  })
+  const [logoY, setLogoY] = useState(() => {
+    const saved = localStorage.getItem('cardapioLogoY')
+    return saved !== null ? parseFloat(saved) : 50
+  })
+  const previewRef = useRef(null)
+  const dragging = useRef(false)
+  const offsetRef = useRef({ x: 0, y: 0 })
+
+  const handleMouseDown = (e) => {
+    e.preventDefault()
+    const rect = previewRef.current.getBoundingClientRect()
+    offsetRef.current = {
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top
+    }
+    dragging.current = true
+    document.addEventListener('mousemove', handleMouseMove)
+    document.addEventListener('mouseup', handleMouseUp)
+  }
+
+  const handleMouseMove = (e) => {
+    if (!dragging.current || !previewRef.current) return
+    const rect = previewRef.current.getBoundingClientRect()
+    const x = ((e.clientX - rect.left) / rect.width) * 100
+    const y = ((e.clientY - rect.top) / rect.height) * 100
+    setLogoX(Math.max(0, Math.min(100, x)))
+    setLogoY(Math.max(0, Math.min(100, y)))
+  }
+
+  const handleMouseUp = () => {
+    dragging.current = false
+    document.removeEventListener('mousemove', handleMouseMove)
+    document.removeEventListener('mouseup', handleMouseUp)
+  }
+
+  useEffect(() => {
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove)
+      document.removeEventListener('mouseup', handleMouseUp)
+    }
+  }, [])
+
+  const handleSave = () => {
+    localStorage.setItem('cardapioCoverUrl', coverUrl)
+    localStorage.setItem('cardapioLogoUrl', logoUrl)
+    localStorage.setItem('cardapioLogoX', logoX.toString())
+    localStorage.setItem('cardapioLogoY', logoY.toString())
+    onClose()
+  }
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal modal-config" onClick={e => e.stopPropagation()}>
+        <h3>⚙️ Configurações do Cardápio</h3>
+
+        <p className="settings-label">Imagem de Capa (URL)</p>
+        <input
+          placeholder="https://exemplo.com/minha-capa.jpg"
+          value={coverUrl}
+          onChange={e => setCoverUrl(e.target.value)}
+        />
+
+        <p className="settings-label">Logo (URL — formato retangular)</p>
+        <input
+          placeholder="https://exemplo.com/minha-logo.png"
+          value={logoUrl}
+          onChange={e => setLogoUrl(e.target.value)}
+        />
+
+        {(coverUrl || logoUrl) && (
+          <div className="settings-preview" ref={previewRef}>
+            {coverUrl ? (
+              <img src={coverUrl} alt="capa" className="settings-preview-bg" />
+            ) : (
+              <div className="settings-preview-bg settings-preview-placeholder">
+                🖼️ Capa aparecerá aqui
+              </div>
+            )}
+            {logoUrl && (
+              <img
+                src={logoUrl}
+                alt="logo"
+                className="settings-preview-logo"
+                style={{ left: `${logoX}%`, top: `${logoY}%` }}
+                onMouseDown={handleMouseDown}
+                draggable={false}
+              />
+            )}
+            <div className="settings-preview-hint">↕ Arraste a logo para posicionar</div>
+          </div>
+        )}
+
+        <div className="form-actions">
+          <button className="btn-add" onClick={handleSave}>Salvar</button>
+          <button className="btn-del" onClick={onClose}>Cancelar</button>
+        </div>
+      </div>
+    </div>
   )
 }
 
