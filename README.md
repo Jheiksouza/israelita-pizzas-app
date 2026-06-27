@@ -2,6 +2,12 @@
 
 Sistema de pedidos para Pizzaria Israelita — cardápio online + painel admin.
 
+## Regra para IA
+
+> **Toda alteração deve ser commitada e publicada (git push) imediatamente.**
+> Nunca fazer alterações apenas localmente. O usuário testa sempre no link do Vercel.
+> Fluxo obrigatório: editar → `git add -A` → `git commit -m "..."` → `git push`
+
 ## Stack
 
 - **Frontend:** React 19 + Vite 8
