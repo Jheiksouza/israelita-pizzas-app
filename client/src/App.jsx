@@ -7,6 +7,7 @@ function App() {
   const [carrinho, setCarrinho] = useState([])
   const [adminAutenticado, setAdminAutenticado] = useState(false)
   const [theme, setTheme] = useState(() => localStorage.getItem('appTheme') || 'classic')
+  const [font, setFont] = useState(() => localStorage.getItem('appFont') || 'classico')
 
   useEffect(() => {
     const saved = sessionStorage.getItem('adminAuth')
@@ -42,7 +43,7 @@ function App() {
   const qtdCarrinho = carrinho.reduce((sum, i) => sum + i.qtd, 0)
 
   return (
-    <div className={`app theme-${theme}`}>
+    <div className={`app theme-${theme} font-${font}`}>
       <div className="bg-decoration" aria-hidden="true">
         <span className="float-pizza">🍕</span>
         <span className="float-pizza">🍕</span>
@@ -86,6 +87,7 @@ function App() {
               sessionStorage.setItem('adminAuth', 'true')
             }}
             onThemeChange={setTheme}
+            onFontChange={setFont}
           />
         )}
       </main>
@@ -353,7 +355,7 @@ function CarrinhoView({ itens, onRemover, onAdicionar, onLimparCarrinho, total, 
   )
 }
 
-function AdminPanel({ autenticado, onLogin, onThemeChange }) {
+function AdminPanel({ autenticado, onLogin, onThemeChange, onFontChange }) {
   const [aba, setAba] = useState('cardapio')
 
   if (!autenticado) return <AdminLogin onLogin={onLogin} />
@@ -365,14 +367,14 @@ function AdminPanel({ autenticado, onLogin, onThemeChange }) {
         <button className={`tab-btn ${aba === 'pedidos' ? 'active' : ''}`} onClick={() => setAba('pedidos')}>Pedidos</button>
         <button className={`tab-btn ${aba === 'financeiro' ? 'active' : ''}`} onClick={() => setAba('financeiro')}>Financeiro</button>
       </div>
-      {aba === 'cardapio' && <AdminMenu onThemeChange={onThemeChange} />}
+      {aba === 'cardapio' && <AdminMenu onThemeChange={onThemeChange} onFontChange={onFontChange} />}
       {aba === 'pedidos' && <AdminOrders />}
       {aba === 'financeiro' && <AdminFinanceiro />}
     </div>
   )
 }
 
-function AdminMenu({ onThemeChange }) {
+function AdminMenu({ onThemeChange, onFontChange }) {
   const [menu, setMenu] = useState([])
   const [editando, setEditando] = useState(null)
   const [mostrarForm, setMostrarForm] = useState(false)
@@ -401,7 +403,7 @@ function AdminMenu({ onThemeChange }) {
           <button className="btn-add" onClick={() => { setEditando(null); setMostrarForm(true) }}>+ Novo Item</button>
         </div>
       </div>
-      {mostrarConfig && <CardapioSettings onClose={handleConfigSaved} onThemeChange={onThemeChange} />}
+      {mostrarConfig && <CardapioSettings onClose={handleConfigSaved} onThemeChange={onThemeChange} onFontChange={onFontChange} />}
       {mostrarForm && (
         <MenuItemForm
           item={editando}
@@ -450,7 +452,7 @@ function AdminMenu({ onThemeChange }) {
   )
 }
 
-function CardapioSettings({ onClose, onThemeChange }) {
+function CardapioSettings({ onClose, onThemeChange, onFontChange }) {
   const [coverUrl, setCoverUrl] = useState(() => localStorage.getItem('cardapioCoverUrl') || '')
   const [logoUrl, setLogoUrl] = useState(() => localStorage.getItem('cardapioLogoUrl') || '')
   const [logoX, setLogoX] = useState(() => {
@@ -472,7 +474,7 @@ function CardapioSettings({ onClose, onThemeChange }) {
     return saved !== null ? parseFloat(saved) : 0
   })
   const [selTheme, setSelTheme] = useState(() => localStorage.getItem('appTheme') || 'classic')
-  const [selLayout, setSelLayout] = useState(() => localStorage.getItem('cardapioLayout') || 'classic')
+  const [selFont, setSelFont] = useState(() => localStorage.getItem('appFont') || 'classico')
   const previewRef = useRef(null)
   const dragging = useRef(false)
 
@@ -533,24 +535,30 @@ function CardapioSettings({ onClose, onThemeChange }) {
     localStorage.setItem('cardapioSubtitle', subtitle)
     localStorage.setItem('cardapioOverlay', overlay.toString())
     localStorage.setItem('appTheme', selTheme)
-    localStorage.setItem('cardapioLayout', selLayout)
+    localStorage.setItem('appFont', selFont)
     if (onThemeChange) onThemeChange(selTheme)
+    if (onFontChange) onFontChange(selFont)
     onClose()
   }
 
   const overlayLabel = overlay === 0 ? 'Normal' : overlay > 0 ? `+${overlay}%` : `${overlay}%`
 
   const themes = [
-    { id: 'classic', name: 'Clássico', desc: 'Vermelho e laranja', icon: '🔴', colors: ['#E53935', '#FF8F00'] },
-    { id: 'elegance', name: 'Elegance', desc: 'Azul escuro e dourado', icon: '🌙', colors: ['#D4AF37', '#1A1A2E'] },
-    { id: 'italian', name: 'Italiano', desc: 'Verde e vermelho', icon: '🇮🇹', colors: ['#1B8A3A', '#E53935'] },
+    { id: 'classic', name: 'Clássico', desc: 'Vermelho e dourado', icon: '🔥', colors: ['#E53935', '#FF8F00'] },
+    { id: 'elegance', name: 'Elegance', desc: 'Escuro com dourado', icon: '🌙', colors: ['#D4AF37', '#0A0A14'] },
+    { id: 'vibrante', name: 'Vibrante', desc: 'Roxo e teal', icon: '✨', colors: ['#7B1FA2', '#00897B'] },
+    { id: 'minimal', name: 'Minimal', desc: 'Limpo e sóbrio', icon: '○', colors: ['#546E7A', '#8D6E63'] },
+    { id: 'noturno', name: 'Noturno', desc: 'Ciano e magenta', icon: '🌃', colors: ['#00BCD4', '#E040FB'] },
   ]
 
-  const layouts = [
-    { id: 'classic', name: 'Clássico', desc: 'Centralizado', icon: '🎯' },
-    { id: 'modern', name: 'Moderno', desc: 'Texto em card', icon: '💎' },
-    { id: 'compact', name: 'Compacto', desc: 'Mais enxuto', icon: '📐' },
+  const fonts = [
+    { id: 'classico', name: 'Clássico', desc: 'Montserrat + Inter' },
+    { id: 'serif', name: 'Serifado', desc: 'Playfair + Inter' },
+    { id: 'moderno', name: 'Moderno', desc: 'Poppins + Inter' },
+    { id: 'system', name: 'Sistema', desc: 'Nativas do sistema' },
   ]
+
+  const overlayBg = overlay > 0 ? `rgba(0,0,0,${overlay / 100})` : overlay < 0 ? `rgba(255,255,255,${Math.abs(overlay) / 100})` : 'transparent'
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -625,44 +633,47 @@ function CardapioSettings({ onClose, onThemeChange }) {
               ))}
             </div>
 
-            <p className="settings-label">📐 Layout do Topo</p>
+            <p className="settings-label">🔤 Fonte</p>
             <div className="settings-selector-grid">
-              {layouts.map(l => (
+              {fonts.map(f => (
                 <div
-                  key={l.id}
-                  className={`settings-selector-card ${selLayout === l.id ? 'active' : ''}`}
-                  onClick={() => setSelLayout(l.id)}
+                  key={f.id}
+                  className={`settings-selector-card ${selFont === f.id ? 'active' : ''}`}
+                  onClick={() => setSelFont(f.id)}
                 >
-                  <span className="selector-icon">{l.icon}</span>
-                  <span className="selector-name">{l.name}</span>
-                  <span className="selector-desc">{l.desc}</span>
+                  <span className="selector-icon" style={{ fontSize: '1rem', fontFamily: f.id === 'classico' ? 'Montserrat' : f.id === 'serif' ? 'Playfair Display' : f.id === 'moderno' ? 'Poppins' : 'sans-serif' }}>
+                    Aa
+                  </span>
+                  <span className="selector-name">{f.name}</span>
+                  <span className="selector-desc">{f.desc}</span>
                 </div>
               ))}
             </div>
 
             <div className="settings-divider"></div>
 
-            <p className="settings-label">👁️ Prévia</p>
-            <div className="settings-preview" ref={previewRef} style={{ height: '160px' }}>
-              {coverUrl ? (
-                <img src={coverUrl} alt="capa" className="settings-preview-bg" />
-              ) : (
-                <div className="settings-preview-bg settings-preview-placeholder">🖼️ Capa</div>
-              )}
-              <div className="settings-preview-overlay" style={{
-                background: overlay > 0 ? `rgba(0,0,0,${overlay / 100})` : overlay < 0 ? `rgba(255,255,255,${Math.abs(overlay) / 100})` : 'transparent'
-              }}></div>
-              {logoUrl && (
-                <img
-                  src={logoUrl}
-                  alt="logo"
-                  className="settings-preview-logo"
-                  style={{ left: `${logoX}%`, top: `${logoY}%`, maxWidth: `${logoSize * 1.2}px`, maxHeight: `${logoSize * 0.5}px` }}
-                  onMouseDown={handleMouseDown}
-                  draggable={false}
-                />
-              )}
-              <div className="settings-preview-hint">↕ Arraste a logo</div>
+            <p className="settings-label">👁️ Prévia ao Vivo</p>
+            <div className={`settings-preview theme-${selTheme} font-${selFont}`} ref={previewRef} style={{ height: '260px', position: 'relative' }}>
+              <div className="cardapio-hero" style={{ margin: 0, minHeight: '260px', height: '100%', backgroundImage: coverUrl ? `url("${coverUrl}")` : undefined }}>
+                <div className="hero-overlay" style={{ background: overlayBg }}></div>
+                {title !== '' && (
+                  <div className="hero-content" style={{ padding: '20px 16px' }}>
+                    <h2 style={{ fontSize: '1.4rem' }}>{title || 'Título'}</h2>
+                    {subtitle !== '' && <p style={{ fontSize: '0.8rem' }}>{subtitle || 'Subtítulo'}</p>}
+                  </div>
+                )}
+                {logoUrl && (
+                  <img
+                    src={logoUrl}
+                    alt="logo"
+                    className="hero-logo"
+                    style={{ left: `${logoX}%`, top: `${logoY}%`, '--logo-scale': logoSize / 100, pointerEvents: 'auto', cursor: 'grab' }}
+                    onMouseDown={handleMouseDown}
+                    draggable={false}
+                  />
+                )}
+              </div>
+              <div className="settings-preview-hint">↕ Arraste a logo para posicionar</div>
             </div>
           </div>
 
