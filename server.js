@@ -151,6 +151,10 @@ app.get('*', (req, res) => {
   res.sendFile('client/dist/index.html', { root: __dirname })
 })
 
-app.listen(PORT, () => {
-  console.log(`Servidor rodando na porta ${PORT}`)
-})
+module.exports = app
+
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`Servidor rodando na porta ${PORT}`)
+  })
+}

@@ -2,9 +2,9 @@
   "name": "israelita-pizzas-app",
   "version": "1.0.0",
   "scripts": {
-    "dev": "node server.js & cd client && npm run dev",
-    "build": "cd client && npm run build",
-    "start": "node server.js"
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
   },
   "dependencies": {
     "react": "^19.2.7",
