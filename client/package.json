@@ -1,19 +1,9 @@
 {
-  "name": "israelita-pizzas-client",
-  "private": true,
+  "name": "israelita-pizzas-app",
   "version": "1.0.0",
-  "type": "module",
   "scripts": {
-    "dev": "node server.js & cd client && npx vite",
+    "dev": "node server.js & cd client && npm run dev",
     "build": "cd client && npm run build",
     "start": "node server.js"
-  },
-  "dependencies": {
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0"
-  },
-  "devDependencies": {
-    "@vitejs/plugin-react": "^4.2.1",
-    "vite": "^5.1.0"
   }
 }
