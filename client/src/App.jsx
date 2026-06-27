@@ -83,7 +83,13 @@ function Cardapio({ onAdicionar }) {
   const [busca, setBusca] = useState('')
 
   useEffect(() => {
-    fetch(`${API}/menu`).then(r => r.json()).then(setMenu)
+    fetch(`${API}/menu`)
+      .then(r => r.json())
+      .then(data => {
+        console.log("Dados do menu recebidos:", data)
+        setMenu(data)
+      })
+      .catch(error => console.error("Erro ao buscar o menu:", error))
   }, [])
 
   const categorias = ['Todas', ...new Set(menu.map(i => i.categoria))]
@@ -92,6 +98,7 @@ function Cardapio({ onAdicionar }) {
     if (busca && !i.nome.toLowerCase().includes(busca.toLowerCase())) return false
     return true
   })
+  console.log("Itens filtrados para exibição:", filtrados)
 
   return (
     <div className="cardapio-page">
