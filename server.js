@@ -13,11 +13,23 @@ const MENU_FILE = path.join(__dirname, 'menu.json')
 const ORDERS_FILE = path.join(__dirname, 'orders.json')
 
 function readJSON(file) {
-  return JSON.parse(fs.readFileSync(file, 'utf-8'))
+  try {
+    const raw = fs.readFileSync(file, 'utf-8')
+    if (!raw.trim()) return []
+    return JSON.parse(raw)
+  } catch (err) {
+    console.error(`Erro ao ler ${file}:`, err.message)
+    return []
+  }
 }
 
 function writeJSON(file, data) {
-  fs.writeFileSync(file, JSON.stringify(data, null, 2), 'utf-8')
+  try {
+    fs.writeFileSync(file, JSON.stringify(data, null, 2), 'utf-8')
+  } catch (err) {
+    console.error(`Erro ao escrever ${file}:`, err.message)
+    throw err
+  }
 }
 
 // Rotas da API
@@ -57,17 +69,26 @@ app.get('/api/orders', (req, res) => {
 })
 
 app.post('/api/orders', (req, res) => {
-  const orders = readJSON(ORDERS_FILE)
-  const pedido = {
-    id: orders.length + 1,
-    data: new Date().toISOString(),
-    status: 'pendente',
-    updatedAt: new Date().toISOString(),
-    ...req.body
+  try {
+    console.log('Recebendo pedido:', JSON.stringify(req.body, null, 2))
+    const orders = readJSON(ORDERS_FILE)
+    if (!req.body || !req.body.cliente || !req.body.itens) {
+      return res.status(400).json({ erro: 'Dados incompletos: cliente e itens são obrigatórios' })
+    }
+    const pedido = {
+      id: orders.length > 0 ? Math.max(...orders.map(o => o.id)) + 1 : 1,
+      data: new Date().toISOString(),
+      status: 'pendente',
+      updatedAt: new Date().toISOString(),
+      ...req.body
+    }
+    orders.push(pedido)
+    writeJSON(ORDERS_FILE, orders)
+    res.status(201).json(pedido)
+  } catch (err) {
+    console.error('Erro ao salvar pedido:', err)
+    res.status(500).json({ erro: 'Erro interno ao salvar pedido', detalhe: err.message })
   }
-  orders.push(pedido)
-  writeJSON(ORDERS_FILE, orders)
-  res.status(201).json(pedido)
 })
 
 app.patch('/api/orders/:id', (req, res) => {
