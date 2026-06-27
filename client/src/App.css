@@ -706,6 +706,13 @@ body {
   color: #f39c12;
 }
 
+/* Section title */
+.section-title {
+  color: #e94560;
+  font-size: 1.3rem;
+  margin: 24px 0 16px;
+}
+
 /* Pizza Montar */
 .pizza-montar {
   background: #16213e;

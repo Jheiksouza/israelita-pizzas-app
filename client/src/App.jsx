@@ -84,7 +84,9 @@ function Cardapio({ onAdicionar }) {
   const [menu, setMenu] = useState([])
   const [categoria, setCategoria] = useState('Todas')
   const [busca, setBusca] = useState('')
-  const [mostrarMontar, setMostrarMontar] = useState(false)
+  const [tamanhoSel, setTamanhoSel] = useState(null)
+  const [saboresSel, setSaboresSel] = useState([])
+  const [erro, setErro] = useState('')
 
   useEffect(() => {
     fetch(`${API}/menu`)
@@ -98,7 +100,7 @@ function Cardapio({ onAdicionar }) {
 
   const sabores = menu.filter(i => i.tipo === 'sabor')
   const tamanhos = menu.filter(i => i.tipo === 'tamanho')
-  const produtos = menu.filter(i => i.tipo !== 'tamanho')
+  const produtos = menu.filter(i => i.tipo === 'produto')
 
   const categorias = ['Todas', ...new Set(produtos.map(i => i.categoria))]
   const filtrados = produtos.filter(i => {
@@ -107,13 +109,39 @@ function Cardapio({ onAdicionar }) {
     return true
   })
 
+  const toggleSabor = (id) => {
+    if (saboresSel.includes(id)) {
+      setSaboresSel(saboresSel.filter(s => s !== id))
+      setErro('')
+      return
+    }
+    if (saboresSel.length >= tamanhoSel.maxSabores) {
+      setErro(`Máximo de ${tamanhoSel.maxSabores} sabor${tamanhoSel.maxSabores > 1 ? 'es' : ''}`)
+      return
+    }
+    setErro('')
+    setSaboresSel([...saboresSel, id])
+  }
+
+  const handleAdd = () => {
+    if (saboresSel.length === 0) { setErro('Selecione pelo menos 1 sabor'); return }
+    const nomesSabores = saboresSel.map(id => sabores.find(s => s.id === id)?.nome).filter(Boolean)
+    onAdicionar({
+      id: `pizza-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      tipo: 'pizza',
+      nome: `Pizza ${tamanhoSel.nome} (${nomesSabores.join(', ')})`,
+      tamanho: tamanhoSel.nome,
+      sabores: nomesSabores,
+      preco: tamanhoSel.preco
+    })
+    setSaboresSel([])
+    setErro('')
+  }
+
   return (
     <div className="cardapio-page">
       <div className="cardapio-header">
         <h2>Nosso Cardápio</h2>
-        <button className="btn-add btn-montar-pizza" onClick={() => setMostrarMontar(!mostrarMontar)}>
-          {mostrarMontar ? '← Fechar Montador' : '🍕 Montar Pizza'}
-        </button>
         <div className="filtros">
           <input
             type="text"
@@ -134,25 +162,72 @@ function Cardapio({ onAdicionar }) {
         </div>
       </div>
 
-      {mostrarMontar && (
-        <PizzaMontar sabores={sabores} tamanhos={tamanhos} onAdicionar={onAdicionar} />
-      )}
+      <div className="pizza-montar">
+        <h3 className="montar-title">🍕 Monte sua Pizza</h3>
+        <p className="sabores-label">Escolha o tamanho:</p>
+        <div className="tamanhos-grid">
+          {tamanhos.map(t => (
+            <button
+              key={t.id}
+              className={`tamanho-btn ${tamanhoSel?.id === t.id ? 'active' : ''}`}
+              onClick={() => { setTamanhoSel(t); setSaboresSel([]); setErro('') }}
+            >
+              <strong>{t.nome}</strong>
+              <span className="tamanho-preco">R$ {t.preco.toFixed(2)}</span>
+              <small>Até {t.maxSabores} sabor{t.maxSabores > 1 ? 'es' : ''}</small>
+            </button>
+          ))}
+        </div>
 
-      <div className="menu-grid">
-        {filtrados.map(item => (
-          <div key={item.id} className="menu-card">
-            <div className="card-img">
-              {item.imagem ? <img src={item.imagem} alt={item.nome} /> : <span className="emoji-placeholder">🍕</span>}
+        {tamanhoSel && (
+          <>
+            <p className="sabores-label">
+              Selecione os sabores para {tamanhoSel.nome}
+              <span className="sabores-count"> ({saboresSel.length}/{tamanhoSel.maxSabores})</span>
+            </p>
+            <div className="sabores-grid">
+              {sabores.map(s => (
+                <button
+                  key={s.id}
+                  className={`sabor-btn ${saboresSel.includes(s.id) ? 'active' : ''}`}
+                  onClick={() => toggleSabor(s.id)}
+                >
+                  {s.nome}
+                </button>
+              ))}
             </div>
-            <div className="card-body">
-              <h3>{item.nome}</h3>
-              <p className="desc">{item.descricao}</p>
-              <p className="preco">R$ {item.preco.toFixed(2)}</p>
-              <button className="btn-add" onClick={() => onAdicionar(item)}>Adicionar</button>
-            </div>
-          </div>
-        ))}
+            {erro && <p className="erro">{erro}</p>}
+            <button
+              className="btn-add btn-montar-add"
+              onClick={handleAdd}
+              disabled={saboresSel.length === 0}
+            >
+              Adicionar Pizza {tamanhoSel.nome} — R$ {tamanhoSel.preco.toFixed(2)}
+            </button>
+          </>
+        )}
       </div>
+
+      {filtrados.length > 0 && (
+        <>
+          <h3 className="section-title">Bebidas e Produtos</h3>
+          <div className="menu-grid">
+            {filtrados.map(item => (
+              <div key={item.id} className="menu-card">
+                <div className="card-img">
+                  {item.imagem ? <img src={item.imagem} alt={item.nome} /> : <span className="emoji-placeholder">🥤</span>}
+                </div>
+                <div className="card-body">
+                  <h3>{item.nome}</h3>
+                  <p className="desc">{item.descricao}</p>
+                  <p className="preco">R$ {item.preco.toFixed(2)}</p>
+                  <button className="btn-add" onClick={() => onAdicionar(item)}>Adicionar</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
     </div>
   )
 }
@@ -230,85 +305,6 @@ function CarrinhoView({ itens, onRemover, onAdicionar, total, onVoltar }) {
         <input placeholder="Endereço" value={cliente.endereco} onChange={e => setCliente({ ...cliente, endereco: e.target.value })} />
         <button className="btn-add btn-finalizar" onClick={finalizar}>Finalizar Pedido</button>
       </div>
-    </div>
-  )
-}
-
-function PizzaMontar({ sabores, tamanhos, onAdicionar }) {
-  const [tamanho, setTamanho] = useState(null)
-  const [saboresSel, setSaboresSel] = useState([])
-  const [erro, setErro] = useState('')
-
-  const toggleSabor = (id) => {
-    if (!tamanho) { setErro('Selecione o tamanho primeiro'); return }
-    if (saboresSel.includes(id)) {
-      setSaboresSel(saboresSel.filter(s => s !== id))
-      setErro('')
-      return
-    }
-    if (saboresSel.length >= tamanho.maxSabores) {
-      setErro(`Máximo de ${tamanho.maxSabores} sabor${tamanho.maxSabores > 1 ? 'es' : ''}`)
-      return
-    }
-    setErro('')
-    setSaboresSel([...saboresSel, id])
-  }
-
-  const handleAdd = () => {
-    if (!tamanho) { setErro('Selecione um tamanho'); return }
-    if (saboresSel.length === 0) { setErro('Selecione pelo menos 1 sabor'); return }
-    const nomesSabores = saboresSel.map(id => sabores.find(s => s.id === id)?.nome).filter(Boolean)
-    onAdicionar({
-      id: `pizza-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-      tipo: 'pizza',
-      nome: `Pizza ${tamanho.nome} (${nomesSabores.join(', ')})`,
-      tamanho: tamanho.nome,
-      sabores: nomesSabores,
-      preco: tamanho.preco
-    })
-    setSaboresSel([])
-    setErro('')
-  }
-
-  return (
-    <div className="pizza-montar">
-      <h3 className="montar-title">Monte sua Pizza</h3>
-      <div className="tamanhos-grid">
-        {tamanhos.map(t => (
-          <button
-            key={t.id}
-            className={`tamanho-btn ${tamanho?.id === t.id ? 'active' : ''}`}
-            onClick={() => { setTamanho(t); setSaboresSel([]); setErro('') }}
-          >
-            <strong>{t.nome}</strong>
-            <span className="tamanho-preco">R$ {t.preco.toFixed(2)}</span>
-            <small>Até {t.maxSabores} sabor{t.maxSabores > 1 ? 'es' : ''}</small>
-          </button>
-        ))}
-      </div>
-      {tamanho && (
-        <>
-          <p className="sabores-label">
-            Escolha até {tamanho.maxSabores} sabor{tamanho.maxSabores > 1 ? 'es' : ''}
-            <span className="sabores-count"> ({saboresSel.length}/{tamanho.maxSabores})</span>
-          </p>
-          <div className="sabores-grid">
-            {sabores.map(s => (
-              <button
-                key={s.id}
-                className={`sabor-btn ${saboresSel.includes(s.id) ? 'active' : ''}`}
-                onClick={() => toggleSabor(s.id)}
-              >
-                {s.nome}
-              </button>
-            ))}
-          </div>
-          {erro && <p className="erro">{erro}</p>}
-          <button className="btn-add btn-montar-add" onClick={handleAdd} disabled={saboresSel.length === 0}>
-            Adicionar Pizza {tamanho.nome} — R$ {tamanho.preco.toFixed(2)}
-          </button>
-        </>
-      )}
     </div>
   )
 }
