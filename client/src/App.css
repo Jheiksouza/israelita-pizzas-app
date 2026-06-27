@@ -407,165 +407,332 @@
   --radius-xs: 6px;
 }
 
-.theme-neon .btn-add {
-  background: linear-gradient(135deg, var(--primary), var(--secondary)) !important;
-  box-shadow: 0 0 20px rgba(189,0,255,0.4) !important;
-  border: none !important;
+/* Neon Orbs de fundo */
+.theme-neon .neon-orbs {
+  display: block;
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
 }
 
-.theme-neon .btn-add:hover {
-  box-shadow: 0 0 30px rgba(0,238,252,0.5) !important;
-  transform: translateY(-2px);
-}
-
-.theme-neon .btn-montar-add {
-  background: linear-gradient(135deg, var(--primary), var(--secondary)) !important;
-  box-shadow: 0 0 20px rgba(189,0,255,0.4) !important;
-}
-
-.theme-neon .btn-montar-add:hover {
-  box-shadow: 0 0 30px rgba(0,238,252,0.5) !important;
-}
-
-.theme-neon .menu-card {
-  background: rgba(255,255,255,0.05);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255,255,255,0.1);
-}
-
-.theme-neon .menu-card:hover {
-  border-color: var(--primary);
-  box-shadow: 0 0 30px rgba(189,0,255,0.15), var(--shadow-lg);
-}
-
-.theme-neon .pizza-montar {
-  background: rgba(255,255,255,0.04);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255,255,255,0.08);
-}
-
-.theme-neon .pizza-montar::before {
+.neon-orbs {
   display: none;
 }
 
-.theme-neon .cardapio-hero {
-  box-shadow: var(--shadow-md), 0 0 60px rgba(189,0,255,0.08);
+.theme-neon .neon-orb {
+  position: absolute;
+  width: 500px;
+  height: 500px;
+  border-radius: 50%;
+  filter: blur(120px);
+  opacity: 0.35;
+}
+
+.theme-neon .orb-1 {
+  top: -15%;
+  left: -10%;
+  background: #BD00FF;
+  animation: orbFloat 20s ease-in-out infinite;
+}
+
+.theme-neon .orb-2 {
+  bottom: -15%;
+  right: -10%;
+  background: #00EEFC;
+  animation: orbFloat 25s ease-in-out infinite reverse;
+}
+
+@keyframes orbFloat {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(30px, -30px) scale(1.1); }
+  66% { transform: translate(-20px, 20px) scale(0.9); }
+}
+
+/* Header fixo com blur */
+.theme-neon .main {
+  padding-top: 88px;
 }
 
 .theme-neon .header {
-  background: rgba(19,19,21,0.85);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border-bottom: 1px solid rgba(255,255,255,0.08);
-  box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+  position: fixed !important;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  background: rgba(19,19,21,0.8) !important;
+  backdrop-filter: blur(24px) !important;
+  -webkit-backdrop-filter: blur(24px) !important;
+  border-bottom: 1px solid rgba(255,255,255,0.06) !important;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.5) !important;
 }
 
-.theme-neon .nav-btn.active {
+.theme-neon .logo {
   background: linear-gradient(135deg, var(--primary), var(--secondary));
-  box-shadow: 0 0 20px rgba(189,0,255,0.4);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  font-weight: 900;
+  font-size: 1.5rem;
 }
 
-.theme-neon .nav-btn:hover {
-  background: rgba(255,255,255,0.1);
-  border-color: var(--primary);
+/* Esconde hero e decorações no Neon */
+.theme-neon .cardapio-hero {
+  display: none !important;
 }
 
-.theme-neon .badge {
-  background: var(--primary);
-  box-shadow: 0 0 10px rgba(189,0,255,0.5);
+.theme-neon .bg-decoration {
+  display: none !important;
 }
 
-.theme-neon .carrinho-item {
-  background: rgba(255,255,255,0.05);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255,255,255,0.1);
+/* Glassmorphism geral */
+.theme-neon .menu-card,
+.theme-neon .pizza-montar,
+.theme-neon .sabor-card,
+.theme-neon .tamanho-btn,
+.theme-neon .carrinho-item,
+.theme-neon .cliente-form,
+.theme-neon .pedido-card,
+.theme-neon .fin-card,
+.theme-neon .modal {
+  background: rgba(255,255,255,0.04) !important;
+  backdrop-filter: blur(20px) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
+  border: 1px solid rgba(255,255,255,0.08) !important;
 }
 
-.theme-neon .carrinho-item:hover {
-  background: rgba(255,255,255,0.1);
-}
-
-.theme-neon .cliente-form {
-  background: rgba(255,255,255,0.05);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(189,0,255,0.2);
-}
-
-.theme-neon .sabor-card {
-  background: rgba(255,255,255,0.05);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  border: 1px solid rgba(255,255,255,0.08);
-}
-
-.theme-neon .sabor-card:hover {
-  border-color: var(--primary);
-  background: rgba(189,0,255,0.1);
-}
-
-.theme-neon .sabor-card.active {
-  background: linear-gradient(135deg, var(--primary), var(--secondary));
-  border-color: transparent;
-  box-shadow: 0 0 20px rgba(189,0,255,0.3);
-}
-
-.theme-neon .tamanho-btn {
-  background: rgba(255,255,255,0.05);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  border: 1px solid rgba(255,255,255,0.08);
-}
-
+.theme-neon .menu-card:hover,
+.theme-neon .carrinho-item:hover,
+.theme-neon .sabor-card:hover,
 .theme-neon .tamanho-btn:hover {
-  border-color: var(--secondary);
+  border-color: var(--primary) !important;
+  box-shadow: 0 0 30px rgba(189,0,255,0.12);
 }
 
+.theme-neon .sabor-card.active,
 .theme-neon .tamanho-btn.active {
-  background: linear-gradient(135deg, var(--primary), var(--secondary));
-  border-color: transparent;
-  box-shadow: 0 0 20px rgba(189,0,255,0.3);
+  background: linear-gradient(135deg, var(--primary), var(--secondary)) !important;
+  border-color: transparent !important;
+  box-shadow: 0 0 25px rgba(189,0,255,0.35) !important;
+}
+
+.theme-neon .pizza-montar::before {
+  display: none !important;
 }
 
 .theme-neon .tamanho-preco {
-  color: var(--secondary);
+  color: var(--secondary) !important;
+}
+
+/* Botões com glow */
+.theme-neon .btn-add,
+.theme-neon .btn-montar-add,
+.theme-neon .btn-aceitar {
+  background: linear-gradient(135deg, var(--primary), var(--secondary)) !important;
+  box-shadow: 0 0 25px rgba(189,0,255,0.4) !important;
+  border: none !important;
+}
+
+.theme-neon .btn-add:hover,
+.theme-neon .btn-montar-add:hover,
+.theme-neon .btn-aceitar:hover {
+  box-shadow: 0 0 40px rgba(0,238,252,0.5) !important;
+  transform: translateY(-2px);
+}
+
+.theme-neon .nav-btn.active {
+  background: linear-gradient(135deg, var(--primary), var(--secondary)) !important;
+  border-color: transparent !important;
+  box-shadow: 0 0 20px rgba(189,0,255,0.35);
+}
+
+.theme-neon .nav-btn:hover {
+  background: rgba(255,255,255,0.08) !important;
+  border-color: var(--primary) !important;
+}
+
+.theme-neon .badge,
+.theme-neon .bottom-nav-badge {
+  background: var(--primary) !important;
+  box-shadow: 0 0 12px rgba(189,0,255,0.6);
 }
 
 .theme-neon .pedido-card {
-  background: rgba(255,255,255,0.05);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(255,255,255,0.04) !important;
+  backdrop-filter: blur(16px) !important;
 }
 
 .theme-neon .admin-table thead {
-  background: rgba(189,0,255,0.1);
+  background: rgba(189,0,255,0.12) !important;
 }
 
 .theme-neon .admin-table tr:hover {
-  background: rgba(255,255,255,0.05);
-}
-
-.theme-neon .btn-aceitar {
-  background: linear-gradient(135deg, var(--primary), var(--secondary));
-  box-shadow: 0 0 15px rgba(189,0,255,0.3);
+  background: rgba(255,255,255,0.04) !important;
 }
 
 .theme-neon .modal {
-  background: rgba(19,19,21,0.96);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
-  border: 1px solid rgba(255,255,255,0.1);
+  background: rgba(19,19,21,0.95) !important;
+  backdrop-filter: blur(28px) !important;
 }
 
-.theme-neon .fin-card {
-  background: rgba(255,255,255,0.05);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+/* Carrinho 2 colunas no desktop com Neon */
+@media (min-width: 1024px) {
+  .theme-neon .carrinho-page {
+    max-width: 100% !important;
+  }
+
+  .theme-neon #carrinho-content {
+    display: grid !important;
+    grid-template-columns: 7fr 5fr !important;
+    gap: var(--gutter, 24px) !important;
+    align-items: start !important;
+  }
+
+  .theme-neon .cliente-form {
+    position: sticky;
+    top: 100px;
+  }
+}
+
+/* Bottom Nav - só aparece no Neon em mobile */
+.bottom-nav {
+  display: none;
+}
+
+.theme-neon .bottom-nav {
+  display: flex;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  justify-content: space-around;
+  align-items: center;
+  padding: 8px 16px;
+  padding-bottom: max(8px, env(safe-area-inset-bottom));
+  background: rgba(28,27,29,0.9);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border-top: 1px solid rgba(255,255,255,0.06);
+  box-shadow: 0 -10px 30px rgba(0,0,0,0.5);
+  border-radius: 16px 16px 0 0;
+}
+
+.theme-neon .bottom-nav-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px 12px;
+  transition: var(--transition);
+  position: relative;
+  font-family: var(--font-body);
+}
+
+.theme-neon .bottom-nav-btn.active {
+  color: var(--primary);
+}
+
+.theme-neon .bottom-nav-icon {
+  font-size: 1.3rem;
+  line-height: 1;
+}
+
+.theme-neon .bottom-nav-label {
+  font-size: 0.65rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.theme-neon .bottom-nav-badge {
+  position: absolute;
+  top: -2px;
+  right: 2px;
+  background: var(--primary);
+  color: #fff;
+  font-size: 0.6rem;
+  font-weight: 700;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 10px rgba(189,0,255,0.5);
+}
+
+/* Adiciona padding-bottom no main pro bottom nav */
+.theme-neon .main {
+  padding-bottom: 80px;
+}
+
+/* Esconde float pizza no Neon (já está escondido via .bg-decoration) */
+
+/* Ajuste para o carrinho no Neon - inputs do form */
+.theme-neon .cliente-form input {
+  background: rgba(0,0,0,0.3) !important;
+  border: 1px solid rgba(255,255,255,0.1) !important;
+  border-radius: 9999px !important;
+  color: var(--text-primary) !important;
+  padding: 12px 20px !important;
+  font-family: var(--font-body);
+}
+
+.theme-neon .cliente-form input:focus {
+  border-color: var(--primary) !important;
+  box-shadow: 0 0 15px rgba(189,0,255,0.15);
+  outline: none;
+}
+
+.theme-neon .btn-finalizar {
+  width: 100%;
+  padding: 16px 32px !important;
+  border-radius: 9999px !important;
+  font-size: 1rem !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.03em;
+}
+
+.theme-neon .carrinho-total {
+  border-top: 1px solid rgba(255,255,255,0.08);
+  padding-top: 16px;
+  margin-top: 16px;
+}
+
+.theme-neon .item-qtd button {
+  background: transparent !important;
+  border: none !important;
+  color: var(--primary) !important;
+  width: auto !important;
+  height: auto !important;
+  font-size: 1.2rem !important;
+}
+
+.theme-neon .item-qtd button:hover {
+  color: var(--secondary) !important;
+  background: transparent !important;
+}
+
+.theme-neon .item-qtd {
+  background: rgba(255,255,255,0.06);
+  border-radius: 9999px;
+  padding: 2px 6px;
   border: 1px solid rgba(255,255,255,0.08);
+}
+
+@media (min-width: 768px) {
+  .theme-neon .bottom-nav {
+    display: none !important;
+  }
+  .theme-neon .main {
+    padding-bottom: 0;
+  }
 }
 
 * {
@@ -1324,17 +1491,7 @@ body {
   animation: fadeUp 0.4s ease;
 }
 
-.carrinho-page > h2 {
-  font-family: var(--font-heading);
-  font-size: 1.6rem;
-  font-weight: 700;
-  margin-bottom: 24px;
-  color: var(--text-primary);
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  letter-spacing: -0.3px;
-}
+
 
 .empty-state {
   text-align: center;
@@ -1368,7 +1525,27 @@ body {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  margin-bottom: 20px;
+}
+
+.carrinho-itens-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.carrinho-itens-header h2 {
+  font-family: var(--font-heading);
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.carrinho-count {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
 }
 
 .carrinho-item {

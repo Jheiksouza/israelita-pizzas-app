@@ -59,6 +59,10 @@ function App() {
         <span className="float-pizza">🌿</span>
         <span className="float-pizza">🍕</span>
       </div>
+      <div className="neon-orbs" aria-hidden="true">
+        <div className="neon-orb orb-1"></div>
+        <div className="neon-orb orb-2"></div>
+      </div>
       <header className="header">
         <div className="header-content">
           <h1 className="logo" onClick={() => setPagina('cardapio')}>🍕 Pizzaria Israelita</h1>
@@ -99,6 +103,22 @@ function App() {
           />
         )}
       </main>
+
+      <nav className="bottom-nav">
+        <button className={`bottom-nav-btn ${pagina === 'cardapio' ? 'active' : ''}`} onClick={() => setPagina('cardapio')}>
+          <span className="bottom-nav-icon">🍕</span>
+          <span className="bottom-nav-label">Cardápio</span>
+        </button>
+        <button className={`bottom-nav-btn ${pagina === 'carrinho' ? 'active' : ''}`} onClick={() => setPagina('carrinho')}>
+          <span className="bottom-nav-icon">🛒</span>
+          <span className="bottom-nav-label">Carrinho</span>
+          {qtdCarrinho > 0 && <span className="bottom-nav-badge">{qtdCarrinho}</span>}
+        </button>
+        <button className={`bottom-nav-btn ${pagina === 'admin' ? 'active' : ''}`} onClick={() => setPagina('admin')}>
+          <span className="bottom-nav-icon">⚙️</span>
+          <span className="bottom-nav-label">Admin</span>
+        </button>
+      </nav>
     </div>
   )
 }
@@ -372,43 +392,48 @@ function CarrinhoView({ itens, onRemover, onAdicionar, onLimparCarrinho, total, 
 
   return (
     <div className="carrinho-page">
-      <h2>Seu Carrinho</h2>
-      <div className="carrinho-itens">
-        {itens.map(item => (
-          <div key={item.id} className="carrinho-item">
-            <div className="item-info">
-              <strong>{item.nome}</strong>
-              {item.tipo === 'pizza' && (
-                <div className="pizza-detalhes">
-                  <span className="pizza-tamanho">{item.tamanho}</span>
-                  <span className="pizza-sabores">Sabores: {item.sabores?.join(', ')}</span>
-                </div>
-              )}
-              <span>R$ {item.preco.toFixed(2)}</span>
-            </div>
-            <div className="item-qtd">
-              <button onClick={() => onRemover(item.id)}>-</button>
-              <span>{item.qtd}</span>
-              <button onClick={() => onAdicionar(item)}>+</button>
-              <span className="item-subtotal">R$ {(item.preco * item.qtd).toFixed(2)}</span>
-            </div>
-            {item.tipo === 'pizza' && (
-              <button className="btn-edit-pizza" onClick={() => onEditarPizza(item)} title="Editar pizza">
-                ✏️ Editar
-              </button>
-            )}
+      <div id="carrinho-content">
+        <div className="carrinho-itens">
+          <div className="carrinho-itens-header">
+            <h2>Seu Carrinho</h2>
+            <span className="carrinho-count">{itens.length} {itens.length === 1 ? 'ITEM' : 'ITENS'}</span>
           </div>
-        ))}
-      </div>
-      <div className="carrinho-total">
-        <strong>Total: R$ {total.toFixed(2)}</strong>
-      </div>
-      <div className="cliente-form">
-        <h3>Dados para entrega</h3>
-        <input placeholder="Nome" value={cliente.nome} onChange={e => setCliente({ ...cliente, nome: e.target.value })} />
-        <input placeholder="Telefone" value={cliente.telefone} onChange={e => setCliente({ ...cliente, telefone: e.target.value })} />
-        <input placeholder="Endereço" value={cliente.endereco} onChange={e => setCliente({ ...cliente, endereco: e.target.value })} />
-        <button className="btn-add btn-finalizar" onClick={finalizar}>Finalizar Pedido</button>
+          {itens.map(item => (
+            <div key={item.id} className="carrinho-item">
+              <div className="item-info">
+                <strong>{item.nome}</strong>
+                {item.tipo === 'pizza' && (
+                  <div className="pizza-detalhes">
+                    <span className="pizza-tamanho">{item.tamanho}</span>
+                    <span className="pizza-sabores">Sabores: {item.sabores?.join(', ')}</span>
+                  </div>
+                )}
+                <span>R$ {item.preco.toFixed(2)}</span>
+              </div>
+              <div className="item-qtd">
+                <button onClick={() => onRemover(item.id)}>-</button>
+                <span>{item.qtd}</span>
+                <button onClick={() => onAdicionar(item)}>+</button>
+                <span className="item-subtotal">R$ {(item.preco * item.qtd).toFixed(2)}</span>
+              </div>
+              {item.tipo === 'pizza' && (
+                <button className="btn-edit-pizza" onClick={() => onEditarPizza(item)} title="Editar pizza">
+                  ✏️ Editar
+                </button>
+              )}
+            </div>
+          ))}
+          <div className="carrinho-total">
+            <strong>Total: R$ {total.toFixed(2)}</strong>
+          </div>
+        </div>
+        <div className="cliente-form">
+          <h3>Dados para entrega</h3>
+          <input placeholder="Nome" value={cliente.nome} onChange={e => setCliente({ ...cliente, nome: e.target.value })} />
+          <input placeholder="Telefone" value={cliente.telefone} onChange={e => setCliente({ ...cliente, telefone: e.target.value })} />
+          <input placeholder="Endereço" value={cliente.endereco} onChange={e => setCliente({ ...cliente, endereco: e.target.value })} />
+          <button className="btn-add btn-finalizar" onClick={finalizar}>Finalizar Pedido</button>
+        </div>
       </div>
     </div>
   )
