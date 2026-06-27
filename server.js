@@ -6,6 +6,11 @@ const cors = require('cors')
 const app = express()
 const PORT = 3001
 
+
+app.use(express.static('client/dist'));  // ou 'client' se for dev
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'client/dist/index.html'));
+});
 app.use(cors())
 app.use(express.json())
 
