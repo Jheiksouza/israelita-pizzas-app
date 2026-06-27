@@ -624,6 +624,7 @@ function CardapioSettings({ onClose, onThemeChange, onFontChange }) {
     { id: 'vibrante', name: 'Vibrante', desc: 'Roxo e teal', icon: '✨', colors: ['#7B1FA2', '#00897B'] },
     { id: 'minimal', name: 'Minimal', desc: 'Limpo e sóbrio', icon: '○', colors: ['#546E7A', '#8D6E63'] },
     { id: 'noturno', name: 'Noturno', desc: 'Ciano e magenta', icon: '🌃', colors: ['#00BCD4', '#E040FB'] },
+    { id: 'neon', name: 'Neon', desc: 'Roxo e teal elétrico', icon: '💜', colors: ['#BD00FF', '#00EEFC'] },
   ]
 
   const fonts = [

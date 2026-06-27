@@ -378,6 +378,196 @@
   box-shadow: 0 0 10px rgba(224,64,251,0.3);
 }
 
+/* ============ THEME: NEON ============ */
+.theme-neon {
+  --primary: #BD00FF;
+  --primary-dark: #9900CF;
+  --primary-light: #D040FF;
+  --primary-soft: #1A0024;
+  --secondary: #00EEFC;
+  --accent: #00D4E0;
+  --accent-soft: #001A1C;
+  --bg: #131315;
+  --bg-card: rgba(255,255,255,0.05);
+  --bg-surface: #1C1B1D;
+  --bg-elevated: #2A2A2C;
+  --text-primary: #E5E1E4;
+  --text-secondary: #B0ACB2;
+  --text-muted: #6A6570;
+  --border: rgba(255,255,255,0.1);
+  --border-light: rgba(255,255,255,0.15);
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.4);
+  --shadow-md: 0 4px 16px rgba(0,0,0,0.5);
+  --shadow-lg: 0 12px 40px rgba(0,0,0,0.6);
+  --shadow-glow: 0 4px 24px rgba(189,0,255,0.25);
+  --radius: 16px;
+  --radius-lg: 20px;
+  --radius-md: 12px;
+  --radius-sm: 8px;
+  --radius-xs: 6px;
+}
+
+.theme-neon .btn-add {
+  background: linear-gradient(135deg, var(--primary), var(--secondary)) !important;
+  box-shadow: 0 0 20px rgba(189,0,255,0.4) !important;
+  border: none !important;
+}
+
+.theme-neon .btn-add:hover {
+  box-shadow: 0 0 30px rgba(0,238,252,0.5) !important;
+  transform: translateY(-2px);
+}
+
+.theme-neon .btn-montar-add {
+  background: linear-gradient(135deg, var(--primary), var(--secondary)) !important;
+  box-shadow: 0 0 20px rgba(189,0,255,0.4) !important;
+}
+
+.theme-neon .btn-montar-add:hover {
+  box-shadow: 0 0 30px rgba(0,238,252,0.5) !important;
+}
+
+.theme-neon .menu-card {
+  background: rgba(255,255,255,0.05);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255,255,255,0.1);
+}
+
+.theme-neon .menu-card:hover {
+  border-color: var(--primary);
+  box-shadow: 0 0 30px rgba(189,0,255,0.15), var(--shadow-lg);
+}
+
+.theme-neon .pizza-montar {
+  background: rgba(255,255,255,0.04);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255,255,255,0.08);
+}
+
+.theme-neon .pizza-montar::before {
+  display: none;
+}
+
+.theme-neon .cardapio-hero {
+  box-shadow: var(--shadow-md), 0 0 60px rgba(189,0,255,0.08);
+}
+
+.theme-neon .header {
+  background: rgba(19,19,21,0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+}
+
+.theme-neon .nav-btn.active {
+  background: linear-gradient(135deg, var(--primary), var(--secondary));
+  box-shadow: 0 0 20px rgba(189,0,255,0.4);
+}
+
+.theme-neon .nav-btn:hover {
+  background: rgba(255,255,255,0.1);
+  border-color: var(--primary);
+}
+
+.theme-neon .badge {
+  background: var(--primary);
+  box-shadow: 0 0 10px rgba(189,0,255,0.5);
+}
+
+.theme-neon .carrinho-item {
+  background: rgba(255,255,255,0.05);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255,255,255,0.1);
+}
+
+.theme-neon .carrinho-item:hover {
+  background: rgba(255,255,255,0.1);
+}
+
+.theme-neon .cliente-form {
+  background: rgba(255,255,255,0.05);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(189,0,255,0.2);
+}
+
+.theme-neon .sabor-card {
+  background: rgba(255,255,255,0.05);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255,255,255,0.08);
+}
+
+.theme-neon .sabor-card:hover {
+  border-color: var(--primary);
+  background: rgba(189,0,255,0.1);
+}
+
+.theme-neon .sabor-card.active {
+  background: linear-gradient(135deg, var(--primary), var(--secondary));
+  border-color: transparent;
+  box-shadow: 0 0 20px rgba(189,0,255,0.3);
+}
+
+.theme-neon .tamanho-btn {
+  background: rgba(255,255,255,0.05);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255,255,255,0.08);
+}
+
+.theme-neon .tamanho-btn:hover {
+  border-color: var(--secondary);
+}
+
+.theme-neon .tamanho-btn.active {
+  background: linear-gradient(135deg, var(--primary), var(--secondary));
+  border-color: transparent;
+  box-shadow: 0 0 20px rgba(189,0,255,0.3);
+}
+
+.theme-neon .tamanho-preco {
+  color: var(--secondary);
+}
+
+.theme-neon .pedido-card {
+  background: rgba(255,255,255,0.05);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255,255,255,0.08);
+}
+
+.theme-neon .admin-table thead {
+  background: rgba(189,0,255,0.1);
+}
+
+.theme-neon .admin-table tr:hover {
+  background: rgba(255,255,255,0.05);
+}
+
+.theme-neon .btn-aceitar {
+  background: linear-gradient(135deg, var(--primary), var(--secondary));
+  box-shadow: 0 0 15px rgba(189,0,255,0.3);
+}
+
+.theme-neon .modal {
+  background: rgba(19,19,21,0.96);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255,255,255,0.1);
+}
+
+.theme-neon .fin-card {
+  background: rgba(255,255,255,0.05);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255,255,255,0.08);
+}
+
 * {
   margin: 0;
   padding: 0;
