@@ -145,13 +145,11 @@ app.post('/api/login', (req, res) => {
   res.status(401).json({ autenticado: false, erro: 'Senha incorreta' })
 })
 
-// Servir frontend buildado (apenas local, no Vercel quem serve é o static-build)
-if (!process.env.VERCEL) {
-  app.use(express.static('client/dist'))
-  app.get('*', (req, res) => {
-    res.sendFile('client/dist/index.html', { root: __dirname })
-  })
-}
+// Servir frontend buildado
+app.use(express.static('client/dist'))
+app.get('*', (req, res) => {
+  res.sendFile('client/dist/index.html', { root: __dirname })
+})
 
 module.exports = app
 
