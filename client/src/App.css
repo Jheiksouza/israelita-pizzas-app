@@ -870,6 +870,11 @@ body {
   font-size: 0.75rem;
 }
 
+.input-busca-sabor {
+  margin-bottom: 12px;
+  max-width: 100%;
+}
+
 .sabores-grid {
   display: flex;
   flex-wrap: wrap;

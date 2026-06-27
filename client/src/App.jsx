@@ -109,6 +109,7 @@ function Cardapio({ onAdicionar, pizzaEditando, onPizzaEditDone }) {
   const [busca, setBusca] = useState('')
   const [tamanhoSel, setTamanhoSel] = useState(null)
   const [saboresSel, setSaboresSel] = useState([])
+  const [buscaSabor, setBuscaSabor] = useState('')
   const [erro, setErro] = useState('')
 
   useEffect(() => {
@@ -250,7 +251,7 @@ function Cardapio({ onAdicionar, pizzaEditando, onPizzaEditDone }) {
             <button
               key={t.id}
               className={`tamanho-btn ${tamanhoSel?.id === t.id ? 'active' : ''}`}
-              onClick={() => { setTamanhoSel(t); setSaboresSel([]); setErro('') }}
+              onClick={() => { setTamanhoSel(t); setSaboresSel([]); setBuscaSabor(''); setErro('') }}
             >
               <strong>{t.nome}</strong>
               {t.preco_tradicional && <span className="tamanho-preco">Trad. R$ {t.preco_tradicional.toFixed(2)}</span>}
@@ -265,8 +266,19 @@ function Cardapio({ onAdicionar, pizzaEditando, onPizzaEditDone }) {
               Selecione os sabores para {tamanhoSel.nome}
               <span className="sabores-count"> ({saboresSel.length}/{tamanhoSel.maxSabores})</span>
             </p>
+            <input
+              type="text"
+              className="input-busca input-busca-sabor"
+              placeholder="Buscar sabor por nome ou ingredientes..."
+              value={buscaSabor}
+              onChange={e => setBuscaSabor(e.target.value)}
+            />
             <div className="sabores-grid">
-              {sabores.map(s => (
+              {sabores.filter(s => {
+                if (!buscaSabor) return true
+                const q = buscaSabor.toLowerCase()
+                return s.nome.toLowerCase().includes(q) || (s.descricao || '').toLowerCase().includes(q)
+              }).map(s => (
                 <button
                   key={s.id}
                   className={`sabor-btn ${saboresSel.includes(s.id) ? 'active' : ''}`}
