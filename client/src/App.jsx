@@ -35,6 +35,8 @@ function App() {
     })
   }
 
+  const limparCarrinho = () => setCarrinho([])
+
   const totalCarrinho = carrinho.reduce((sum, i) => sum + i.preco * i.qtd, 0)
   const qtdCarrinho = carrinho.reduce((sum, i) => sum + i.qtd, 0)
 
@@ -62,6 +64,7 @@ function App() {
             itens={carrinho}
             onRemover={removerDoCarrinho}
             onAdicionar={adicionarAoCarrinho}
+            onLimparCarrinho={limparCarrinho}
             total={totalCarrinho}
             onVoltar={() => setPagina('cardapio')}
           />
@@ -232,17 +235,19 @@ function Cardapio({ onAdicionar }) {
   )
 }
 
-function CarrinhoView({ itens, onRemover, onAdicionar, total, onVoltar }) {
+function CarrinhoView({ itens, onRemover, onAdicionar, onLimparCarrinho, total, onVoltar }) {
   const [cliente, setCliente] = useState({ nome: '', telefone: '', endereco: '' })
   const [enviado, setEnviado] = useState(false)
 
   const finalizar = async () => {
     if (!cliente.nome || !cliente.telefone) return alert('Preencha nome e telefone')
-    await fetch(`${API}/orders`, {
+    const res = await fetch(`${API}/orders`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ cliente, itens, total })
     })
+    if (!res.ok) return alert('Erro ao enviar pedido. Tente novamente.')
+    onLimparCarrinho()
     setEnviado(true)
   }
 
@@ -397,13 +402,41 @@ function AdminMenu() {
   )
 }
 
+function playNotificacao() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)()
+    const osc = ctx.createOscillator()
+    const gain = ctx.createGain()
+    osc.connect(gain)
+    gain.connect(ctx.destination)
+    osc.frequency.value = 880
+    gain.gain.value = 0.3
+    osc.start()
+    osc.stop(ctx.currentTime + 0.3)
+    setTimeout(() => {
+      const osc2 = ctx.createOscillator()
+      osc2.connect(gain)
+      osc2.frequency.value = 1100
+      gain.gain.value = 0.2
+      osc2.start()
+      osc2.stop(ctx.currentTime + 0.2)
+    }, 150)
+  } catch (e) {}
+}
+
 function AdminOrders() {
   const [pedidos, setPedidos] = useState([])
   const [filtro, setFiltro] = useState('todos')
+  const pendentesRef = React.useRef(0)
 
-  const carregar = () => fetch(`${API}/orders`).then(r => r.json()).then(setPedidos)
+  const carregar = () => fetch(`${API}/orders`).then(r => r.json()).then(data => {
+    const pendentes = data.filter(p => p.status === 'pendente').length
+    if (pendentes > pendentesRef.current) playNotificacao()
+    pendentesRef.current = pendentes
+    setPedidos(data)
+  })
 
-  useEffect(() => { carregar() }, [])
+  useEffect(() => { carregar(); const id = setInterval(carregar, 10000); return () => clearInterval(id) }, [])
 
   const atualizarStatus = async (id, status) => {
     await fetch(`${API}/orders/${id}`, {
