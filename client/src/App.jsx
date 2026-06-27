@@ -103,6 +103,15 @@ function Cardapio({ onAdicionar }) {
   const settingsLogo = localStorage.getItem('cardapioLogoUrl') || ''
   const logoX = parseFloat(localStorage.getItem('cardapioLogoX')) || 50
   const logoY = parseFloat(localStorage.getItem('cardapioLogoY')) || 50
+  const logoSize = parseFloat(localStorage.getItem('cardapioLogoSize')) || 100
+  const settingsTitle = localStorage.getItem('cardapioTitle')
+  const settingsSubtitle = localStorage.getItem('cardapioSubtitle')
+  const overlayRaw = parseFloat(localStorage.getItem('cardapioOverlay'))
+  const overlayValue = isNaN(overlayRaw) ? 0 : overlayRaw
+
+  let overlayBg = 'transparent'
+  if (overlayValue > 0) overlayBg = `rgba(0,0,0,${overlayValue / 100})`
+  else if (overlayValue < 0) overlayBg = `rgba(255,255,255,${Math.abs(overlayValue) / 100})`
 
   useEffect(() => {
     fetch(`${API}/menu`)
@@ -157,17 +166,19 @@ function Cardapio({ onAdicionar }) {
   return (
     <div className="cardapio-page">
       <div className="cardapio-hero" style={settingsCover ? { backgroundImage: `url("${settingsCover}")` } : {}}>
-        <div className="hero-overlay"></div>
-        <div className="hero-content">
-          <h2>Nosso Cardápio</h2>
-          <p>As melhores pizzas artesanais da cidade</p>
-        </div>
+        <div className="hero-overlay" style={{ background: overlayBg }}></div>
+        {settingsTitle !== '' && (
+          <div className="hero-content">
+            <h2>{settingsTitle || 'Nosso Cardápio'}</h2>
+            {settingsSubtitle !== '' && <p>{settingsSubtitle || 'As melhores pizzas artesanais da cidade'}</p>}
+          </div>
+        )}
         {settingsLogo && (
           <img
             src={settingsLogo}
             alt="logo"
             className="hero-logo"
-            style={{ left: `${logoX}%`, top: `${logoY}%` }}
+            style={{ left: `${logoX}%`, top: `${logoY}%`, '--logo-scale': logoSize / 100 }}
           />
         )}
       </div>
@@ -447,17 +458,21 @@ function CardapioSettings({ onClose }) {
     const saved = localStorage.getItem('cardapioLogoY')
     return saved !== null ? parseFloat(saved) : 50
   })
+  const [logoSize, setLogoSize] = useState(() => {
+    const saved = localStorage.getItem('cardapioLogoSize')
+    return saved !== null ? parseFloat(saved) : 100
+  })
+  const [title, setTitle] = useState(() => localStorage.getItem('cardapioTitle') ?? '')
+  const [subtitle, setSubtitle] = useState(() => localStorage.getItem('cardapioSubtitle') ?? '')
+  const [overlay, setOverlay] = useState(() => {
+    const saved = localStorage.getItem('cardapioOverlay')
+    return saved !== null ? parseFloat(saved) : 0
+  })
   const previewRef = useRef(null)
   const dragging = useRef(false)
-  const offsetRef = useRef({ x: 0, y: 0 })
 
   const handleMouseDown = (e) => {
     e.preventDefault()
-    const rect = previewRef.current.getBoundingClientRect()
-    offsetRef.current = {
-      x: e.clientX - rect.left,
-      y: e.clientY - rect.top
-    }
     dragging.current = true
     document.addEventListener('mousemove', handleMouseMove)
     document.addEventListener('mouseup', handleMouseUp)
@@ -485,48 +500,153 @@ function CardapioSettings({ onClose }) {
     }
   }, [])
 
+  const handleCoverFile = (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = (ev) => setCoverUrl(ev.target.result)
+    reader.readAsDataURL(file)
+    e.target.value = ''
+  }
+
+  const handleLogoFile = (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = (ev) => setLogoUrl(ev.target.result)
+    reader.readAsDataURL(file)
+    e.target.value = ''
+  }
+
   const handleSave = () => {
     localStorage.setItem('cardapioCoverUrl', coverUrl)
     localStorage.setItem('cardapioLogoUrl', logoUrl)
     localStorage.setItem('cardapioLogoX', logoX.toString())
     localStorage.setItem('cardapioLogoY', logoY.toString())
+    localStorage.setItem('cardapioLogoSize', logoSize.toString())
+    localStorage.setItem('cardapioTitle', title)
+    localStorage.setItem('cardapioSubtitle', subtitle)
+    localStorage.setItem('cardapioOverlay', overlay.toString())
     onClose()
   }
+
+  const overlayLabel = overlay === 0 ? 'Normal' : overlay > 0 ? `Mais escura ${overlay}%` : `Mais clara ${Math.abs(overlay)}%`
 
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal modal-config" onClick={e => e.stopPropagation()}>
         <h3>⚙️ Configurações do Cardápio</h3>
 
-        <p className="settings-label">Imagem de Capa (URL)</p>
+        <p className="settings-label">📷 Imagem de Capa</p>
+        <div className="settings-file-row">
+          <input
+            className="settings-file-input"
+            id="coverFile"
+            type="file"
+            accept="image/*"
+            onChange={handleCoverFile}
+          />
+          <label className="settings-file-label" htmlFor="coverFile">📂 Escolher arquivo</label>
+          <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+            {coverUrl ? (coverUrl.startsWith('data:') ? 'Arquivo carregado' : 'URL externa') : 'Nenhum'}
+          </span>
+        </div>
         <input
-          placeholder="https://exemplo.com/minha-capa.jpg"
+          placeholder="Ou cole uma URL..."
           value={coverUrl}
           onChange={e => setCoverUrl(e.target.value)}
         />
 
-        <p className="settings-label">Logo (URL — formato retangular)</p>
+        <div className="settings-divider"></div>
+
+        <p className="settings-label">🖼️ Logo</p>
+        <div className="settings-file-row">
+          <input
+            className="settings-file-input"
+            id="logoFile"
+            type="file"
+            accept="image/*"
+            onChange={handleLogoFile}
+          />
+          <label className="settings-file-label" htmlFor="logoFile">📂 Escolher arquivo</label>
+          <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+            {logoUrl ? (logoUrl.startsWith('data:') ? 'Arquivo carregado' : 'URL externa') : 'Nenhum'}
+          </span>
+        </div>
         <input
-          placeholder="https://exemplo.com/minha-logo.png"
+          placeholder="Ou cole uma URL..."
           value={logoUrl}
           onChange={e => setLogoUrl(e.target.value)}
         />
+
+        <div className="settings-range-row">
+          <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Tamanho da logo:</span>
+          <input
+            type="range"
+            className="settings-range"
+            min="30"
+            max="200"
+            value={logoSize}
+            onChange={e => setLogoSize(parseFloat(e.target.value))}
+          />
+          <span className="settings-range-value">{logoSize}%</span>
+        </div>
+
+        <div className="settings-divider"></div>
+
+        <p className="settings-label">✏️ Texto do Topo</p>
+        <input
+          placeholder="Título (deixe vazio para ocultar)"
+          value={title}
+          onChange={e => setTitle(e.target.value)}
+        />
+        <input
+          placeholder="Subtítulo"
+          value={subtitle}
+          onChange={e => setSubtitle(e.target.value)}
+        />
+
+        <div className="settings-divider"></div>
+
+        <p className="settings-label">🎚️ Escurecimento da Capa</p>
+        <div className="settings-range-row">
+          <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Mais claro</span>
+          <input
+            type="range"
+            className="settings-range"
+            min="-100"
+            max="100"
+            value={overlay}
+            onChange={e => setOverlay(parseFloat(e.target.value))}
+          />
+          <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Mais escuro</span>
+          <span className="settings-range-value">{overlayLabel}</span>
+        </div>
 
         {(coverUrl || logoUrl) && (
           <div className="settings-preview" ref={previewRef}>
             {coverUrl ? (
               <img src={coverUrl} alt="capa" className="settings-preview-bg" />
             ) : (
-              <div className="settings-preview-bg settings-preview-placeholder">
-                🖼️ Capa aparecerá aqui
-              </div>
+              <div className="settings-preview-bg settings-preview-placeholder">🖼️ Capa aparecerá aqui</div>
             )}
+            <div
+              className="settings-preview-overlay"
+              style={{
+                background: overlay > 0 ? `rgba(0,0,0,${overlay / 100})` : overlay < 0 ? `rgba(255,255,255,${Math.abs(overlay) / 100})` : 'transparent'
+              }}
+            ></div>
             {logoUrl && (
               <img
                 src={logoUrl}
                 alt="logo"
                 className="settings-preview-logo"
-                style={{ left: `${logoX}%`, top: `${logoY}%` }}
+                style={{
+                  left: `${logoX}%`,
+                  top: `${logoY}%`,
+                  maxWidth: `${logoSize * 1.2}px`,
+                  maxHeight: `${logoSize * 0.5}px`
+                }}
                 onMouseDown={handleMouseDown}
                 draggable={false}
               />
