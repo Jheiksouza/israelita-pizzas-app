@@ -1,4 +1,5 @@
 const express = require('express')
+const path = require('path')
 const cors = require('cors')
 const { createClient } = require('@supabase/supabase-js')
 
@@ -10,6 +11,14 @@ const PORT = process.env.PORT || 3001
 app.use(cors())
 app.use(express.json())
 
+// Normaliza a URL para funcionar no Vercel (que tira o /api) e localmente
+app.use((req, res, next) => {
+  if (req.url.startsWith('/api/') || req.url === '/api') {
+    req.url = req.url.replace(/^\/api/, '') || '/'
+  }
+  next()
+})
+
 const supabaseUrl = process.env.SUPABASE_URL
 const supabaseKey = process.env.SUPABASE_ANON_KEY
 
@@ -20,7 +29,7 @@ if (!supabaseUrl || !supabaseKey) {
 const supabase = createClient(supabaseUrl, supabaseKey)
 
 // Cardápio
-app.get('/api/menu', async (req, res) => {
+app.get('/menu', async (req, res) => {
   try {
     const { data, error } = await supabase.from('menu').select('*').order('id')
     if (error) throw error
@@ -31,7 +40,7 @@ app.get('/api/menu', async (req, res) => {
   }
 })
 
-app.post('/api/menu', async (req, res) => {
+app.post('/menu', async (req, res) => {
   try {
     const { data, error } = await supabase.from('menu').insert(req.body).select()
     if (error) throw error
@@ -42,7 +51,7 @@ app.post('/api/menu', async (req, res) => {
   }
 })
 
-app.put('/api/menu/:id', async (req, res) => {
+app.put('/menu/:id', async (req, res) => {
   try {
     const { data, error } = await supabase.from('menu').update(req.body).eq('id', parseInt(req.params.id)).select()
     if (error) throw error
@@ -54,7 +63,7 @@ app.put('/api/menu/:id', async (req, res) => {
   }
 })
 
-app.delete('/api/menu/:id', async (req, res) => {
+app.delete('/menu/:id', async (req, res) => {
   try {
     const { error } = await supabase.from('menu').delete().eq('id', parseInt(req.params.id))
     if (error) throw error
@@ -66,7 +75,7 @@ app.delete('/api/menu/:id', async (req, res) => {
 })
 
 // Pedidos
-app.get('/api/orders', async (req, res) => {
+app.get('/orders', async (req, res) => {
   try {
     const { data, error } = await supabase.from('orders').select('*').order('id')
     if (error) throw error
@@ -77,7 +86,7 @@ app.get('/api/orders', async (req, res) => {
   }
 })
 
-app.post('/api/orders', async (req, res) => {
+app.post('/orders', async (req, res) => {
   try {
     const { cliente, itens, total } = req.body
     if (!cliente || !itens) {
@@ -102,7 +111,7 @@ app.post('/api/orders', async (req, res) => {
   }
 })
 
-app.patch('/api/orders/:id', async (req, res) => {
+app.patch('/orders/:id', async (req, res) => {
   try {
     const updates = { ...req.body, updatedAt: new Date().toISOString() }
     const { data, error } = await supabase.from('orders').update(updates).eq('id', parseInt(req.params.id)).select()
@@ -115,7 +124,7 @@ app.patch('/api/orders/:id', async (req, res) => {
   }
 })
 
-app.get('/api/orders/stats', async (req, res) => {
+app.get('/orders/stats', async (req, res) => {
   try {
     const { data, error } = await supabase.from('orders').select('*')
     if (error) throw error
@@ -137,7 +146,7 @@ app.get('/api/orders/stats', async (req, res) => {
 })
 
 // Login
-app.post('/api/login', (req, res) => {
+app.post('/login', (req, res) => {
   const { senha } = req.body
   if (senha === 'admin123') {
     return res.json({ autenticado: true })
@@ -146,9 +155,10 @@ app.post('/api/login', (req, res) => {
 })
 
 // Servir frontend buildado
-app.use(express.static('client/dist'))
+const distDir = path.resolve(process.cwd(), 'client', 'dist')
+app.use(express.static(distDir))
 app.get('*', (req, res) => {
-  res.sendFile('client/dist/index.html', { root: __dirname })
+  res.sendFile(path.join(distDir, 'index.html'))
 })
 
 module.exports = app
