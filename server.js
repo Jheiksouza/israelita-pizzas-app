@@ -22,14 +22,37 @@ app.use((req, res, next) => {
 const supabaseUrl = process.env.SUPABASE_URL
 const supabaseKey = process.env.SUPABASE_ANON_KEY
 
-if (!supabaseUrl || !supabaseKey) {
-  console.error('Erro: SUPABASE_URL e SUPABASE_ANON_KEY devem estar definidas')
+let supabase
+try {
+  supabase = supabaseUrl && supabaseKey
+    ? createClient(supabaseUrl, supabaseKey)
+    : null
+} catch (e) {
+  console.error('Erro ao criar cliente Supabase:', e)
 }
 
-const supabase = createClient(supabaseUrl, supabaseKey)
+// Health check (pra testar se o Express está rodando no Vercel)
+app.get('/health', (req, res) => {
+  res.json({
+    status: 'ok',
+    env: {
+      hasUrl: !!supabaseUrl,
+      hasKey: !!supabaseKey
+    }
+  })
+})
+
+function checkSupabase(res) {
+  if (!supabase) {
+    res.status(500).json({ erro: 'Banco de dados não configurado (SUPABASE_URL/KEY ausentes)' })
+    return false
+  }
+  return true
+}
 
 // Cardápio
 app.get('/menu', async (req, res) => {
+  if (!checkSupabase(res)) return
   try {
     const { data, error } = await supabase.from('menu').select('*').order('id')
     if (error) throw error
@@ -41,6 +64,7 @@ app.get('/menu', async (req, res) => {
 })
 
 app.post('/menu', async (req, res) => {
+  if (!checkSupabase(res)) return
   try {
     const { data, error } = await supabase.from('menu').insert(req.body).select()
     if (error) throw error
@@ -52,6 +76,7 @@ app.post('/menu', async (req, res) => {
 })
 
 app.put('/menu/:id', async (req, res) => {
+  if (!checkSupabase(res)) return
   try {
     const { data, error } = await supabase.from('menu').update(req.body).eq('id', parseInt(req.params.id)).select()
     if (error) throw error
@@ -64,6 +89,7 @@ app.put('/menu/:id', async (req, res) => {
 })
 
 app.delete('/menu/:id', async (req, res) => {
+  if (!checkSupabase(res)) return
   try {
     const { error } = await supabase.from('menu').delete().eq('id', parseInt(req.params.id))
     if (error) throw error
@@ -76,6 +102,7 @@ app.delete('/menu/:id', async (req, res) => {
 
 // Pedidos
 app.get('/orders', async (req, res) => {
+  if (!checkSupabase(res)) return
   try {
     const { data, error } = await supabase.from('orders').select('*').order('id')
     if (error) throw error
@@ -87,6 +114,7 @@ app.get('/orders', async (req, res) => {
 })
 
 app.post('/orders', async (req, res) => {
+  if (!checkSupabase(res)) return
   try {
     const { cliente, itens, total } = req.body
     if (!cliente || !itens) {
@@ -112,6 +140,7 @@ app.post('/orders', async (req, res) => {
 })
 
 app.patch('/orders/:id', async (req, res) => {
+  if (!checkSupabase(res)) return
   try {
     const updates = { ...req.body, updatedAt: new Date().toISOString() }
     const { data, error } = await supabase.from('orders').update(updates).eq('id', parseInt(req.params.id)).select()
@@ -125,6 +154,7 @@ app.patch('/orders/:id', async (req, res) => {
 })
 
 app.get('/orders/stats', async (req, res) => {
+  if (!checkSupabase(res)) return
   try {
     const { data, error } = await supabase.from('orders').select('*')
     if (error) throw error
