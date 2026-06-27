@@ -63,6 +63,10 @@ function App() {
         <div className="neon-orb orb-1"></div>
         <div className="neon-orb orb-2"></div>
       </div>
+      <div className="classic-orbs" aria-hidden="true">
+        <div className="classic-orb orb-left"></div>
+        <div className="classic-orb orb-right"></div>
+      </div>
       <header className="header">
         <div className="header-content">
           <h1 className="logo" onClick={() => setPagina('cardapio')}>🍕 Pizzaria Israelita</h1>
@@ -119,6 +123,13 @@ function App() {
           <span className="bottom-nav-label">Admin</span>
         </button>
       </nav>
+      <footer className="classic-footer">
+        <div className="footer-inner">
+          <p className="footer-brand">Israelita Pizza</p>
+          <p className="footer-info">Forno a lenha · Entrega 35min · Aberto até 23h</p>
+          <p className="footer-copy">© 2026</p>
+        </div>
+      </footer>
     </div>
   )
 }
@@ -229,6 +240,10 @@ function Cardapio({ onAdicionar, pizzaEditando, onPizzaEditDone }) {
         <div className="hero-overlay" style={{ background: overlayBg }}></div>
         {settingsTitle !== '' && (
           <div className="hero-content">
+            <div className="hero-aberto-badge">
+              <span className="hero-aberto-dot"></span>
+              Aberto agora · 35min
+            </div>
             <h2>{settingsTitle || 'Nosso Cardápio'}</h2>
             {settingsSubtitle !== '' && <p>{settingsSubtitle || 'As melhores pizzas artesanais da cidade'}</p>}
           </div>
@@ -241,6 +256,31 @@ function Cardapio({ onAdicionar, pizzaEditando, onPizzaEditDone }) {
             style={{ left: `${logoX}%`, top: `${logoY}%`, '--logo-scale': logoSize / 100 }}
           />
         )}
+        <div className="hero-decorative">
+          <div className="hero-deco-glow"></div>
+          <div className="hero-deco-image">
+            <img src="/delicious-img/hero-pizza.jpg" alt="Pizza artesanal" />
+            <div className="hero-deco-badge-hero">
+              <span className="hero-deco-badge-label">desde 2008</span>
+              <span className="hero-deco-badge-text">Receita da nonna</span>
+            </div>
+            <div className="hero-deco-price">R$ 48 · Margherita</div>
+          </div>
+        </div>
+      </div>
+      <div className="hero-stats">
+        <div className="hero-stat">
+          <span className="hero-stat-n">48h</span>
+          <span className="hero-stat-label">Fermentação natural</span>
+        </div>
+        <div className="hero-stat">
+          <span className="hero-stat-n">450°</span>
+          <span className="hero-stat-label">Forno a lenha</span>
+        </div>
+        <div className="hero-stat">
+          <span className="hero-stat-n">4.9</span>
+          <span className="hero-stat-label">★ avaliação</span>
+        </div>
       </div>
       <div className="filtros">
           <div className="categorias">
@@ -257,6 +297,16 @@ function Cardapio({ onAdicionar, pizzaEditando, onPizzaEditDone }) {
       <div className="pizza-montar">
         <span className="neon-experiencia-label">Experiência Custom</span>
         <h3 className="montar-title">🍕 Monte sua Pizza</h3>
+        <div className="step-indicator classic-only">
+          <div className="step-circle">1</div>
+          <h4 className="step-title">Escolha o tamanho</h4>
+          <div className="step-line"></div>
+          <div className={`step-circle ${tamanhoSel ? 'step-active' : ''}`}>2</div>
+          <h4 className="step-title">Escolha os sabores</h4>
+          <div className="step-line"></div>
+          <div className={`step-circle ${saboresSel.length > 0 ? 'step-active' : ''}`}>3</div>
+          <h4 className="step-title">Finalizar</h4>
+        </div>
         <p className="sabores-label">Escolha o tamanho:</p>
         <div className="tamanhos-grid">
           {tamanhos.map(t => (
@@ -327,9 +377,54 @@ function Cardapio({ onAdicionar, pizzaEditando, onPizzaEditDone }) {
         )}
       </div>
 
+      <div className="classic-summary-bar classic-only">
+        <div className="summary-bar-inner">
+          <div className="summary-icon">
+            🍕
+          </div>
+          <div className="summary-info">
+            <p className="summary-label">Sua pizza</p>
+            <p className="summary-detail">
+              {tamanhoSel ? tamanhoSel.nome : 'Escolha o tamanho'}
+              {saboresSel.length > 0 && (
+                <span className="summary-sabores">
+                  {' · '}{saboresSel.map(id => sabores.find(s => s.id === id)?.nome).filter(Boolean).join(' + ')}
+                </span>
+              )}
+            </p>
+          </div>
+          <div className="summary-price-area">
+            <p className="summary-price-label">Total</p>
+            <p className="summary-price">
+              R$ {(() => {
+                if (!tamanhoSel || saboresSel.length === 0) return '0,00'
+                const precosPorQualidade = {
+                  tradicional: tamanhoSel.preco_tradicional || 0,
+                  especial: tamanhoSel.preco_especial || 0,
+                  nobre: tamanhoSel.preco_nobre || 0
+                }
+                const tot = saboresSel.map(id => sabores.find(s => s.id === id)).filter(Boolean)
+                  .reduce((sum, s) => sum + (precosPorQualidade[s.classificacao || 'tradicional'] || 0), 0)
+                return (tot / saboresSel.length).toFixed(2)
+              })()}
+            </p>
+          </div>
+          <button
+            className="summary-btn"
+            onClick={handleAdd}
+            disabled={saboresSel.length === 0}
+          >
+            Adicionar ao carrinho
+          </button>
+        </div>
+      </div>
+
       {filtrados.length > 0 && (
         <>
-          <h3 className="section-title">Bebidas e Produtos</h3>
+          <h3 className="section-title">
+            <span className="section-subtitle-label classic-only">Acompanha bem</span>
+            Bebidas e Produtos
+          </h3>
           <div className="menu-grid">
             {filtrados.map(item => (
               <div key={item.id} className="menu-card">
