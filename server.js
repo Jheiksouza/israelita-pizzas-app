@@ -1,7 +1,8 @@
 const express = require('express')
-const fs = require('fs')
-const path = require('path')
 const cors = require('cors')
+const { createClient } = require('@supabase/supabase-js')
+
+try { require('dotenv').config() } catch (e) { /* dotenv opcional */ }
 
 const app = express()
 const PORT = process.env.PORT || 3001
@@ -9,109 +10,133 @@ const PORT = process.env.PORT || 3001
 app.use(cors())
 app.use(express.json())
 
-const MENU_FILE = path.join(__dirname, 'menu.json')
-const ORDERS_FILE = path.join(__dirname, 'orders.json')
+const supabaseUrl = process.env.SUPABASE_URL
+const supabaseKey = process.env.SUPABASE_ANON_KEY
 
-function readJSON(file) {
-  try {
-    const raw = fs.readFileSync(file, 'utf-8')
-    if (!raw.trim()) return []
-    return JSON.parse(raw)
-  } catch (err) {
-    console.error(`Erro ao ler ${file}:`, err.message)
-    return []
-  }
+if (!supabaseUrl || !supabaseKey) {
+  console.error('Erro: SUPABASE_URL e SUPABASE_ANON_KEY devem estar definidas')
 }
 
-function writeJSON(file, data) {
+const supabase = createClient(supabaseUrl, supabaseKey)
+
+// Cardápio
+app.get('/api/menu', async (req, res) => {
   try {
-    fs.writeFileSync(file, JSON.stringify(data, null, 2), 'utf-8')
+    const { data, error } = await supabase.from('menu').select('*').order('id')
+    if (error) throw error
+    res.json(data)
   } catch (err) {
-    console.error(`Erro ao escrever ${file}:`, err.message)
-    throw err
+    console.error('Erro ao buscar menu:', err)
+    res.status(500).json({ erro: 'Erro ao buscar cardápio' })
   }
-}
-
-// Rotas da API
-app.get('/api/menu', (req, res) => {
-  const menu = readJSON(MENU_FILE)
-  res.json(menu)
 })
 
-app.post('/api/menu', (req, res) => {
-  const menu = readJSON(MENU_FILE)
-  const maxId = menu.reduce((max, item) => Math.max(max, item.id), 0)
-  const novo = { id: maxId + 1, ...req.body }
-  menu.push(novo)
-  writeJSON(MENU_FILE, menu)
-  res.status(201).json(novo)
-})
-
-app.put('/api/menu/:id', (req, res) => {
-  const menu = readJSON(MENU_FILE)
-  const idx = menu.findIndex(i => i.id === parseInt(req.params.id))
-  if (idx === -1) return res.status(404).json({ erro: 'Item não encontrado' })
-  menu[idx] = { ...menu[idx], ...req.body, id: menu[idx].id }
-  writeJSON(MENU_FILE, menu)
-  res.json(menu[idx])
-})
-
-app.delete('/api/menu/:id', (req, res) => {
-  let menu = readJSON(MENU_FILE)
-  menu = menu.filter(i => i.id !== parseInt(req.params.id))
-  writeJSON(MENU_FILE, menu)
-  res.json({ ok: true })
-})
-
-app.get('/api/orders', (req, res) => {
-  const orders = readJSON(ORDERS_FILE)
-  res.json(orders)
-})
-
-app.post('/api/orders', (req, res) => {
+app.post('/api/menu', async (req, res) => {
   try {
-    console.log('Recebendo pedido:', JSON.stringify(req.body, null, 2))
-    const orders = readJSON(ORDERS_FILE)
-    if (!req.body || !req.body.cliente || !req.body.itens) {
+    const { data, error } = await supabase.from('menu').insert(req.body).select()
+    if (error) throw error
+    res.status(201).json(data[0])
+  } catch (err) {
+    console.error('Erro ao criar item:', err)
+    res.status(500).json({ erro: 'Erro ao criar item' })
+  }
+})
+
+app.put('/api/menu/:id', async (req, res) => {
+  try {
+    const { data, error } = await supabase.from('menu').update(req.body).eq('id', parseInt(req.params.id)).select()
+    if (error) throw error
+    if (!data || data.length === 0) return res.status(404).json({ erro: 'Item não encontrado' })
+    res.json(data[0])
+  } catch (err) {
+    console.error('Erro ao atualizar item:', err)
+    res.status(500).json({ erro: 'Erro ao atualizar item' })
+  }
+})
+
+app.delete('/api/menu/:id', async (req, res) => {
+  try {
+    const { error } = await supabase.from('menu').delete().eq('id', parseInt(req.params.id))
+    if (error) throw error
+    res.json({ ok: true })
+  } catch (err) {
+    console.error('Erro ao deletar item:', err)
+    res.status(500).json({ erro: 'Erro ao deletar item' })
+  }
+})
+
+// Pedidos
+app.get('/api/orders', async (req, res) => {
+  try {
+    const { data, error } = await supabase.from('orders').select('*').order('id')
+    if (error) throw error
+    res.json(data)
+  } catch (err) {
+    console.error('Erro ao buscar pedidos:', err)
+    res.status(500).json({ erro: 'Erro ao buscar pedidos' })
+  }
+})
+
+app.post('/api/orders', async (req, res) => {
+  try {
+    const { cliente, itens, total } = req.body
+    if (!cliente || !itens) {
       return res.status(400).json({ erro: 'Dados incompletos: cliente e itens são obrigatórios' })
     }
+
     const pedido = {
-      id: orders.length > 0 ? Math.max(...orders.map(o => o.id)) + 1 : 1,
       data: new Date().toISOString(),
       status: 'pendente',
       updatedAt: new Date().toISOString(),
-      ...req.body
+      cliente,
+      itens,
+      total
     }
-    orders.push(pedido)
-    writeJSON(ORDERS_FILE, orders)
-    res.status(201).json(pedido)
+
+    const { data, error } = await supabase.from('orders').insert(pedido).select()
+    if (error) throw error
+    res.status(201).json(data[0])
   } catch (err) {
     console.error('Erro ao salvar pedido:', err)
-    res.status(500).json({ erro: 'Erro interno ao salvar pedido', detalhe: err.message })
+    res.status(500).json({ erro: 'Erro interno ao salvar pedido' })
   }
 })
 
-app.patch('/api/orders/:id', (req, res) => {
-  const orders = readJSON(ORDERS_FILE)
-  const idx = orders.findIndex(o => o.id === parseInt(req.params.id))
-  if (idx === -1) return res.status(404).json({ erro: 'Pedido não encontrado' })
-  orders[idx] = { ...orders[idx], ...req.body, id: orders[idx].id, updatedAt: new Date().toISOString() }
-  writeJSON(ORDERS_FILE, orders)
-  res.json(orders[idx])
+app.patch('/api/orders/:id', async (req, res) => {
+  try {
+    const updates = { ...req.body, updatedAt: new Date().toISOString() }
+    const { data, error } = await supabase.from('orders').update(updates).eq('id', parseInt(req.params.id)).select()
+    if (error) throw error
+    if (!data || data.length === 0) return res.status(404).json({ erro: 'Pedido não encontrado' })
+    res.json(data[0])
+  } catch (err) {
+    console.error('Erro ao atualizar pedido:', err)
+    res.status(500).json({ erro: 'Erro ao atualizar pedido' })
+  }
 })
 
-app.get('/api/orders/stats', (req, res) => {
-  const orders = readJSON(ORDERS_FILE)
-  const totalPedidos = orders.length
-  const totalReceita = orders.filter(o => o.status === 'entregue').reduce((s, o) => s + (o.total || 0), 0)
-  const pendentes = orders.filter(o => o.status === 'pendente').length
-  const aceitos = orders.filter(o => o.status === 'aceito').length
-  const entregues = orders.filter(o => o.status === 'entregue').length
-  const recusados = orders.filter(o => o.status === 'recusado').length
-  const receitaPendente = orders.filter(o => o.status === 'aceito').reduce((s, o) => s + (o.total || 0), 0)
-  res.json({ totalPedidos, totalReceita, pendentes, aceitos, entregues, recusados, receitaPendente })
+app.get('/api/orders/stats', async (req, res) => {
+  try {
+    const { data, error } = await supabase.from('orders').select('*')
+    if (error) throw error
+
+    const orders = data || []
+    const totalPedidos = orders.length
+    const totalReceita = orders.filter(o => o.status === 'entregue').reduce((s, o) => s + (o.total || 0), 0)
+    const pendentes = orders.filter(o => o.status === 'pendente').length
+    const aceitos = orders.filter(o => o.status === 'aceito').length
+    const entregues = orders.filter(o => o.status === 'entregue').length
+    const recusados = orders.filter(o => o.status === 'recusado').length
+    const receitaPendente = orders.filter(o => o.status === 'aceito').reduce((s, o) => s + (o.total || 0), 0)
+
+    res.json({ totalPedidos, totalReceita, pendentes, aceitos, entregues, recusados, receitaPendente })
+  } catch (err) {
+    console.error('Erro ao buscar stats:', err)
+    res.status(500).json({ erro: 'Erro ao buscar estatísticas' })
+  }
 })
 
+// Login
 app.post('/api/login', (req, res) => {
   const { senha } = req.body
   if (senha === 'admin123') {
@@ -120,12 +145,10 @@ app.post('/api/login', (req, res) => {
   res.status(401).json({ autenticado: false, erro: 'Senha incorreta' })
 })
 
-// Servir arquivos estáticos do frontend (depois das rotas da API)
-app.use(express.static(path.join(__dirname, 'client/dist')))
-
-// Rota para SPA — captura tudo que não for API
+// Servir frontend buildado
+app.use(express.static('client/dist'))
 app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'client/dist/index.html'))
+  res.sendFile('client/dist/index.html', { root: __dirname })
 })
 
 app.listen(PORT, () => {
