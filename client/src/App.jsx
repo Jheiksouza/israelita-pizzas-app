@@ -69,7 +69,13 @@ function App() {
       </div>
       <header className="header">
         <div className="header-content">
-          <h1 className="logo" onClick={() => setPagina('cardapio')}>🍕 Pizzaria Israelita</h1>
+          <div className="logo" onClick={() => setPagina('cardapio')}>
+            <span className="logo-icon">🍕</span>
+            <div className="logo-text">
+              <span className="logo-title">Israelita</span>
+              <span className="logo-sub">Pizza · forno a lenha</span>
+            </div>
+          </div>
           <nav className="nav">
             <button className={`nav-btn ${pagina === 'cardapio' ? 'active' : ''}`} onClick={() => setPagina('cardapio')}>Cardápio</button>
             <button className={`nav-btn ${pagina === 'carrinho' ? 'active' : ''}`} onClick={() => setPagina('carrinho')}>
@@ -188,6 +194,14 @@ function Cardapio({ onAdicionar, pizzaEditando, onPizzaEditDone }) {
     if (categoria !== 'Todas' && i.categoria !== categoria) return false
     return true
   })
+
+  const fatiasMap = {
+    'Broto': '4 fatias',
+    'Média': '6 fatias',
+    'Grande': '8 fatias',
+    'Big': '10 fatias',
+    'Gigante': '12 fatias',
+  }
 
   const toggleSabor = (id) => {
     if (saboresSel.includes(id)) {
@@ -321,8 +335,10 @@ function Cardapio({ onAdicionar, pizzaEditando, onPizzaEditDone }) {
               onClick={() => { setTamanhoSel(t); setSaboresSel([]); setBuscaSabor(''); setErro('') }}
             >
               <strong>{t.nome}</strong>
-              {t.preco_tradicional && <span className="tamanho-preco">Trad. R$ {t.preco_tradicional.toFixed(2)}</span>}
+              <span className="tamanho-fatias">{fatiasMap[t.nome] || ''}</span>
               <small>Até {t.maxSabores} sabor{t.maxSabores > 1 ? 'es' : ''}</small>
+              <span className="tamanho-partir">a partir de</span>
+              {t.preco_tradicional && <span className="tamanho-preco">R$ {t.preco_tradicional.toFixed(2)}</span>}
             </button>
           ))}
         </div>

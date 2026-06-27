@@ -165,15 +165,12 @@
 }
 
 .theme-classic .logo {
-  background: none !important;
-  -webkit-text-fill-color: var(--text-primary) !important;
-  color: var(--text-primary) !important;
-  font-size: 1.25rem;
-  font-weight: 700;
   display: flex;
   align-items: center;
   gap: 12px;
   cursor: pointer;
+  text-decoration: none;
+  background: none !important;
 }
 
 .theme-classic .logo .logo-icon {
@@ -184,6 +181,29 @@
   background: linear-gradient(135deg, var(--primary), var(--primary-dark));
   box-shadow: var(--shadow-glow);
   font-size: 1.25rem;
+}
+
+.theme-classic .logo-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+}
+
+.theme-classic .logo-title {
+  font-family: 'Playfair Display', var(--font-heading, 'Playfair Display'), Georgia, serif !important;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+}
+
+.theme-classic .logo-sub {
+  font-size: 0.625rem;
+  text-transform: uppercase;
+  letter-spacing: 0.3em;
+  color: var(--accent);
+  font-family: 'Inter', sans-serif !important;
+  margin-top: -2px;
 }
 
 .theme-classic .nav {
@@ -512,10 +532,16 @@
   border: none !important;
   border-radius: 0 !important;
   overflow: visible;
+  box-shadow: none !important;
 }
 
 .theme-classic .pizza-montar::before {
   display: none !important;
+}
+
+.theme-classic .pizza-montar:hover {
+  box-shadow: none !important;
+  border-color: transparent !important;
 }
 
 .theme-classic .montar-title {
@@ -524,7 +550,7 @@
 
 .theme-classic .montar-section-header {
   text-align: center;
-  margin-bottom: 48px;
+  margin-bottom: 56px;
 }
 
 .theme-classic .montar-section-label {
@@ -533,25 +559,26 @@
   text-transform: uppercase;
   letter-spacing: 0.4em;
   color: var(--accent);
-  margin-bottom: 12px;
+  margin-bottom: 16px;
   font-family: 'Inter', sans-serif !important;
 }
 
 .theme-classic .montar-section-title {
-  font-size: 2.5rem;
+  font-size: 2.75rem;
   font-weight: 700;
   color: var(--text-primary);
-  margin-bottom: 12px;
+  margin-bottom: 16px;
   font-family: 'Playfair Display', var(--font-heading, 'Playfair Display'), Georgia, serif !important;
   letter-spacing: -0.02em;
 }
 @media (min-width: 768px) {
-  .theme-classic .montar-section-title { font-size: 3.5rem; }
+  .theme-classic .montar-section-title { font-size: 3.75rem; }
 }
 
 .theme-classic .montar-section-sub {
   font-size: 1.125rem;
   color: var(--text-muted);
+  margin-top: 0;
   font-family: 'Inter', sans-serif !important;
 }
 
@@ -645,6 +672,8 @@
 .theme-classic .tamanho-btn:hover {
   border-color: oklch(0.75 0.13 75 / 0.4);
   background: var(--secondary);
+  transform: none !important;
+  box-shadow: none !important;
 }
 
 .theme-classic .tamanho-btn.active {
@@ -676,25 +705,45 @@
   display: block;
   font-size: 1.5rem;
   font-weight: 700;
-  margin-bottom: 16px;
+  margin-bottom: 8px;
 }
 
 .theme-classic .tamanho-btn small {
   display: block;
   font-size: 0.75rem;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  color: var(--text-muted);
-  margin-bottom: 4px;
+  color: var(--accent);
+  margin-bottom: 0;
   font-family: 'Inter', sans-serif !important;
+  text-transform: none;
+  letter-spacing: normal;
 }
 
 .theme-classic .tamanho-preco {
   display: block;
-  font-size: 1.5rem;
+  font-size: 1.75rem;
   font-weight: 700;
   color: var(--primary);
-  margin-top: 12px;
+  margin-top: 0;
+  font-family: 'Playfair Display', var(--font-heading, 'Playfair Display'), Georgia, serif !important;
+}
+
+.theme-classic .tamanho-fatias {
+  display: block;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+  font-family: 'Inter', sans-serif !important;
+}
+
+.theme-classic .tamanho-partir {
+  display: block;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  margin-top: 14px;
+  margin-bottom: 2px;
+  font-family: 'Inter', sans-serif !important;
 }
 
 /* Active checkmark - via ::before since ::after is used for circle */
