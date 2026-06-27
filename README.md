@@ -49,6 +49,27 @@ Sistema de pedidos para Pizzaria Israelita — cardápio online + painel admin.
 
 **Seed:** O arquivo `supabase-setup.sql` tem o schema completo + 12 itens iniciais. Se precisar recriar as tabelas, roda ele no SQL Editor.
 
+### Acesso para IA
+
+A IA (opencode) deve ler o arquivo `.env` na raiz do projeto para obter as credenciais:
+
+| Variável | O que faz | Como usar |
+|----------|-----------|-----------|
+| `SUPABASE_PAT` | Personal Access Token | `POST https://api.supabase.com/v1/projects/qnttyikrbuxuhzqybmaa/database/query` — executa SQL direto (ALTER TABLE, SELECT, etc.) |
+| `SUPABASE_SERVICE_ROLE_KEY` | Service Role Key | Usar como `Authorization: Bearer <key>` no REST API para bypass de RLS |
+| `SUPABASE_URL` | URL do projeto | Base para REST API: `<URL>/rest/v1/menu` |
+| `SUPABASE_ANON_KEY` | Chave anônima | Usar como `apikey` header no REST API |
+
+**Exemplo completo (ler credenciais do .env e executar SQL):**
+```powershell
+$env = Get-Content ".env" | ForEach-Object { $kv = $_ -split '=', 2; @{$kv[0].Trim() = $kv[1].Trim()} }
+$headers = @{ Authorization = "Bearer $($env['SUPABASE_PAT'])"; "Content-Type" = "application/json" }
+$body = @{ query = "SELECT * FROM menu ORDER BY id" } | ConvertTo-Json
+Invoke-RestMethod -Uri "https://api.supabase.com/v1/projects/qnttyikrbuxuhzqybmaa/database/query" -Method Post -Headers $headers -Body $body
+```
+
+> ⚠️ `.env` está no `.gitignore` — não é commitado. Só existe localmente na máquina do desenvolvedor.
+
 ---
 
 ## Variáveis de Ambiente

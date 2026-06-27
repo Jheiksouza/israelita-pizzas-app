@@ -160,13 +160,13 @@ function Cardapio({ onAdicionar }) {
 
     // Calcula preço conforme classificação dos sabores
     const precosPorQualidade = {
-      tradicional: tamanhoSel.preco_tradicional || tamanhoSel.preco,
-      especial: tamanhoSel.preco_especial || tamanhoSel.preco,
-      nobre: tamanhoSel.preco_nobre || tamanhoSel.preco
+      tradicional: tamanhoSel.preco_tradicional || 0,
+      especial: tamanhoSel.preco_especial || 0,
+      nobre: tamanhoSel.preco_nobre || 0
     }
     const totalPrecos = saboresSelecionados.reduce((sum, s) => {
       const qual = s.classificacao || 'tradicional'
-      return sum + (precosPorQualidade[qual] || tamanhoSel.preco)
+      return sum + (precosPorQualidade[qual] || 0)
     }, 0)
     const precoFinal = totalPrecos / saboresSelecionados.length
 
@@ -231,7 +231,7 @@ function Cardapio({ onAdicionar }) {
               onClick={() => { setTamanhoSel(t); setSaboresSel([]); setErro('') }}
             >
               <strong>{t.nome}</strong>
-              <span className="tamanho-preco">R$ {t.preco.toFixed(2)}</span>
+              {t.preco_tradicional && <span className="tamanho-preco">Trad. R$ {t.preco_tradicional.toFixed(2)}</span>}
               <small>Até {t.maxSabores} sabor{t.maxSabores > 1 ? 'es' : ''}</small>
             </button>
           ))}
@@ -258,21 +258,21 @@ function Cardapio({ onAdicionar }) {
             {erro && <p className="erro">{erro}</p>}
             {(() => {
               const precosPorQualidade = {
-                tradicional: tamanhoSel.preco_tradicional || tamanhoSel.preco,
-                especial: tamanhoSel.preco_especial || tamanhoSel.preco,
-                nobre: tamanhoSel.preco_nobre || tamanhoSel.preco
+                tradicional: tamanhoSel.preco_tradicional || 0,
+                especial: tamanhoSel.preco_especial || 0,
+                nobre: tamanhoSel.preco_nobre || 0
               }
               const saboresSelecionados = saboresSel.map(id => sabores.find(s => s.id === id)).filter(Boolean)
               const precoExibido = saboresSelecionados.length > 0
-                ? saboresSelecionados.reduce((sum, s) => sum + (precosPorQualidade[s.classificacao || 'tradicional'] || tamanhoSel.preco), 0) / saboresSelecionados.length
-                : tamanhoSel.preco
+                ? saboresSelecionados.reduce((sum, s) => sum + (precosPorQualidade[s.classificacao || 'tradicional'] || 0), 0) / saboresSelecionados.length
+                : 0
               return (
                 <button
                   className="btn-add btn-montar-add"
                   onClick={handleAdd}
                   disabled={saboresSel.length === 0}
                 >
-                  Adicionar Pizza {tamanhoSel.nome} — R$ {precoExibido.toFixed(2)}
+                  Adicionar Pizza {tamanhoSel.nome}{precoExibido > 0 ? ` — R$ ${precoExibido.toFixed(2)}` : ''}
                 </button>
               )
             })()}
@@ -471,17 +471,19 @@ function AdminMenu({ onThemeChange, onFontChange }) {
                   <span className={`tipo-badge ${item.classificacao === 'tradicional' ? 'tipo-tradicional' : item.classificacao === 'especial' ? 'tipo-especial' : item.classificacao === 'nobre' ? 'tipo-nobre' : ''}`}>
                     {item.classificacao ? item.classificacao.charAt(0).toUpperCase() + item.classificacao.slice(1) : '-'}
                   </span>
-                ) : item.tipo === 'tamanho' ? (
-                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                    {item.preco_tradicional ? `T: R$${item.preco_tradicional}` : ''}
-                    {item.preco_especial ? ` / E: R$${item.preco_especial}` : ''}
-                    {item.preco_nobre ? ` / N: R$${item.preco_nobre}` : ''}
-                    {!item.preco_tradicional && !item.preco_especial && !item.preco_nobre ? '-' : ''}
-                  </span>
                 ) : '-'}
               </td>
               <td>{item.categoria}</td>
-              <td>R$ {item.preco.toFixed(2)}</td>
+              <td>
+                {item.tipo === 'sabor' ? '-' : item.tipo === 'tamanho' ? (
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                    {['Tradicional', 'Especial', 'Nobre'].map(t => {
+                      const key = 'preco_' + t.toLowerCase()
+                      return item[key] ? `${t[0]}: R$${item[key].toFixed(2)}` : ''
+                    }).filter(Boolean).join(' / ') || '-'}
+                  </span>
+                ) : `R$ ${item.preco?.toFixed(2)}`}
+              </td>
               <td className="acoes">
                 <button className="btn-edit" onClick={() => { setEditando(item); setMostrarForm(true) }}>Editar</button>
                 <button className="btn-del" onClick={() => deletar(item.id)}>Excluir</button>
@@ -890,7 +892,12 @@ function MenuItemForm({ item, onSalvar, onCancelar }) {
 
   const handleSubmit = (e) => {
     e.preventDefault()
-    const dados = { ...form, preco: parseFloat(form.preco) }
+    const dados = { ...form }
+    if (dados.tipo === 'produto') {
+      dados.preco = parseFloat(dados.preco)
+    } else {
+      delete dados.preco
+    }
     if (dados.tipo !== 'tamanho') {
       delete dados.maxSabores
       delete dados.preco_tradicional
@@ -898,9 +905,11 @@ function MenuItemForm({ item, onSalvar, onCancelar }) {
       delete dados.preco_nobre
     }
     if (dados.tipo !== 'sabor') delete dados.classificacao
-    if (dados.preco_tradicional !== undefined && dados.preco_tradicional !== '') dados.preco_tradicional = parseFloat(dados.preco_tradicional)
-    if (dados.preco_especial !== undefined && dados.preco_especial !== '') dados.preco_especial = parseFloat(dados.preco_especial)
-    if (dados.preco_nobre !== undefined && dados.preco_nobre !== '') dados.preco_nobre = parseFloat(dados.preco_nobre)
+    if (dados.tipo === 'tamanho') {
+      if (dados.preco_tradicional !== undefined && dados.preco_tradicional !== '') dados.preco_tradicional = parseFloat(dados.preco_tradicional)
+      if (dados.preco_especial !== undefined && dados.preco_especial !== '') dados.preco_especial = parseFloat(dados.preco_especial)
+      if (dados.preco_nobre !== undefined && dados.preco_nobre !== '') dados.preco_nobre = parseFloat(dados.preco_nobre)
+    }
     onSalvar(dados)
   }
 
@@ -911,12 +920,15 @@ function MenuItemForm({ item, onSalvar, onCancelar }) {
         <form onSubmit={handleSubmit}>
           <input placeholder="Nome" value={form.nome} onChange={e => setForm({ ...form, nome: e.target.value })} required />
           <textarea placeholder="Descrição" value={form.descricao} onChange={e => setForm({ ...form, descricao: e.target.value })} />
-          <input type="number" step="0.01" placeholder="Preço" value={form.preco} onChange={e => setForm({ ...form, preco: e.target.value })} required />
           <select value={form.tipo} onChange={e => setForm({ ...form, tipo: e.target.value })}>
             <option value="produto">Produto</option>
             <option value="sabor">Sabor de Pizza</option>
             <option value="tamanho">Tamanho de Pizza</option>
           </select>
+
+          {form.tipo === 'produto' && (
+            <input type="number" step="0.01" placeholder="Preço" value={form.preco} onChange={e => setForm({ ...form, preco: e.target.value })} required />
+          )}
 
           {form.tipo === 'sabor' && (
             <select value={form.classificacao} onChange={e => setForm({ ...form, classificacao: e.target.value })}>
