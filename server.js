@@ -9,14 +9,6 @@ const PORT = process.env.PORT || 3001
 app.use(cors())
 app.use(express.json())
 
-// Servir arquivos estáticos do frontend
-app.use(express.static(path.join(__dirname, 'client/dist')))
-
-// Rota para SPA (single page application)
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'client/dist/index.html'))
-})
-
 const MENU_FILE = path.join(__dirname, 'menu.json')
 const ORDERS_FILE = path.join(__dirname, 'orders.json')
 
@@ -105,6 +97,14 @@ app.post('/api/login', (req, res) => {
     return res.json({ autenticado: true })
   }
   res.status(401).json({ autenticado: false, erro: 'Senha incorreta' })
+})
+
+// Servir arquivos estáticos do frontend (depois das rotas da API)
+app.use(express.static(path.join(__dirname, 'client/dist')))
+
+// Rota para SPA — captura tudo que não for API
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'client/dist/index.html'))
 })
 
 app.listen(PORT, () => {
