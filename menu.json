@@ -5,7 +5,8 @@
     "descricao": "Molho de tomate, mussarela, orégano",
     "preco": 35.90,
     "categoria": "Pizzas Salgadas",
-    "imagem": ""
+    "imagem": "",
+    "tipo": "sabor"
   },
   {
     "id": 2,
@@ -13,7 +14,8 @@
     "descricao": "Molho de tomate, calabresa, cebola, mussarela",
     "preco": 38.90,
     "categoria": "Pizzas Salgadas",
-    "imagem": ""
+    "imagem": "",
+    "tipo": "sabor"
   },
   {
     "id": 3,
@@ -21,7 +23,8 @@
     "descricao": "Molho de tomate, presunto, mussarela, ovos, cebola, pimentão, ervilha",
     "preco": 42.90,
     "categoria": "Pizzas Salgadas",
-    "imagem": ""
+    "imagem": "",
+    "tipo": "sabor"
   },
   {
     "id": 4,
@@ -29,7 +32,8 @@
     "descricao": "Molho de tomate, frango desfiado, catupiry, mussarela",
     "preco": 44.90,
     "categoria": "Pizzas Salgadas",
-    "imagem": ""
+    "imagem": "",
+    "tipo": "sabor"
   },
   {
     "id": 5,
@@ -37,7 +41,8 @@
     "descricao": "Chocolate ao leite, granulado, leite condensado",
     "preco": 39.90,
     "categoria": "Pizzas Doces",
-    "imagem": ""
+    "imagem": "",
+    "tipo": "sabor"
   },
   {
     "id": 6,
@@ -45,7 +50,8 @@
     "descricao": "Refrigerante Coca-Cola 2 litros",
     "preco": 12.00,
     "categoria": "Bebidas",
-    "imagem": ""
+    "imagem": "",
+    "tipo": "produto"
   },
   {
     "id": 7,
@@ -53,6 +59,57 @@
     "descricao": "Refrigerante Guaraná Antarctica 2 litros",
     "preco": 10.00,
     "categoria": "Bebidas",
-    "imagem": ""
+    "imagem": "",
+    "tipo": "produto"
+  },
+  {
+    "id": 8,
+    "nome": "Broto",
+    "descricao": "Pizza broto (1 sabor)",
+    "preco": 25.90,
+    "categoria": "Tamanhos de Pizza",
+    "imagem": "",
+    "tipo": "tamanho",
+    "maxSabores": 1
+  },
+  {
+    "id": 9,
+    "nome": "Média",
+    "descricao": "Pizza média (1 sabor)",
+    "preco": 38.00,
+    "categoria": "Tamanhos de Pizza",
+    "imagem": "",
+    "tipo": "tamanho",
+    "maxSabores": 1
+  },
+  {
+    "id": 10,
+    "nome": "Grande",
+    "descricao": "Pizza grande (até 2 sabores)",
+    "preco": 48.00,
+    "categoria": "Tamanhos de Pizza",
+    "imagem": "",
+    "tipo": "tamanho",
+    "maxSabores": 2
+  },
+  {
+    "id": 11,
+    "nome": "Big",
+    "descricao": "Pizza big (até 3 sabores)",
+    "preco": 58.00,
+    "categoria": "Tamanhos de Pizza",
+    "imagem": "",
+    "tipo": "tamanho",
+    "maxSabores": 3
+  },
+  {
+    "id": 12,
+    "nome": "Gigante",
+    "descricao": "Pizza gigante (até 4 sabores)",
+    "preco": 68.00,
+    "categoria": "Tamanhos de Pizza",
+    "imagem": "",
+    "tipo": "tamanho",
+    "maxSabores": 4
   }
 ]

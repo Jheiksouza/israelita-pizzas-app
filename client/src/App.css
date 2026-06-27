@@ -706,6 +706,170 @@ body {
   color: #f39c12;
 }
 
+/* Pizza Montar */
+.pizza-montar {
+  background: #16213e;
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 24px;
+  border: 2px solid #e94560;
+}
+
+.montar-title {
+  color: #e94560;
+  font-size: 1.4rem;
+  margin-bottom: 16px;
+}
+
+.tamanhos-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.tamanho-btn {
+  background: #0f3460;
+  color: #fff;
+  border: 2px solid transparent;
+  padding: 14px 10px;
+  border-radius: 10px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.2s;
+}
+
+.tamanho-btn:hover {
+  border-color: #e94560;
+}
+
+.tamanho-btn.active {
+  border-color: #e94560;
+  background: #e9456020;
+}
+
+.tamanho-btn strong {
+  font-size: 1rem;
+}
+
+.tamanho-preco {
+  color: #e94560;
+  font-weight: bold;
+  font-size: 1.1rem;
+}
+
+.tamanho-btn small {
+  color: #888;
+  font-size: 0.75rem;
+}
+
+.sabores-label {
+  color: #ccc;
+  margin-bottom: 10px;
+  font-size: 0.95rem;
+}
+
+.sabores-count {
+  color: #e94560;
+  font-weight: bold;
+}
+
+.sabores-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.sabor-btn {
+  background: #0f3460;
+  color: #ddd;
+  border: 1px solid #333;
+  padding: 10px 18px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: all 0.2s;
+}
+
+.sabor-btn:hover {
+  border-color: #e94560;
+  color: #fff;
+}
+
+.sabor-btn.active {
+  background: #e94560;
+  color: #fff;
+  border-color: #e94560;
+}
+
+.btn-montar-pizza {
+  width: auto !important;
+  margin-bottom: 16px;
+  display: inline-block;
+}
+
+.btn-montar-add {
+  width: auto !important;
+  display: inline-block;
+  padding: 12px 28px;
+  font-size: 1rem;
+}
+
+.btn-montar-add:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Pizza details in cart */
+.pizza-detalhes {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 4px 0;
+}
+
+.pizza-tamanho {
+  color: #e94560;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.pizza-sabores {
+  color: #aaa;
+  font-size: 0.8rem;
+}
+
+/* Tipo badge */
+.tipo-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.tipo-sabor {
+  background: #27ae6020;
+  color: #27ae60;
+  border: 1px solid #27ae60;
+}
+
+.tipo-tamanho {
+  background: #3498db20;
+  color: #3498db;
+  border: 1px solid #3498db;
+}
+
+.tipo-produto {
+  background: #88888820;
+  color: #888;
+  border: 1px solid #888;
+}
+
 @media (max-width: 600px) {
   .header-content {
     flex-direction: column;
@@ -723,5 +887,8 @@ body {
     flex-direction: column;
     gap: 8px;
     align-items: flex-start;
+  }
+  .tamanhos-grid {
+    grid-template-columns: repeat(2, 1fr);
   }
 }

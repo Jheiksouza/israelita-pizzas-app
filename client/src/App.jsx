@@ -14,9 +14,12 @@ function App() {
 
   const adicionarAoCarrinho = (item) => {
     setCarrinho(prev => {
-      const existente = prev.find(i => i.id === item.id)
+      if (item.tipo === 'pizza') {
+        return [...prev, { ...item, qtd: 1 }]
+      }
+      const existente = prev.find(i => i.id === item.id && i.tipo !== 'pizza')
       if (existente) {
-        return prev.map(i => i.id === item.id ? { ...i, qtd: i.qtd + 1 } : i)
+        return prev.map(i => (i.id === item.id && i.tipo !== 'pizza') ? { ...i, qtd: i.qtd + 1 } : i)
       }
       return [...prev, { ...item, qtd: 1 }]
     })
@@ -81,6 +84,7 @@ function Cardapio({ onAdicionar }) {
   const [menu, setMenu] = useState([])
   const [categoria, setCategoria] = useState('Todas')
   const [busca, setBusca] = useState('')
+  const [mostrarMontar, setMostrarMontar] = useState(false)
 
   useEffect(() => {
     fetch(`${API}/menu`)
@@ -92,18 +96,24 @@ function Cardapio({ onAdicionar }) {
       .catch(error => console.error("Erro ao buscar o menu:", error))
   }, [])
 
-  const categorias = ['Todas', ...new Set(menu.map(i => i.categoria))]
-  const filtrados = menu.filter(i => {
+  const sabores = menu.filter(i => i.tipo === 'sabor')
+  const tamanhos = menu.filter(i => i.tipo === 'tamanho')
+  const produtos = menu.filter(i => i.tipo !== 'tamanho')
+
+  const categorias = ['Todas', ...new Set(produtos.map(i => i.categoria))]
+  const filtrados = produtos.filter(i => {
     if (categoria !== 'Todas' && i.categoria !== categoria) return false
     if (busca && !i.nome.toLowerCase().includes(busca.toLowerCase())) return false
     return true
   })
-  console.log("Itens filtrados para exibição:", filtrados)
 
   return (
     <div className="cardapio-page">
       <div className="cardapio-header">
         <h2>Nosso Cardápio</h2>
+        <button className="btn-add btn-montar-pizza" onClick={() => setMostrarMontar(!mostrarMontar)}>
+          {mostrarMontar ? '← Fechar Montador' : '🍕 Montar Pizza'}
+        </button>
         <div className="filtros">
           <input
             type="text"
@@ -123,6 +133,11 @@ function Cardapio({ onAdicionar }) {
           </div>
         </div>
       </div>
+
+      {mostrarMontar && (
+        <PizzaMontar sabores={sabores} tamanhos={tamanhos} onAdicionar={onAdicionar} />
+      )}
+
       <div className="menu-grid">
         {filtrados.map(item => (
           <div key={item.id} className="menu-card">
@@ -188,6 +203,12 @@ function CarrinhoView({ itens, onRemover, onAdicionar, total, onVoltar }) {
           <div key={item.id} className="carrinho-item">
             <div className="item-info">
               <strong>{item.nome}</strong>
+              {item.tipo === 'pizza' && (
+                <div className="pizza-detalhes">
+                  <span className="pizza-tamanho">{item.tamanho}</span>
+                  <span className="pizza-sabores">Sabores: {item.sabores?.join(', ')}</span>
+                </div>
+              )}
               <span>R$ {item.preco.toFixed(2)}</span>
             </div>
             <div className="item-qtd">
@@ -209,6 +230,85 @@ function CarrinhoView({ itens, onRemover, onAdicionar, total, onVoltar }) {
         <input placeholder="Endereço" value={cliente.endereco} onChange={e => setCliente({ ...cliente, endereco: e.target.value })} />
         <button className="btn-add btn-finalizar" onClick={finalizar}>Finalizar Pedido</button>
       </div>
+    </div>
+  )
+}
+
+function PizzaMontar({ sabores, tamanhos, onAdicionar }) {
+  const [tamanho, setTamanho] = useState(null)
+  const [saboresSel, setSaboresSel] = useState([])
+  const [erro, setErro] = useState('')
+
+  const toggleSabor = (id) => {
+    if (!tamanho) { setErro('Selecione o tamanho primeiro'); return }
+    if (saboresSel.includes(id)) {
+      setSaboresSel(saboresSel.filter(s => s !== id))
+      setErro('')
+      return
+    }
+    if (saboresSel.length >= tamanho.maxSabores) {
+      setErro(`Máximo de ${tamanho.maxSabores} sabor${tamanho.maxSabores > 1 ? 'es' : ''}`)
+      return
+    }
+    setErro('')
+    setSaboresSel([...saboresSel, id])
+  }
+
+  const handleAdd = () => {
+    if (!tamanho) { setErro('Selecione um tamanho'); return }
+    if (saboresSel.length === 0) { setErro('Selecione pelo menos 1 sabor'); return }
+    const nomesSabores = saboresSel.map(id => sabores.find(s => s.id === id)?.nome).filter(Boolean)
+    onAdicionar({
+      id: `pizza-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      tipo: 'pizza',
+      nome: `Pizza ${tamanho.nome} (${nomesSabores.join(', ')})`,
+      tamanho: tamanho.nome,
+      sabores: nomesSabores,
+      preco: tamanho.preco
+    })
+    setSaboresSel([])
+    setErro('')
+  }
+
+  return (
+    <div className="pizza-montar">
+      <h3 className="montar-title">Monte sua Pizza</h3>
+      <div className="tamanhos-grid">
+        {tamanhos.map(t => (
+          <button
+            key={t.id}
+            className={`tamanho-btn ${tamanho?.id === t.id ? 'active' : ''}`}
+            onClick={() => { setTamanho(t); setSaboresSel([]); setErro('') }}
+          >
+            <strong>{t.nome}</strong>
+            <span className="tamanho-preco">R$ {t.preco.toFixed(2)}</span>
+            <small>Até {t.maxSabores} sabor{t.maxSabores > 1 ? 'es' : ''}</small>
+          </button>
+        ))}
+      </div>
+      {tamanho && (
+        <>
+          <p className="sabores-label">
+            Escolha até {tamanho.maxSabores} sabor{tamanho.maxSabores > 1 ? 'es' : ''}
+            <span className="sabores-count"> ({saboresSel.length}/{tamanho.maxSabores})</span>
+          </p>
+          <div className="sabores-grid">
+            {sabores.map(s => (
+              <button
+                key={s.id}
+                className={`sabor-btn ${saboresSel.includes(s.id) ? 'active' : ''}`}
+                onClick={() => toggleSabor(s.id)}
+              >
+                {s.nome}
+              </button>
+            ))}
+          </div>
+          {erro && <p className="erro">{erro}</p>}
+          <button className="btn-add btn-montar-add" onClick={handleAdd} disabled={saboresSel.length === 0}>
+            Adicionar Pizza {tamanho.nome} — R$ {tamanho.preco.toFixed(2)}
+          </button>
+        </>
+      )}
     </div>
   )
 }
@@ -279,13 +379,14 @@ function AdminMenu() {
       )}
       <table className="admin-table">
         <thead>
-          <tr><th>ID</th><th>Nome</th><th>Categoria</th><th>Preço</th><th>Ações</th></tr>
+          <tr><th>ID</th><th>Nome</th><th>Tipo</th><th>Categoria</th><th>Preço</th><th>Ações</th></tr>
         </thead>
         <tbody>
           {menu.map(item => (
             <tr key={item.id}>
               <td>{item.id}</td>
               <td>{item.nome}</td>
+              <td><span className={`tipo-badge tipo-${item.tipo || 'produto'}`}>{item.tipo === 'sabor' ? 'Sabor' : item.tipo === 'tamanho' ? 'Tamanho' : 'Produto'}</span></td>
               <td>{item.categoria}</td>
               <td>R$ {item.preco.toFixed(2)}</td>
               <td className="acoes">
@@ -427,12 +528,14 @@ function AdminFinanceiro() {
 
 function MenuItemForm({ item, onSalvar, onCancelar }) {
   const [form, setForm] = useState(
-    item || { nome: '', descricao: '', preco: '', categoria: 'Pizzas Salgadas', imagem: '' }
+    item || { nome: '', descricao: '', preco: '', categoria: 'Pizzas Salgadas', imagem: '', tipo: 'produto', maxSabores: '' }
   )
 
   const handleSubmit = (e) => {
     e.preventDefault()
-    onSalvar({ ...form, preco: parseFloat(form.preco) })
+    const dados = { ...form, preco: parseFloat(form.preco) }
+    if (dados.tipo !== 'tamanho') delete dados.maxSabores
+    onSalvar(dados)
   }
 
   return (
@@ -443,12 +546,21 @@ function MenuItemForm({ item, onSalvar, onCancelar }) {
           <input placeholder="Nome" value={form.nome} onChange={e => setForm({ ...form, nome: e.target.value })} required />
           <textarea placeholder="Descrição" value={form.descricao} onChange={e => setForm({ ...form, descricao: e.target.value })} />
           <input type="number" step="0.01" placeholder="Preço" value={form.preco} onChange={e => setForm({ ...form, preco: e.target.value })} required />
+          <select value={form.tipo} onChange={e => setForm({ ...form, tipo: e.target.value })}>
+            <option value="produto">Produto</option>
+            <option value="sabor">Sabor de Pizza</option>
+            <option value="tamanho">Tamanho de Pizza</option>
+          </select>
+          {form.tipo === 'tamanho' && (
+            <input type="number" min="1" max="4" placeholder="Máx. de sabores" value={form.maxSabores} onChange={e => setForm({ ...form, maxSabores: parseInt(e.target.value) || '' })} required />
+          )}
           <select value={form.categoria} onChange={e => setForm({ ...form, categoria: e.target.value })}>
             <option>Pizzas Salgadas</option>
             <option>Pizzas Doces</option>
             <option>Bebidas</option>
             <option>Porções</option>
             <option>Sobremesas</option>
+            <option>Tamanhos de Pizza</option>
           </select>
           <input placeholder="URL da imagem (opcional)" value={form.imagem} onChange={e => setForm({ ...form, imagem: e.target.value })} />
           <div className="form-actions">
