@@ -5,5 +5,9 @@
     "dev": "node server.js & cd client && npm run dev",
     "build": "cd client && npm run build",
     "start": "node server.js"
+  },
+  "dependencies": {
+    "@vitejs/plugin-react": "^6.0.3",
+    "vite": "^8.1.0"
   }
 }
