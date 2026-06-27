@@ -155,14 +155,28 @@ function Cardapio({ onAdicionar }) {
 
   const handleAdd = () => {
     if (saboresSel.length === 0) { setErro('Selecione pelo menos 1 sabor'); return }
-    const nomesSabores = saboresSel.map(id => sabores.find(s => s.id === id)?.nome).filter(Boolean)
+    const saboresSelecionados = saboresSel.map(id => sabores.find(s => s.id === id)).filter(Boolean)
+    const nomesSabores = saboresSelecionados.map(s => s?.nome).filter(Boolean)
+
+    // Calcula preço conforme classificação dos sabores
+    const precosPorQualidade = {
+      tradicional: tamanhoSel.preco_tradicional || tamanhoSel.preco,
+      especial: tamanhoSel.preco_especial || tamanhoSel.preco,
+      nobre: tamanhoSel.preco_nobre || tamanhoSel.preco
+    }
+    const totalPrecos = saboresSelecionados.reduce((sum, s) => {
+      const qual = s.classificacao || 'tradicional'
+      return sum + (precosPorQualidade[qual] || tamanhoSel.preco)
+    }, 0)
+    const precoFinal = totalPrecos / saboresSelecionados.length
+
     onAdicionar({
       id: `pizza-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
       tipo: 'pizza',
       nome: `Pizza ${tamanhoSel.nome} (${nomesSabores.join(', ')})`,
       tamanho: tamanhoSel.nome,
       sabores: nomesSabores,
-      preco: tamanhoSel.preco
+      preco: precoFinal
     })
     setSaboresSel([])
     setErro('')
@@ -237,17 +251,31 @@ function Cardapio({ onAdicionar }) {
                   onClick={() => toggleSabor(s.id)}
                 >
                   {s.nome}
+                  {s.classificacao && <span className={`sabor-qual tipo-badge tipo-${s.classificacao}`}>{s.classificacao}</span>}
                 </button>
               ))}
             </div>
             {erro && <p className="erro">{erro}</p>}
-            <button
-              className="btn-add btn-montar-add"
-              onClick={handleAdd}
-              disabled={saboresSel.length === 0}
-            >
-              Adicionar Pizza {tamanhoSel.nome} — R$ {tamanhoSel.preco.toFixed(2)}
-            </button>
+            {(() => {
+              const precosPorQualidade = {
+                tradicional: tamanhoSel.preco_tradicional || tamanhoSel.preco,
+                especial: tamanhoSel.preco_especial || tamanhoSel.preco,
+                nobre: tamanhoSel.preco_nobre || tamanhoSel.preco
+              }
+              const saboresSelecionados = saboresSel.map(id => sabores.find(s => s.id === id)).filter(Boolean)
+              const precoExibido = saboresSelecionados.length > 0
+                ? saboresSelecionados.reduce((sum, s) => sum + (precosPorQualidade[s.classificacao || 'tradicional'] || tamanhoSel.preco), 0) / saboresSelecionados.length
+                : tamanhoSel.preco
+              return (
+                <button
+                  className="btn-add btn-montar-add"
+                  onClick={handleAdd}
+                  disabled={saboresSel.length === 0}
+                >
+                  Adicionar Pizza {tamanhoSel.nome} — R$ {precoExibido.toFixed(2)}
+                </button>
+              )
+            })()}
           </>
         )}
       </div>
@@ -430,7 +458,7 @@ function AdminMenu({ onThemeChange, onFontChange }) {
       )}
       <table className="admin-table">
         <thead>
-          <tr><th>ID</th><th>Nome</th><th>Tipo</th><th>Categoria</th><th>Preço</th><th>Ações</th></tr>
+          <tr><th>ID</th><th>Nome</th><th>Tipo</th><th>Qualidade</th><th>Categoria</th><th>Preço</th><th>Ações</th></tr>
         </thead>
         <tbody>
           {menu.map(item => (
@@ -438,6 +466,20 @@ function AdminMenu({ onThemeChange, onFontChange }) {
               <td>{item.id}</td>
               <td>{item.nome}</td>
               <td><span className={`tipo-badge tipo-${item.tipo || 'produto'}`}>{item.tipo === 'sabor' ? 'Sabor' : item.tipo === 'tamanho' ? 'Tamanho' : 'Produto'}</span></td>
+              <td>
+                {item.tipo === 'sabor' ? (
+                  <span className={`tipo-badge ${item.classificacao === 'tradicional' ? 'tipo-tradicional' : item.classificacao === 'especial' ? 'tipo-especial' : item.classificacao === 'nobre' ? 'tipo-nobre' : ''}`}>
+                    {item.classificacao ? item.classificacao.charAt(0).toUpperCase() + item.classificacao.slice(1) : '-'}
+                  </span>
+                ) : item.tipo === 'tamanho' ? (
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                    {item.preco_tradicional ? `T: R$${item.preco_tradicional}` : ''}
+                    {item.preco_especial ? ` / E: R$${item.preco_especial}` : ''}
+                    {item.preco_nobre ? ` / N: R$${item.preco_nobre}` : ''}
+                    {!item.preco_tradicional && !item.preco_especial && !item.preco_nobre ? '-' : ''}
+                  </span>
+                ) : '-'}
+              </td>
               <td>{item.categoria}</td>
               <td>R$ {item.preco.toFixed(2)}</td>
               <td className="acoes">
@@ -843,13 +885,22 @@ function AdminFinanceiro() {
 
 function MenuItemForm({ item, onSalvar, onCancelar }) {
   const [form, setForm] = useState(
-    item || { nome: '', descricao: '', preco: '', categoria: 'Pizzas Salgadas', imagem: '', tipo: 'produto', maxSabores: '' }
+    item || { nome: '', descricao: '', preco: '', categoria: 'Pizzas Salgadas', imagem: '', tipo: 'produto', maxSabores: '', classificacao: '', preco_tradicional: '', preco_especial: '', preco_nobre: '' }
   )
 
   const handleSubmit = (e) => {
     e.preventDefault()
     const dados = { ...form, preco: parseFloat(form.preco) }
-    if (dados.tipo !== 'tamanho') delete dados.maxSabores
+    if (dados.tipo !== 'tamanho') {
+      delete dados.maxSabores
+      delete dados.preco_tradicional
+      delete dados.preco_especial
+      delete dados.preco_nobre
+    }
+    if (dados.tipo !== 'sabor') delete dados.classificacao
+    if (dados.preco_tradicional !== undefined && dados.preco_tradicional !== '') dados.preco_tradicional = parseFloat(dados.preco_tradicional)
+    if (dados.preco_especial !== undefined && dados.preco_especial !== '') dados.preco_especial = parseFloat(dados.preco_especial)
+    if (dados.preco_nobre !== undefined && dados.preco_nobre !== '') dados.preco_nobre = parseFloat(dados.preco_nobre)
     onSalvar(dados)
   }
 
@@ -866,9 +917,26 @@ function MenuItemForm({ item, onSalvar, onCancelar }) {
             <option value="sabor">Sabor de Pizza</option>
             <option value="tamanho">Tamanho de Pizza</option>
           </select>
-          {form.tipo === 'tamanho' && (
-            <input type="number" min="1" max="4" placeholder="Máx. de sabores" value={form.maxSabores} onChange={e => setForm({ ...form, maxSabores: parseInt(e.target.value) || '' })} required />
+
+          {form.tipo === 'sabor' && (
+            <select value={form.classificacao} onChange={e => setForm({ ...form, classificacao: e.target.value })}>
+              <option value="">Sem classificação</option>
+              <option value="tradicional">Tradicional</option>
+              <option value="especial">Especial</option>
+              <option value="nobre">Nobre</option>
+            </select>
           )}
+
+          {form.tipo === 'tamanho' && (
+            <>
+              <input type="number" min="1" max="4" placeholder="Máx. de sabores" value={form.maxSabores} onChange={e => setForm({ ...form, maxSabores: parseInt(e.target.value) || '' })} required />
+              <p className="settings-label" style={{ marginTop: 8 }}>Preços por qualidade:</p>
+              <input type="number" step="0.01" placeholder="Preço Tradicional" value={form.preco_tradicional} onChange={e => setForm({ ...form, preco_tradicional: e.target.value })} />
+              <input type="number" step="0.01" placeholder="Preço Especial" value={form.preco_especial} onChange={e => setForm({ ...form, preco_especial: e.target.value })} />
+              <input type="number" step="0.01" placeholder="Preço Nobre" value={form.preco_nobre} onChange={e => setForm({ ...form, preco_nobre: e.target.value })} />
+            </>
+          )}
+
           <select value={form.categoria} onChange={e => setForm({ ...form, categoria: e.target.value })}>
             <option>Pizzas Salgadas</option>
             <option>Pizzas Doces</option>

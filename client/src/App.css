@@ -888,6 +888,9 @@ body {
   font-weight: 500;
   font-family: var(--font-body);
   transition: var(--transition);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .sabor-btn:hover {
@@ -902,6 +905,15 @@ body {
   color: #fff;
   border-color: transparent;
   box-shadow: 0 4px 12px rgba(229,57,53,0.2);
+}
+
+.sabor-qual {
+  font-size: 0.65rem !important;
+  padding: 1px 6px !important;
+  border-radius: 4px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
 }
 
 .btn-montar-add {
@@ -2091,6 +2103,24 @@ body {
   background: var(--bg-surface);
   color: var(--text-muted);
   border: 1px solid var(--border);
+}
+
+.tipo-tradicional {
+  background: #E3F2FD;
+  color: #1565C0;
+  border: 1px solid #90CAF9;
+}
+
+.tipo-especial {
+  background: #F3E5F5;
+  color: #7B1FA2;
+  border: 1px solid #CE93D8;
+}
+
+.tipo-nobre {
+  background: #FFF8E1;
+  color: #F57F17;
+  border: 1px solid #FFE082;
 }
 
 .pizza-detalhes {

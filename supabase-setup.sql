@@ -12,7 +12,11 @@ CREATE TABLE IF NOT EXISTS menu (
   categoria TEXT DEFAULT '',
   imagem TEXT DEFAULT '',
   tipo TEXT DEFAULT 'produto',
-  "maxSabores" INTEGER
+  "maxSabores" INTEGER,
+  classificacao TEXT DEFAULT '',
+  preco_tradicional REAL,
+  preco_especial REAL,
+  preco_nobre REAL
 );
 
 -- Tabela de pedidos
