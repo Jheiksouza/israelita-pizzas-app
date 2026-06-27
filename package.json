@@ -6,6 +6,8 @@
     "server": "node server.js",
     "client": "cd client && npx vite",
     "dev": "node server.js & cd client && npx vite",
+    "build": "cd client && npm run build",
+    "start": "node server.js",
     "install-all": "npm install && cd client && npm install"
   },
   "dependencies": {
