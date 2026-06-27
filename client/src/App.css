@@ -51,26 +51,26 @@
 
 /* ============ THEME: CLÁSSICO (Delicious Slice) ============ */
 .theme-classic {
-  --primary: #C9442A;
-  --primary-dark: #B12A14;
-  --primary-light: #D65A40;
-  --primary-soft: #2A1512;
-  --secondary: #3F3732;
-  --accent: #D4A44E;
-  --accent-soft: #2A2215;
-  --bg: #231F1B;
-  --bg-card: #2D2824;
-  --bg-surface: #2A2521;
-  --bg-elevated: #35302C;
-  --text-primary: #F0E9E0;
-  --text-secondary: #C4BBAE;
-  --text-muted: #A89684;
-  --border: rgba(74,66,60,0.6);
-  --border-light: rgba(74,66,60,0.3);
-  --shadow-sm: 0 1px 3px rgba(0,0,0,0.3);
-  --shadow-md: 0 4px 16px rgba(0,0,0,0.4);
-  --shadow-lg: 0 12px 40px rgba(0,0,0,0.5);
-  --shadow-glow: 0 0 60px -10px rgba(201,68,42,0.5);
+  --primary: oklch(0.62 0.18 30);
+  --primary-dark: oklch(0.55 0.21 25);
+  --primary-light: oklch(0.68 0.16 35);
+  --primary-soft: oklch(0.16 0.04 30);
+  --secondary: oklch(0.28 0.025 45);
+  --accent: oklch(0.75 0.13 75);
+  --accent-soft: oklch(0.16 0.03 75);
+  --bg: oklch(0.16 0.012 40);
+  --bg-card: oklch(0.21 0.018 45);
+  --bg-surface: oklch(0.24 0.015 45);
+  --bg-elevated: oklch(0.28 0.02 45);
+  --text-primary: oklch(0.95 0.02 75);
+  --text-secondary: oklch(0.85 0.02 70);
+  --text-muted: oklch(0.7 0.03 60);
+  --border: oklch(0.3 0.02 45 / 0.6);
+  --border-light: oklch(0.3 0.02 45 / 0.3);
+  --shadow-sm: 0 1px 3px oklch(0 0 0 / 0.3);
+  --shadow-md: 0 4px 16px oklch(0 0 0 / 0.4);
+  --shadow-lg: 0 12px 40px oklch(0 0 0 / 0.5);
+  --shadow-glow: 0 0 60px -10px color-mix(in oklab, oklch(0.62 0.18 30) 50%, transparent);
   --radius: 1rem;
   --radius-lg: 1.5rem;
   --radius-md: 14px;
@@ -116,27 +116,28 @@
 .theme-classic .classic-only { display: revert !important; }
 
 /* ===== GLOBAL FONTS ===== */
-.theme-classic,
-.theme-classic * {
-  font-family: 'Inter', var(--font-body, 'Inter'), ui-sans-serif, system-ui, sans-serif !important;
+/* Body defaults to Inter */
+.theme-classic {
+  font-family: 'Inter', var(--font-body, 'Inter'), ui-sans-serif, system-ui, sans-serif;
 }
 
 .theme-classic h1, .theme-classic h2, .theme-classic h3,
 .theme-classic h4, .theme-classic h5, .theme-classic h6,
-.theme-classic .montar-title,
+.theme-classic .montar-section-title,
 .theme-classic .logo,
 .theme-classic .sabor-card-nome,
 .theme-classic .card-body h3,
 .theme-classic .section-title,
 .theme-classic .summary-detail,
 .theme-classic .summary-price,
+.theme-classic .card-body .preco,
 .theme-classic .tamanho-btn strong,
 .theme-classic .tamanho-preco,
 .theme-classic .hero-stat-n,
 .theme-classic .hero-deco-badge-text,
 .theme-classic .footer-brand,
 .theme-classic .step-circle {
-  font-family: 'Playfair Display', var(--font-heading, 'Playfair Display'), Georgia, serif !important;
+  font-family: 'Playfair Display', var(--font-heading, 'Playfair Display'), Georgia, serif;
   letter-spacing: -0.02em;
 }
 
@@ -481,11 +482,15 @@
 
 /* ===== SECTION TITLES ===== */
 .theme-classic .section-title {
-  padding: 0 24px;
-  margin-bottom: 24px;
   font-size: 2.25rem;
   font-weight: 700;
   color: var(--text-primary);
+  padding: 0 24px;
+  margin-bottom: 24px;
+  margin-top: 32px;
+}
+@media (min-width: 768px) {
+  .theme-classic .section-title { font-size: 3rem; }
 }
 
 .theme-classic .section-subtitle-label {
@@ -514,11 +519,40 @@
 }
 
 .theme-classic .montar-title {
-  font-size: 2.25rem;
+  display: none !important;
+}
+
+.theme-classic .montar-section-header {
+  text-align: center;
+  margin-bottom: 48px;
+}
+
+.theme-classic .montar-section-label {
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.4em;
+  color: var(--accent);
+  margin-bottom: 12px;
+  font-family: 'Inter', sans-serif !important;
+}
+
+.theme-classic .montar-section-title {
+  font-size: 2.5rem;
   font-weight: 700;
   color: var(--text-primary);
-  margin-bottom: 24px;
-  text-align: center;
+  margin-bottom: 12px;
+  font-family: 'Playfair Display', var(--font-heading, 'Playfair Display'), Georgia, serif !important;
+  letter-spacing: -0.02em;
+}
+@media (min-width: 768px) {
+  .theme-classic .montar-section-title { font-size: 3.5rem; }
+}
+
+.theme-classic .montar-section-sub {
+  font-size: 1.125rem;
+  color: var(--text-muted);
+  font-family: 'Inter', sans-serif !important;
 }
 
 .theme-classic .neon-experiencia-label {
@@ -609,14 +643,14 @@
 }
 
 .theme-classic .tamanho-btn:hover {
-  border-color: rgba(212,164,78,0.4);
+  border-color: oklch(0.75 0.13 75 / 0.4);
   background: var(--secondary);
 }
 
 .theme-classic .tamanho-btn.active {
   border-color: var(--primary);
   background: linear-gradient(135deg, var(--bg-card), var(--secondary));
-  box-shadow: 0 30px 60px -20px rgba(177,42,20,0.4);
+  box-shadow: 0 30px 60px -20px color-mix(in oklab, oklch(0.55 0.21 25) 40%, transparent);
   transform: scale(1.02);
 }
 
@@ -966,7 +1000,7 @@
 }
 
 .theme-classic .menu-card:hover {
-  border-color: rgba(212,164,78,0.4);
+  border-color: oklch(0.75 0.13 75 / 0.4);
   transform: translateY(-4px);
 }
 
@@ -992,7 +1026,7 @@
   font-size: 1.25rem;
   font-weight: 600;
   color: var(--text-primary);
-  margin-bottom: 4px;
+  margin-bottom: 12px;
 }
 
 .theme-classic .card-body .desc {
@@ -1007,7 +1041,7 @@
   font-size: 1.5rem;
   font-weight: 700;
   color: var(--primary);
-  margin-bottom: 12px;
+  margin-bottom: 16px;
 }
 
 .theme-classic .card-body .btn-add {
@@ -1027,10 +1061,9 @@
 }
 
 .theme-classic .card-body .btn-add:hover {
-  background: var(--primary) !important;
-  border-color: var(--primary) !important;
-  color: var(--text-primary) !important;
-  box-shadow: none !important;
+  background: var(--primary);
+  border-color: var(--primary);
+  color: var(--text-primary);
 }
 
 /* ===== CARRINHO ===== */
