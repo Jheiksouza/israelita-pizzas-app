@@ -1,0 +1,25 @@
+[
+  {
+    "id": 1,
+    "data": "2026-06-27T12:52:15.601Z",
+    "status": "pendente",
+    "updatedAt": "2026-06-27T12:52:15.601Z",
+    "cliente": {
+      "nome": "Jheik Hecton Borges de Souza",
+      "telefone": "41991697347",
+      "endereco": "Rua Eloir Dide Maria, 283, Tatuquara"
+    },
+    "itens": [
+      {
+        "id": 4,
+        "nome": "Frango com Catupiry",
+        "descricao": "Molho de tomate, frango desfiado, catupiry, mussarela",
+        "preco": 44.9,
+        "categoria": "Pizzas Salgadas",
+        "imagem": "",
+        "qtd": 1
+      }
+    ],
+    "total": 44.9
+  }
+]

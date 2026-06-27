@@ -1,0 +1,15 @@
+{
+  "name": "israelita-pizzas-app",
+  "version": "1.0.0",
+  "description": "Sistema de Pizzaria Israelita",
+  "scripts": {
+    "server": "node server.js",
+    "client": "cd client && npx vite",
+    "dev": "node server.js & cd client && npx vite",
+    "install-all": "npm install && cd client && npm install"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.18.2"
+  }
+}

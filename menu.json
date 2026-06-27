@@ -1,0 +1,58 @@
+[
+  {
+    "id": 1,
+    "nome": "Mussarela",
+    "descricao": "Molho de tomate, mussarela, orégano",
+    "preco": 35.90,
+    "categoria": "Pizzas Salgadas",
+    "imagem": ""
+  },
+  {
+    "id": 2,
+    "nome": "Calabresa",
+    "descricao": "Molho de tomate, calabresa, cebola, mussarela",
+    "preco": 38.90,
+    "categoria": "Pizzas Salgadas",
+    "imagem": ""
+  },
+  {
+    "id": 3,
+    "nome": "Portuguesa",
+    "descricao": "Molho de tomate, presunto, mussarela, ovos, cebola, pimentão, ervilha",
+    "preco": 42.90,
+    "categoria": "Pizzas Salgadas",
+    "imagem": ""
+  },
+  {
+    "id": 4,
+    "nome": "Frango com Catupiry",
+    "descricao": "Molho de tomate, frango desfiado, catupiry, mussarela",
+    "preco": 44.90,
+    "categoria": "Pizzas Salgadas",
+    "imagem": ""
+  },
+  {
+    "id": 5,
+    "nome": "Brigadeiro",
+    "descricao": "Chocolate ao leite, granulado, leite condensado",
+    "preco": 39.90,
+    "categoria": "Pizzas Doces",
+    "imagem": ""
+  },
+  {
+    "id": 6,
+    "nome": "Coca-Cola 2L",
+    "descricao": "Refrigerante Coca-Cola 2 litros",
+    "preco": 12.00,
+    "categoria": "Bebidas",
+    "imagem": ""
+  },
+  {
+    "id": 7,
+    "nome": "Guaraná Antarctica 2L",
+    "descricao": "Refrigerante Guaraná Antarctica 2 litros",
+    "preco": 10.00,
+    "categoria": "Bebidas",
+    "imagem": ""
+  }
+]
