@@ -378,36 +378,90 @@
   box-shadow: 0 0 10px rgba(224,64,251,0.3);
 }
 
-/* ============ THEME: NEON ============ */
+/* ============ THEME: NEON (Electric Crust) ============ */
+/* Design tokens do DESIGN.md */
 .theme-neon {
   --primary: #BD00FF;
-  --primary-dark: #9900CF;
-  --primary-light: #D040FF;
-  --primary-soft: #1A0024;
+  --primary-container: #BD00FF;
+  --on-primary-container: #FFFFFF;
+  --primary-fixed-dim: #ECB2FF;
   --secondary: #00EEFC;
-  --accent: #00D4E0;
-  --accent-soft: #001A1C;
+  --secondary-container: #00EEFC;
+  --on-secondary-container: #00686F;
+  --on-secondary: #00363A;
+  --tertiary: #FFB59A;
+  --tertiary-container: #CF4900;
+  --on-tertiary-container: #FFFEFF;
+  --error: #FFB4AB;
+  --error-container: #93000A;
   --bg: #131315;
+  --surface: #131315;
+  --surface-dim: #131315;
+  --surface-bright: #39393B;
+  --surface-container-lowest: #0E0E10;
+  --surface-container-low: #1C1B1D;
+  --surface-container: #201F21;
+  --surface-container-high: #2A2A2C;
+  --surface-container-highest: #353437;
+  --on-surface: #E5E1E4;
+  --on-surface-variant: #D4C0D7;
+  --outline: #9D8BA0;
+  --outline-variant: #514255;
   --bg-card: rgba(255,255,255,0.05);
-  --bg-surface: #1C1B1D;
-  --bg-elevated: #2A2A2C;
-  --text-primary: #E5E1E4;
-  --text-secondary: #B0ACB2;
   --text-muted: #6A6570;
-  --border: rgba(255,255,255,0.1);
-  --border-light: rgba(255,255,255,0.15);
-  --shadow-sm: 0 1px 3px rgba(0,0,0,0.4);
-  --shadow-md: 0 4px 16px rgba(0,0,0,0.5);
-  --shadow-lg: 0 12px 40px rgba(0,0,0,0.6);
-  --shadow-glow: 0 4px 24px rgba(189,0,255,0.25);
+
+  /* Typography scale (Montserrat exclusivamente) */
+  --font-display-lg: 64px;
+  --font-display-lg-weight: 900;
+  --font-display-lg-lh: 1.1;
+  --font-display-lg-ls: -0.02em;
+  --font-display-lg-mobile: 40px;
+
+  --font-headline-md: 32px;
+  --font-headline-md-weight: 700;
+  --font-headline-md-lh: 1.2;
+
+  --font-headline-sm: 24px;
+  --font-headline-sm-weight: 700;
+  --font-headline-sm-lh: 1.3;
+
+  --font-body-lg: 18px;
+  --font-body-lg-weight: 400;
+  --font-body-lg-lh: 1.6;
+
+  --font-body-md: 16px;
+  --font-body-md-weight: 400;
+  --font-body-md-lh: 1.6;
+
+  --font-label-bold: 14px;
+  --font-label-bold-weight: 700;
+  --font-label-bold-lh: 1;
+  --font-label-bold-ls: 0.05em;
+
+  --font-caption: 12px;
+  --font-caption-weight: 500;
+  --font-caption-lh: 1.4;
+
+  /* Spacing */
+  --space-margin-mobile: 20px;
+  --space-margin-desktop: 80px;
+  --space-gutter: 24px;
+  --space-section-v: 80px;
+  --container-max: 1280px;
+
+  /* Shadows e glows */
+  --shadow-glow-primary: 0 0 20px rgba(189,0,255,0.4);
+  --shadow-glow-secondary: 0 0 20px rgba(0,238,252,0.4);
+  --shadow-header: 0 20px 40px rgba(0,0,0,0.4);
+  --shadow-bottom-nav: 0 -10px 30px rgba(0,0,0,0.5);
+
   --radius: 16px;
-  --radius-lg: 20px;
-  --radius-md: 12px;
-  --radius-sm: 8px;
-  --radius-xs: 6px;
+  --radius-lg: 1.5rem;
+  --radius-pill: 9999px;
+  --radius-hero-panel: 2rem;
 }
 
-/* Neon Orbs de fundo */
+/* ===== FLOATING ORBS ===== */
 .theme-neon .neon-orbs {
   display: block;
   pointer-events: none;
@@ -417,91 +471,114 @@
   overflow: hidden;
 }
 
-.neon-orbs {
-  display: none;
-}
+.neon-orbs { display: none; }
+.neon-experiencia-label { display: none; }
 
 .theme-neon .neon-orb {
   position: absolute;
-  width: 500px;
-  height: 500px;
   border-radius: 50%;
-  filter: blur(120px);
+  filter: blur(100px);
   opacity: 0.3;
+  pointer-events: none;
 }
 
 .theme-neon .orb-1 {
-  top: -15%;
-  right: -10%;
+  width: 400px; height: 400px;
   background: #BD00FF;
-  animation: orbFloat 20s ease-in-out infinite alternate;
+  top: -100px; right: -100px;
+  animation: orbFloat 15s ease-in-out infinite alternate;
 }
 
 .theme-neon .orb-2 {
-  bottom: -20%;
-  left: -10%;
+  width: 500px; height: 500px;
   background: #004F54;
-  animation: orbFloat 25s ease-in-out infinite alternate-reverse;
+  bottom: -200px; left: -100px;
+  animation: orbFloat 20s ease-in-out infinite alternate-reverse;
 }
 
 @keyframes orbFloat {
-  0% { transform: translate(0, 0) scale(1); }
+  0%   { transform: translate(0, 0) scale(1); }
   100% { transform: translate(50px, 100px) scale(1.1); }
 }
 
-/* HEADER - Fixed com backdrop blur, igual ao design */
-.theme-neon .main {
-  padding-top: 88px;
+/* ===== GLOBAL ===== */
+.theme-neon,
+.theme-neon * {
+  font-family: 'Montserrat', sans-serif !important;
 }
 
+/* ===== HEADER ===== */
 .theme-neon .header {
   position: fixed !important;
-  top: 0;
-  left: 0;
-  right: 0;
+  top: 0; left: 0; right: 0;
   z-index: 100;
   background: rgba(19,19,21,0.5) !important;
   backdrop-filter: blur(24px) !important;
   -webkit-backdrop-filter: blur(24px) !important;
-  border-bottom: 1px solid rgba(255,255,255,0.06) !important;
-  box-shadow: 0 20px 40px rgba(0,0,0,0.5) !important;
+  border-bottom: 1px solid rgba(255,255,255,0.1) !important;
+  box-shadow: var(--shadow-header) !important;
+  height: 64px !important;
+  display: flex !important;
+  align-items: center !important;
 }
 
 .theme-neon .header-content {
-  max-width: 1280px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  max-width: var(--container-max);
   margin: 0 auto;
+  padding: 0 var(--space-margin-mobile);
+}
+@media (min-width: 768px) {
+  .theme-neon .header-content {
+    padding: 0 var(--space-margin-desktop);
+  }
 }
 
 .theme-neon .logo {
-  background: linear-gradient(to right, #ECB2FF, #00DBE9);
+  background: linear-gradient(to right, var(--primary-fixed-dim), #00DBE9);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
   font-weight: 900;
-  font-family: Montserrat, sans-serif;
   font-size: 1.5rem;
+  cursor: pointer;
 }
 
-/* Esconde decorações de pizza flutuante */
-.theme-neon .bg-decoration {
-  display: none !important;
+.theme-neon .bg-decoration { display: none !important; }
+
+/* ===== MAIN PADDING ===== */
+.theme-neon .main {
+  padding: 80px var(--space-margin-mobile);
+}
+@media (min-width: 768px) {
+  .theme-neon .main {
+    padding: 80px var(--space-margin-desktop);
+  }
 }
 
-/* HERO - igual ao design: imagem full, gradientes, texto gigante */
+/* ===== HERO ===== */
 .theme-neon .cardapio-hero {
   display: flex !important;
   position: relative;
-  min-height: 618px;
+  height: 618px;
   width: 100%;
   align-items: center;
   justify-content: center;
   overflow: hidden;
   border-radius: 0;
   margin: 0;
-  padding: 0;
-  background-size: cover;
-  background-position: center;
   box-shadow: none;
+}
+@media (min-width: 768px) {
+  .theme-neon .cardapio-hero { height: 707px; }
+}
+
+/* Gradient overlays - 3 camadas */
+.theme-neon .cardapio-hero > .hero-overlay {
+  display: none !important;
 }
 
 .theme-neon .cardapio-hero::before {
@@ -517,11 +594,7 @@
   position: absolute;
   inset: 0;
   z-index: 2;
-  background: linear-gradient(to right, rgba(189,0,255,0.15), transparent, rgba(0,238,252,0.15));
-}
-
-.theme-neon .hero-overlay {
-  z-index: 0;
+  background: linear-gradient(to right, rgba(189,0,255,0.2), transparent, rgba(0,238,252,0.2));
 }
 
 .theme-neon .hero-content {
@@ -530,79 +603,123 @@
   text-align: center;
   padding: 40px 20px;
   max-width: 800px;
+  width: 100%;
 }
 
 .theme-neon .hero-content h2 {
-  font-family: Montserrat, sans-serif !important;
-  font-size: clamp(2.5rem, 6vw, 4rem) !important;
-  font-weight: 900 !important;
+  font-size: var(--font-display-lg-mobile) !important;
+  font-weight: var(--font-display-lg-weight) !important;
   text-transform: uppercase;
-  letter-spacing: -0.02em;
-  line-height: 1.1;
+  letter-spacing: var(--font-display-lg-ls);
+  line-height: var(--font-display-lg-lh);
   margin-bottom: 16px;
-  background: linear-gradient(to right, #ECB2FF, #00DBE9);
+}
+@media (min-width: 768px) {
+  .theme-neon .hero-content h2 {
+    font-size: var(--font-display-lg) !important;
+  }
+}
+
+.theme-neon .hero-content h2 span,
+.theme-neon .hero-content h2 .text-gradient {
+  background: linear-gradient(to right, var(--primary-fixed-dim), #00DBE9);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* For the "Pizzaria Israelita" text (h2 is the whole thing, make it gradient) */
+.theme-neon .hero-content h2 {
+  background: linear-gradient(to right, var(--primary-fixed-dim), #00DBE9);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
 .theme-neon .hero-content p {
-  font-family: Montserrat, sans-serif;
-  font-size: 1.125rem;
-  line-height: 1.6;
-  color: var(--text-secondary);
+  font-size: var(--font-body-lg);
+  font-weight: var(--font-body-lg-weight);
+  line-height: var(--font-body-lg-lh);
+  color: var(--on-surface-variant);
   max-width: 600px;
-  margin: 0 auto;
+  margin: 0 auto 32px;
 }
 
-.theme-neon .hero-logo {
-  z-index: 3;
-}
+.theme-neon .hero-logo { z-index: 3; }
 
-/* ESCOLHA O TAMANHO - manter funcional, estilizar com neon */
+/* ===== PIZZA MONTAR SECTION (glass panel) ===== */
 .theme-neon .pizza-montar {
-  background: rgba(255,255,255,0.04);
+  background: rgba(255,255,255,0.05);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 2rem;
-  padding: 2rem;
+  border: 1px solid rgba(189,0,255,0.2);
+  border-radius: var(--radius-hero-panel);
+  padding: 32px;
   position: relative;
   overflow: hidden;
 }
-
-.theme-neon .pizza-montar::before {
-  display: none !important;
+@media (min-width: 768px) {
+  .theme-neon .pizza-montar { padding: 48px; }
 }
 
-.theme-neon .montar-title {
-  font-family: Montserrat, sans-serif;
-  font-size: 2rem;
-  font-weight: 700;
-  line-height: 1.2;
+/* Glow sutil no canto - igual ao design */
+.theme-neon .pizza-montar::before {
+  content: '';
+  position: absolute;
+  top: 0; right: 0;
+  width: 256px; height: 256px;
+  background: rgba(189,0,255,0.08);
+  filter: blur(80px);
+  z-index: 0;
+  pointer-events: none;
+}
+
+.theme-neon .pizza-montar > * { position: relative; z-index: 1; }
+
+/* Esconde elementos antigos que vamos substituir */
+.theme-neon .montar-title { font-size: var(--font-headline-md); font-weight: var(--font-headline-md-weight); line-height: var(--font-headline-md-lh); margin-bottom: 6px; }
+
+/* Label "Experiência Custom" */
+.theme-neon .neon-experiencia-label {
+  display: block;
+  color: var(--secondary);
+  font-size: var(--font-label-bold);
+  font-weight: var(--font-label-bold-weight);
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  margin-bottom: 16px;
 }
 
 .theme-neon .sabores-label {
-  font-family: Montserrat, sans-serif;
-  font-size: 0.875rem;
-  font-weight: 700;
+  font-size: var(--font-label-bold);
+  font-weight: var(--font-label-bold-weight);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--secondary);
+  letter-spacing: var(--font-label-bold-ls);
+  color: var(--on-surface-variant);
+  margin-bottom: 12px;
 }
 
+/* ===== TAMANHOS ===== */
 .theme-neon .tamanhos-grid {
+  display: flex;
+  flex-wrap: wrap;
   gap: 12px;
+  margin-bottom: 24px;
 }
 
 .theme-neon .tamanho-btn {
+  flex: 1;
+  min-width: 140px;
   background: rgba(255,255,255,0.04);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   border: 1px solid rgba(255,255,255,0.08);
   border-radius: 16px;
   padding: 16px 20px;
-  transition: var(--transition);
+  color: var(--on-surface);
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.3s ease;
 }
 
 .theme-neon .tamanho-btn:hover {
@@ -611,22 +728,40 @@
 }
 
 .theme-neon .tamanho-btn.active {
-  background: linear-gradient(135deg, var(--primary), var(--secondary));
+  background: linear-gradient(135deg, var(--primary-container), var(--secondary-container));
   border-color: transparent;
   box-shadow: 0 0 25px rgba(189,0,255,0.35);
 }
 
+.theme-neon .tamanho-btn strong {
+  display: block;
+  font-size: var(--font-body-md);
+  margin-bottom: 4px;
+}
+
 .theme-neon .tamanho-preco {
+  display: block;
+  font-size: var(--font-headline-sm);
+  font-weight: var(--font-headline-sm-weight);
   color: var(--secondary);
-  font-weight: 700;
+  margin-bottom: 2px;
 }
 
 .theme-neon .tamanho-btn small {
-  color: var(--text-muted);
-  font-size: 0.75rem;
+  color: var(--on-surface-variant);
+  font-size: var(--font-caption);
+  font-weight: var(--font-caption-weight);
+  opacity: 0.7;
 }
 
-/* SABORES CARDS */
+/* ===== SABORES CARDS ===== */
+.theme-neon .sabores-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
 .theme-neon .sabor-card {
   background: rgba(255,255,255,0.04);
   backdrop-filter: blur(12px);
@@ -634,7 +769,10 @@
   border: 1px solid rgba(255,255,255,0.08);
   border-radius: 16px;
   padding: 16px;
-  transition: var(--transition);
+  text-align: left;
+  color: var(--on-surface);
+  cursor: pointer;
+  transition: all 0.3s ease;
 }
 
 .theme-neon .sabor-card:hover {
@@ -644,145 +782,262 @@
 }
 
 .theme-neon .sabor-card.active {
-  background: linear-gradient(135deg, var(--primary), var(--secondary));
+  background: linear-gradient(135deg, var(--primary-container), var(--secondary-container));
   border-color: transparent;
-  box-shadow: 0 0 25px rgba(189,0,255,0.35) !important;
+  box-shadow: 0 0 25px rgba(189,0,255,0.35);
+}
+
+.theme-neon .sabor-card-nome {
+  display: block;
+  font-size: var(--font-body-md);
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.theme-neon .sabor-card-desc {
+  display: block;
+  font-size: var(--font-caption);
+  color: var(--on-surface-variant);
+  line-height: var(--font-caption-lh);
+  opacity: 0.7;
+  margin-bottom: 6px;
 }
 
 .theme-neon .sabor-qual {
-  border-radius: 9999px !important;
+  border-radius: var(--radius-pill) !important;
   padding: 2px 10px !important;
   font-size: 0.65rem !important;
 }
 
-/* CATEGORIAS - pill shaped como no design */
+/* ===== CATEGORIAS PILLS ===== */
+.theme-neon .filtros {
+  margin-bottom: 24px;
+}
+
+.theme-neon .categorias {
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px;
+  background: var(--surface-container-low);
+  border-radius: var(--radius-pill);
+  border: 1px solid rgba(255,255,255,0.05);
+}
+
 .theme-neon .cat-btn {
-  border-radius: 9999px !important;
-  padding: 8px 20px !important;
-  font-family: Montserrat, sans-serif;
-  font-size: 0.75rem;
-  font-weight: 700;
+  border-radius: var(--radius-pill) !important;
+  padding: 8px 24px !important;
+  font-size: var(--font-label-bold);
+  font-weight: var(--font-label-bold-weight);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: var(--font-label-bold-ls);
   background: transparent;
-  border: 1px solid rgba(255,255,255,0.1);
-  color: var(--text-muted);
-  transition: var(--transition);
+  border: none;
+  color: var(--on-surface-variant);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-family: 'Montserrat', sans-serif;
 }
 
 .theme-neon .cat-btn:hover {
-  color: var(--text-primary);
-  border-color: var(--primary);
+  color: var(--on-surface);
 }
 
 .theme-neon .cat-btn.active {
-  background: linear-gradient(135deg, var(--primary), var(--secondary));
-  color: #fff;
-  border-color: transparent;
-  box-shadow: 0 0 20px rgba(189,0,255,0.3);
+  background: var(--primary-container);
+  color: var(--on-primary-container);
+  box-shadow: var(--shadow-glow-primary);
 }
 
-/* MENU CARDS */
+/* ===== MENU CARDS ===== */
+.theme-neon .menu-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: var(--space-gutter);
+  margin-bottom: 40px;
+}
+
 .theme-neon .menu-card {
-  background: rgba(255,255,255,0.04);
+  background: rgba(255,255,255,0.05);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 1.5rem;
-  overflow: hidden;
-  transition: var(--transition);
+  border: 1px solid rgba(255,255,255,0.05);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  transition: all 0.3s ease;
+  display: flex;
+  flex-direction: column;
 }
 
 .theme-neon .menu-card:hover {
-  transform: translateY(-4px);
-  border-color: var(--secondary);
+  transform: translateY(-8px);
+  border-color: rgba(0,238,252,0.3);
   box-shadow: 0 0 30px rgba(189,0,255,0.12);
 }
 
 .theme-neon .card-img {
-  height: 180px;
+  height: 256px;
+  border-radius: 16px;
   overflow: hidden;
+  margin-bottom: 24px;
   background: rgba(255,255,255,0.03);
 }
 
-.theme-neon .card-img img {
+.theme-neon .card-img img,
+.theme-neon .card-img .emoji-placeholder {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
   transition: transform 0.5s ease;
+}
+
+.theme-neon .card-img .emoji-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 3rem;
 }
 
 .theme-neon .menu-card:hover .card-img img {
   transform: scale(1.1);
 }
 
+.theme-neon .card-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
 .theme-neon .card-body h3 {
-  font-family: Montserrat, sans-serif;
-  font-size: 1.125rem;
+  font-size: var(--font-body-lg);
   font-weight: 700;
+  line-height: var(--font-body-lg-lh);
+  margin-bottom: 4px;
 }
 
 .theme-neon .card-body .desc {
-  font-size: 0.75rem;
-  color: var(--text-muted);
-  line-height: 1.4;
+  font-size: var(--font-caption);
+  font-weight: var(--font-caption-weight);
+  line-height: var(--font-caption-lh);
+  color: var(--on-surface-variant);
+  opacity: 0.7;
+  margin-bottom: 16px;
+  flex: 1;
 }
 
 .theme-neon .card-body .preco {
-  font-size: 1.5rem;
-  font-weight: 700;
+  font-size: var(--font-headline-sm);
+  font-weight: var(--font-headline-sm-weight);
   color: var(--secondary);
+  margin-bottom: 12px;
 }
 
-/* SECTION TITLE */
+/* Card Add Button - pill shape (adaptado do design circular com ícone "+") */
+.theme-neon .card-body .preco {
+  margin-bottom: 0;
+}
+
+.theme-neon .card-body .btn-add {
+  margin-top: 12px;
+  align-self: stretch;
+  padding: 10px 24px;
+  background: linear-gradient(135deg, var(--primary-container), var(--secondary-container));
+  border: none;
+  border-radius: var(--radius-pill);
+  color: var(--on-primary-container);
+  font-size: var(--font-label-bold);
+  font-weight: var(--font-label-bold-weight);
+  cursor: pointer;
+  box-shadow: var(--shadow-glow-primary);
+  transition: all 0.3s ease;
+  text-transform: uppercase;
+  letter-spacing: var(--font-label-bold-ls);
+  line-height: 1;
+  font-family: 'Montserrat', sans-serif;
+}
+
+.theme-neon .card-body .btn-add:hover {
+  box-shadow: 0 0 40px rgba(0,238,252,0.6);
+  transform: translateY(-1px);
+}
+
+.theme-neon .card-body .btn-add:active {
+  transform: scale(0.98);
+}
+
+/* ===== SECTION TITLE ===== */
 .theme-neon .section-title {
-  font-family: Montserrat, sans-serif;
-  font-size: 2rem;
-  font-weight: 700;
-  line-height: 1.2;
+  font-size: var(--font-headline-md);
+  font-weight: var(--font-headline-md-weight);
+  line-height: var(--font-headline-md-lh);
+  margin-bottom: 24px;
 }
 
-/* BOTÕES GLOBAIS */
-.theme-neon .btn-add,
-.theme-neon .btn-montar-add,
+/* ===== BOTÕES GLOBAIS ===== */
 .theme-neon .btn-aceitar,
 .theme-neon .btn-finalizar {
-  background: linear-gradient(135deg, #BD00FF, #00EEFC) !important;
-  box-shadow: 0 0 20px rgba(189,0,255,0.4) !important;
+  background: linear-gradient(135deg, var(--primary-container), var(--secondary-container)) !important;
+  box-shadow: var(--shadow-glow-primary) !important;
   border: none !important;
-  border-radius: 9999px !important;
-  font-family: Montserrat, sans-serif;
-  font-weight: 700 !important;
-  letter-spacing: 0.03em;
-  transition: var(--transition);
+  border-radius: var(--radius-pill) !important;
+  font-weight: var(--font-label-bold-weight) !important;
+  font-family: 'Montserrat', sans-serif !important;
+  text-transform: uppercase;
+  letter-spacing: var(--font-label-bold-ls);
+  transition: all 0.3s ease;
 }
 
-.theme-neon .btn-add:hover,
-.theme-neon .btn-montar-add:hover,
 .theme-neon .btn-aceitar:hover,
 .theme-neon .btn-finalizar:hover {
   box-shadow: 0 0 40px rgba(0,238,252,0.6) !important;
   transform: translateY(-2px) !important;
 }
 
+/* Botão "Adicionar Pizza" no pizza-montar - full width */
 .theme-neon .btn-montar-add {
-  padding: 16px 32px !important;
-  font-size: 0.875rem !important;
+  display: block;
+  width: 100%;
+  padding: 18px 32px;
+  background: linear-gradient(135deg, var(--primary-container), var(--secondary-container));
+  border: none;
+  border-radius: var(--radius-pill);
+  color: var(--on-primary-container);
+  font-size: var(--font-label-bold);
+  font-weight: var(--font-label-bold-weight);
+  font-family: 'Montserrat', sans-serif;
+  text-transform: uppercase;
+  letter-spacing: var(--font-label-bold-ls);
+  cursor: pointer;
+  box-shadow: var(--shadow-glow-primary);
+  transition: all 0.3s ease;
+  text-align: center;
 }
 
-/* NAV BUTTONS */
+.theme-neon .btn-montar-add:hover:not(:disabled) {
+  box-shadow: 0 0 40px rgba(0,238,252,0.6);
+  transform: translateY(-2px);
+}
+
+.theme-neon .btn-montar-add:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ===== NAV BUTTONS ===== */
 .theme-neon .nav-btn {
-  border-radius: 9999px !important;
-  font-family: Montserrat, sans-serif;
-  font-size: 0.75rem;
-  font-weight: 700;
+  border-radius: var(--radius-pill) !important;
+  font-family: 'Montserrat', sans-serif;
+  font-size: var(--font-label-bold);
+  font-weight: var(--font-label-bold-weight);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: var(--font-label-bold-ls);
   padding: 8px 20px;
-  transition: var(--transition);
+  transition: all 0.3s ease;
 }
 
 .theme-neon .nav-btn.active {
-  background: linear-gradient(135deg, var(--primary), var(--secondary)) !important;
+  background: linear-gradient(135deg, var(--primary-container), var(--secondary-container)) !important;
   border-color: transparent !important;
-  box-shadow: 0 0 20px rgba(189,0,255,0.35);
+  box-shadow: var(--shadow-glow-primary);
   color: #fff !important;
 }
 
@@ -796,7 +1051,7 @@
   box-shadow: 0 0 12px rgba(189,0,255,0.6);
 }
 
-/* ADMIN */
+/* ===== ADMIN ===== */
 .theme-neon .pedido-card,
 .theme-neon .fin-card {
   background: rgba(255,255,255,0.04) !important;
@@ -819,7 +1074,7 @@
   border: 1px solid rgba(255,255,255,0.08) !important;
 }
 
-/* CARRINHO */
+/* ===== CARRINHO ===== */
 @media (min-width: 1024px) {
   .theme-neon .carrinho-page {
     max-width: 100% !important;
@@ -828,7 +1083,7 @@
   .theme-neon #carrinho-content {
     display: grid !important;
     grid-template-columns: 7fr 5fr !important;
-    gap: 24px !important;
+    gap: var(--space-gutter) !important;
     align-items: start !important;
   }
 
@@ -844,6 +1099,7 @@
   -webkit-backdrop-filter: blur(20px) !important;
   border: 1px solid rgba(255,255,255,0.08) !important;
   border-radius: 16px;
+  padding: 16px;
 }
 
 .theme-neon .carrinho-item:hover {
@@ -855,17 +1111,18 @@
   backdrop-filter: blur(20px) !important;
   -webkit-backdrop-filter: blur(20px) !important;
   border: 1px solid rgba(189,0,255,0.2) !important;
-  border-radius: 1.5rem;
+  border-radius: var(--radius-lg);
   padding: 24px;
 }
 
 .theme-neon .cliente-form input {
   background: rgba(0,0,0,0.3) !important;
   border: 1px solid rgba(255,255,255,0.08) !important;
-  border-radius: 9999px !important;
-  color: var(--text-primary) !important;
+  border-radius: var(--radius-pill) !important;
+  color: var(--on-surface) !important;
   padding: 12px 20px !important;
-  font-family: Montserrat, sans-serif;
+  font-family: 'Montserrat', sans-serif;
+  transition: all 0.3s ease;
 }
 
 .theme-neon .cliente-form input:focus {
@@ -882,7 +1139,7 @@
 
 .theme-neon .item-qtd {
   background: rgba(255,255,255,0.06);
-  border-radius: 9999px;
+  border-radius: var(--radius-pill);
   padding: 2px 6px;
   border: 1px solid rgba(255,255,255,0.08);
 }
@@ -901,7 +1158,24 @@
   background: transparent !important;
 }
 
-/* BOTTOM NAV */
+/* Input de busca de sabores */
+.theme-neon .input-busca-sabor {
+  background: rgba(0,0,0,0.3) !important;
+  border: 1px solid rgba(255,255,255,0.08) !important;
+  border-radius: var(--radius-pill) !important;
+  color: var(--on-surface) !important;
+  padding: 12px 20px !important;
+  font-family: 'Montserrat', sans-serif;
+  transition: all 0.3s ease;
+}
+
+.theme-neon .input-busca-sabor:focus {
+  border-color: var(--primary) !important;
+  box-shadow: 0 0 15px rgba(189,0,255,0.15);
+  outline: none;
+}
+
+/* ===== BOTTOM NAV ===== */
 .bottom-nav {
   display: none;
 }
@@ -921,8 +1195,7 @@
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
   border-top: 1px solid rgba(255,255,255,0.06);
-  box-shadow: 0 -10px 30px rgba(0,0,0,0.5);
-  border-radius: 16px 16px 0 0;
+  box-shadow: var(--shadow-bottom-nav);
 }
 
 .theme-neon .bottom-nav-btn {
@@ -932,16 +1205,30 @@
   gap: 2px;
   background: none;
   border: none;
-  color: var(--text-muted);
+  color: rgba(229,225,228,0.4);
   cursor: pointer;
   padding: 4px 12px;
-  transition: var(--transition);
+  transition: all 0.3s ease;
   position: relative;
-  font-family: Montserrat, sans-serif;
+  font-family: 'Montserrat', sans-serif;
 }
 
 .theme-neon .bottom-nav-btn.active {
-  color: var(--primary);
+  color: var(--on-surface);
+}
+
+/* Highlight center button like design */
+.theme-neon .bottom-nav-btn:nth-child(2) {
+  background: rgba(189,0,255,0.2);
+  border-radius: 50%;
+  width: 48px;
+  height: 48px;
+  justify-content: center;
+  box-shadow: 0 0 15px rgba(189,0,255,0.6);
+}
+
+.theme-neon .bottom-nav-btn:nth-child(2).active {
+  background: var(--primary-container);
 }
 
 .theme-neon .bottom-nav-icon {
@@ -973,16 +1260,9 @@
   box-shadow: 0 0 10px rgba(189,0,255,0.5);
 }
 
-.theme-neon .main {
-  padding-bottom: 80px;
-}
-
 @media (min-width: 768px) {
   .theme-neon .bottom-nav {
     display: none !important;
-  }
-  .theme-neon .main {
-    padding-bottom: 0;
   }
 }
 

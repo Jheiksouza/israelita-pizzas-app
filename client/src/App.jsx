@@ -255,6 +255,7 @@ function Cardapio({ onAdicionar, pizzaEditando, onPizzaEditDone }) {
         </div>
 
       <div className="pizza-montar">
+        <span className="neon-experiencia-label">Experiência Custom</span>
         <h3 className="montar-title">🍕 Monte sua Pizza</h3>
         <p className="sabores-label">Escolha o tamanho:</p>
         <div className="tamanhos-grid">
