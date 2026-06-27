@@ -185,7 +185,7 @@ app.post('/login', (req, res) => {
 })
 
 // Servir frontend buildado
-const distDir = path.resolve(__dirname, 'client', 'dist')
+const distDir = path.resolve(__dirname, 'dist')
 app.use(express.static(distDir))
 app.get('*', (req, res) => {
   res.sendFile(path.join(distDir, 'index.html'))
