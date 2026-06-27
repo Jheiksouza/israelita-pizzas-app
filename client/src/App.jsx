@@ -281,10 +281,11 @@ function Cardapio({ onAdicionar, pizzaEditando, onPizzaEditDone }) {
               }).map(s => (
                 <button
                   key={s.id}
-                  className={`sabor-btn ${saboresSel.includes(s.id) ? 'active' : ''}`}
+                  className={`sabor-card ${saboresSel.includes(s.id) ? 'active' : ''}`}
                   onClick={() => toggleSabor(s.id)}
                 >
-                  {s.nome}
+                  <span className="sabor-card-nome">{s.nome}</span>
+                  {s.descricao && <span className="sabor-card-desc">{s.descricao}</span>}
                   {s.classificacao && <span className={`sabor-qual tipo-badge tipo-${s.classificacao}`}>{s.classificacao}</span>}
                 </button>
               ))}

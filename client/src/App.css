@@ -876,40 +876,58 @@ body {
 }
 
 .sabores-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 12px;
   margin-bottom: 18px;
 }
 
-.sabor-btn {
-  background: var(--bg-surface);
-  color: var(--text-secondary);
+.sabor-card {
+  background: var(--bg-card);
+  color: var(--text-primary);
   border: 1.5px solid var(--border);
-  padding: 10px 22px;
-  border-radius: var(--radius-xs);
+  padding: 14px 16px;
+  border-radius: var(--radius-md);
   cursor: pointer;
   font-size: 0.88rem;
   font-weight: 500;
   font-family: var(--font-body);
   transition: var(--transition);
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  text-align: left;
+  box-shadow: var(--shadow-sm);
 }
 
-.sabor-btn:hover {
+.sabor-card:hover {
   border-color: var(--primary);
-  color: var(--primary);
-  background: var(--primary-soft);
   transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
 }
 
-.sabor-btn.active {
+.sabor-card.active {
   background: linear-gradient(135deg, var(--primary), var(--primary-dark));
   color: #fff;
   border-color: transparent;
-  box-shadow: 0 4px 12px rgba(229,57,53,0.2);
+  box-shadow: 0 4px 16px var(--primary-glow);
+}
+
+.sabor-card-nome {
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.sabor-card-desc {
+  font-weight: 400;
+  font-size: 0.78rem;
+  opacity: 0.75;
+  line-height: 1.4;
+}
+
+.sabor-card.active .sabor-card-desc {
+  opacity: 0.9;
 }
 
 .sabor-qual {
@@ -2265,12 +2283,12 @@ body {
   }
 
   .sabores-grid {
-    gap: 6px;
+    grid-template-columns: 1fr;
+    gap: 8px;
   }
 
-  .sabor-btn {
-    padding: 8px 14px;
-    font-size: 0.82rem;
+  .sabor-card {
+    padding: 12px 14px;
   }
 
   .modal {
