@@ -106,7 +106,6 @@ function App() {
 function Cardapio({ onAdicionar, pizzaEditando, onPizzaEditDone }) {
   const [menu, setMenu] = useState([])
   const [categoria, setCategoria] = useState('Todas')
-  const [busca, setBusca] = useState('')
   const [tamanhoSel, setTamanhoSel] = useState(null)
   const [saboresSel, setSaboresSel] = useState([])
   const [buscaSabor, setBuscaSabor] = useState('')
@@ -156,7 +155,6 @@ function Cardapio({ onAdicionar, pizzaEditando, onPizzaEditDone }) {
   const categorias = ['Todas', ...new Set(produtos.map(i => i.categoria))]
   const filtrados = produtos.filter(i => {
     if (categoria !== 'Todas' && i.categoria !== categoria) return false
-    if (busca && !i.nome.toLowerCase().includes(busca.toLowerCase())) return false
     return true
   })
 
@@ -225,13 +223,6 @@ function Cardapio({ onAdicionar, pizzaEditando, onPizzaEditDone }) {
         )}
       </div>
       <div className="filtros">
-          <input
-            type="text"
-            placeholder="Buscar item..."
-            value={busca}
-            onChange={e => setBusca(e.target.value)}
-            className="input-busca"
-          />
           <div className="categorias">
             {categorias.map(c => (
               <button
