@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { buscarCEP, formatCEP, formatEndereco } from './cepHelper'
+import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet'
+import L from 'leaflet'
 
 const API = '/api'
 
@@ -565,6 +567,8 @@ function AuthModal({ onLogin, onClose }) {
   const [senha, setSenha] = useState('')
   const [telefone, setTelefone] = useState('')
   const [endereco, setEndereco] = useState('')
+  const [enderecoLat, setEnderecoLat] = useState(null)
+  const [enderecoLng, setEnderecoLng] = useState(null)
   const [erro, setErro] = useState('')
   const [loading, setLoading] = useState(false)
   const [mostrarEnderecoModal, setMostrarEnderecoModal] = useState(false)
@@ -586,7 +590,7 @@ function AuthModal({ onLogin, onClose }) {
     e.preventDefault(); setErro(''); setLoading(true)
     try {
       const endpoint = modo === 'login' ? '/auth/login' : '/auth/signup'
-      const body = modo === 'login' ? { email, senha } : { nome, email, senha, telefone, endereco }
+      const body = modo === 'login' ? { email, senha } : { nome, email, senha, telefone, endereco, endereco_lat: enderecoLat, endereco_lng: enderecoLng }
       const res = await fetch(`${API}${endpoint}`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
       })
@@ -629,7 +633,7 @@ function AuthModal({ onLogin, onClose }) {
         {mostrarEnderecoModal && (
           <EnderecoFormModal
             enderecoInicial={endereco}
-            onSave={(addr) => { setEndereco(addr); setMostrarEnderecoModal(false); }}
+            onSave={(addr, lat, lng) => { setEndereco(addr); setEnderecoLat(lat); setEnderecoLng(lng); setMostrarEnderecoModal(false); }}
             onClose={() => setMostrarEnderecoModal(false)}
           />
         )}
@@ -1744,6 +1748,8 @@ function AddressModal({ user, token, onClose, onSave }) {
   const [mostrarForm, setMostrarForm] = useState(false)
   const [editandoId, setEditandoId] = useState(null)
   const [formErro, setFormErro] = useState('')
+  const [mostrarMapa, setMostrarMapa] = useState(false)
+  const [enderecoParaMapa, setEnderecoParaMapa] = useState('')
   const cepTimer = useRef(null)
 
   const handleCepChange = (value) => {
@@ -1798,6 +1804,20 @@ function AddressModal({ user, token, onClose, onSave }) {
         onSave({ enderecos: data.enderecos, endereco: data.endereco, enderecoSelecionado: novoSelecionado })
       }
     } catch {}
+  }
+
+  const handleAbrirMapa = (enderecoCompleto) => {
+    setEnderecoParaMapa(enderecoCompleto)
+    setMostrarMapa(true)
+  }
+
+  const handleMapaConfirm = ({ lat, lng }) => {
+    // Atualiza o endereço atual (form ou item da lista) com lat/lng
+    if (editandoId) {
+      setEnderecos(prev => prev.map(a => a.id === editandoId ? { ...a, lat, lng } : a))
+    } else {
+      setForm(f => ({ ...f, lat, lng }))
+    }
   }
 
   const handleDelete = async (id) => {
@@ -1855,6 +1875,7 @@ function AddressModal({ user, token, onClose, onSave }) {
             <input type="radio" name="endereco-modal" checked={selecionado === addr.id} onChange={() => {}} />
             <span className="endereco-text">{formatEndereco(addr)}</span>
             <button className="endereco-edit" onClick={e => { e.stopPropagation(); handleEdit(addr) }}>✏️</button>
+            <button className="endereco-mapa" onClick={e => { e.stopPropagation(); handleAbrirMapa(formatEndereco(addr)) }}>📍</button>
             {enderecos.length > 1 && <button className="endereco-remove" onClick={e => { e.stopPropagation(); handleDelete(addr.id) }}>✕</button>}
           </div>
         ))}
@@ -1878,6 +1899,7 @@ function AddressModal({ user, token, onClose, onSave }) {
               <input className="endereco-input endereco-input-cidade" placeholder="Cidade" value={form.cidade} onChange={e => setForm(f => ({ ...f, cidade: e.target.value }))} />
               <input className="endereco-input endereco-input-estado" placeholder="UF" maxLength={2} value={form.estado} onChange={e => setForm(f => ({ ...f, estado: e.target.value }))} />
             </div>
+            <button className="endereco-mapa-btn" type="button" onClick={() => handleAbrirMapa(formatEndereco(form))}>📍 Marcar local exato no mapa</button>
             <div className="endereco-form-actions">
               <button className="btn-add" onClick={handleAdd}>{editandoId ? 'Salvar' : 'Adicionar'}</button>
               <button className="btn-del" onClick={cancelForm}>Cancelar</button>
@@ -1885,6 +1907,12 @@ function AddressModal({ user, token, onClose, onSave }) {
           </div>
         )}
         {!mostrarForm && <button className="btn-add" style={{marginTop:16}} onClick={onClose}>Concluído</button>}
+        <MapaEntregaModal
+          isOpen={mostrarMapa}
+          onClose={() => setMostrarMapa(false)}
+          onConfirm={handleMapaConfirm}
+          enderecoInicial={enderecoParaMapa}
+        />
       </div>
     </div>
   )
@@ -1901,6 +1929,8 @@ function EnderecoFormModal({ onSave, onClose, enderecoInicial }) {
   })
   const [buscandoCep, setBuscandoCep] = useState(false)
   const [formErro, setFormErro] = useState('')
+  const [mostrarMapa, setMostrarMapa] = useState(false)
+  const [enderecoParaMapa, setEnderecoParaMapa] = useState('')
   const cepTimer = useRef(null)
 
   const handleCepChange = (value) => {
@@ -1918,12 +1948,21 @@ function EnderecoFormModal({ onSave, onClose, enderecoInicial }) {
     }
   }
 
+  const handleAbrirMapa = (enderecoCompleto) => {
+    setEnderecoParaMapa(enderecoCompleto)
+    setMostrarMapa(true)
+  }
+
+  const handleMapaConfirm = ({ lat, lng }) => {
+    setForm(f => ({ ...f, lat, lng }))
+  }
+
   const handleSave = () => {
     setFormErro('')
     if (!form.cep) { setFormErro('Preencha o CEP'); return }
     if (!form.rua) { setFormErro('Preencha a Rua'); return }
     if (!form.numero) { setFormErro('Preencha o Número'); return }
-    onSave(formatEndereco(form))
+    onSave(formatEndereco(form), form.lat, form.lng)
   }
 
   return (
@@ -1948,13 +1987,119 @@ function EnderecoFormModal({ onSave, onClose, enderecoInicial }) {
             <input className="endereco-input endereco-input-cidade" placeholder="Cidade" value={form.cidade} onChange={e => setForm(f => ({ ...f, cidade: e.target.value }))} />
             <input className="endereco-input endereco-input-estado" placeholder="UF" maxLength={2} value={form.estado} onChange={e => setForm(f => ({ ...f, estado: e.target.value }))} />
           </div>
+          <button className="endereco-mapa-btn" type="button" onClick={() => handleAbrirMapa(formatEndereco(form))}>📍 Marcar local exato no mapa</button>
           <div className="endereco-form-actions">
             <button className="btn-add" onClick={handleSave}>Salvar endereço</button>
           </div>
         </div>
+        <MapaEntregaModal
+          isOpen={mostrarMapa}
+          onClose={() => setMostrarMapa(false)}
+          onConfirm={handleMapaConfirm}
+          enderecoInicial={enderecoParaMapa}
+        />
       </div>
     </div>
   )
+}
+
+function MapaEntregaModal({
+  isOpen,
+  onClose,
+  onConfirm,
+  enderecoInicial,
+  latInicial,
+  lngInicial,
+}) {
+  const [lat, setLat] = useState(latInicial || -23.5505)
+  const [lng, setLng] = useState(lngInicial || -46.6333)
+  const [buscando, setBuscando] = useState(false)
+  const mapRef = useRef(null)
+
+  useEffect(() => {
+    if (!enderecoInicial || (latInicial && lngInicial)) return
+    const geocode = async () => {
+      setBuscando(true)
+      try {
+        const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(enderecoInicial)}&limit=1`
+        const res = await fetch(url, { headers: { 'User-Agent': 'IsraelitaPizzasApp/1.0' } })
+        const data = await res.json()
+        if (data[0]) {
+          const newLat = parseFloat(data[0].lat)
+          const newLng = parseFloat(data[0].lon)
+          setLat(newLat)
+          setLng(newLng)
+          mapRef.current?.flyTo([newLat, newLng], 16)
+        }
+      } catch (e) {
+        console.error('Erro geocoding:', e)
+      } finally {
+        setBuscando(false)
+      }
+    }
+    geocode()
+  }, [enderecoInicial, latInicial, lngInicial])
+
+  const handleMapClick = (newLat, newLng) => {
+    setLat(newLat)
+    setLng(newLng)
+  }
+
+  const handleConfirm = () => {
+    onConfirm({ lat, lng, endereco: enderecoInicial })
+    onClose()
+  }
+
+  if (!isOpen) return null
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal modal-mapa" onClick={e => e.stopPropagation()} style={{ width: '90vw', maxWidth: '600px', maxHeight: '85vh' }}>
+        <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+          <h3 style={{ margin: 0 }}>📍 Marcar Local Exato de Entrega</h3>
+          <button className="modal-close" onClick={onClose}>✕</button>
+        </div>
+        <p className="mapa-instrucao" style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: 12 }}>
+          O mapa abriu no endereço informado. <strong>Clique no mapa</strong> para ajustar o ponto exato da entrega (portão, portaria, bloco, etc.).
+        </p>
+        <div className="mapa-container" style={{ height: '350px', borderRadius: '8px', overflow: 'hidden' }}>
+          <MapContainer
+            ref={mapRef}
+            center={[lat, lng]}
+            zoom={16}
+            scrollWheelZoom={true}
+            style={{ width: '100%', height: '100%' }}
+          >
+            <TileLayer
+              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            />
+            <Marker position={[lat, lng]} icon={L.divIcon({ className: 'custom-marker', html: '📍', iconSize: [32, 32], iconAnchor: [16, 32] })}>
+            </Marker>
+            <MapClickHandler onClick={handleMapClick} />
+          </MapContainer>
+        </div>
+        <div className="mapa-coords" style={{ marginTop: 8, fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+          Lat: {lat.toFixed(6)}, Lng: {lng.toFixed(6)}
+        </div>
+        <div className="form-actions" style={{ marginTop: 16, display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+          <button className="btn-del" onClick={onClose}>Cancelar</button>
+          <button className="btn-add" onClick={handleConfirm} disabled={buscando}>
+            {buscando ? 'Carregando...' : '✅ Confirmar Local Exato'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function MapClickHandler({ onClick }) {
+  const map = useMapEvents({
+    click(e) {
+      onClick(e.latlng.lat, e.latlng.lng)
+    }
+  })
+  return null
 }
 
 export default App

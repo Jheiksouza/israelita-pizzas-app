@@ -42,7 +42,9 @@ CREATE TABLE IF NOT EXISTS orders (
   cliente JSONB DEFAULT '{}',
   itens JSONB DEFAULT '[]',
   total REAL DEFAULT 0,
-  user_id INTEGER REFERENCES users(id) ON DELETE SET NULL
+  user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  entrega_lat DOUBLE PRECISION,
+  entrega_lng DOUBLE PRECISION
 );
 
 -- Tabela de carrinhos

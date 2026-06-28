@@ -75,13 +75,17 @@ app.use(authMiddleware)
 app.post('/auth/signup', async (req, res) => {
   if (!checkSupabase(res)) return
   try {
-    const { nome, email, senha, telefone, endereco } = req.body
+    const { nome, email, senha, telefone, endereco, endereco_lat, endereco_lng } = req.body
     if (!email || !senha) return res.status(400).json({ erro: 'Email e senha obrigatórios' })
     const { data: existente } = await supabase.from('users').select('id').eq('email', email).maybeSingle()
     if (existente) return res.status(409).json({ erro: 'Email já cadastrado' })
     const hash = await bcrypt.hash(senha, 10)
+    
+    // Preparar endereços com lat/lng se fornecidos
+    const enderecosIniciais = endereco ? [{ id: 'addr1', rua: endereco, lat: endereco_lat, lng: endereco_lng }] : []
+    
     const { data, error } = await supabase.from('users').insert({
-      nome: nome || '', email, senha: hash, telefone: telefone || '', endereco: endereco || '', enderecos: endereco ? [{ id: 'addr1', rua: endereco }] : [], enderecoselecionado: endereco ? 'addr1' : null
+      nome: nome || '', email, senha: hash, telefone: telefone || '', endereco: endereco || '', enderecos: enderecosIniciais, enderecoselecionado: endereco ? 'addr1' : null
     }).select()
     if (error) throw error
     const token = jwt.sign({ id: data[0].id, email: data[0].email, nome: data[0].nome }, JWT_SECRET, { expiresIn: '7d' })
@@ -340,6 +344,10 @@ app.post('/orders', async (req, res) => {
       return res.status(400).json({ erro: 'Dados incompletos: cliente e itens são obrigatórios' })
     }
 
+    // Extrair lat/lng do cliente para colunas separadas (para queries geoespaciais futuras)
+    const entrega_lat = cliente.lat || cliente.endereco_lat || null
+    const entrega_lng = cliente.lng || cliente.endereco_lng || null
+
     const pedido = {
       data: new Date().toISOString(),
       status: 'pendente',
@@ -347,7 +355,9 @@ app.post('/orders', async (req, res) => {
       cliente,
       itens,
       total,
-      user_id: req.user ? req.user.id : null
+      user_id: req.user ? req.user.id : null,
+      entrega_lat,
+      entrega_lng
     }
 
     const { data, error } = await supabase.from('orders').insert(pedido).select()

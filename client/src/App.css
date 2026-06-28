@@ -5108,3 +5108,62 @@ body {
 .endereco-form-actions .btn-add { flex: 1; }
 .endereco-form-actions .btn-del { flex: 1; text-align: center; }
 
+/* Botões de mapa */
+.endereco-mapa {
+  padding: 6px 10px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1rem;
+  border-radius: var(--radius-sm);
+  transition: var(--transition);
+}
+.endereco-mapa:hover { background: color-mix(in oklab, var(--accent) 15%, transparent); }
+
+.endereco-mapa-btn {
+  width: 100%;
+  padding: 12px;
+  border: 2px dashed var(--accent);
+  border-radius: var(--radius-sm);
+  background: color-mix(in oklab, var(--accent) 5%, transparent);
+  color: var(--accent);
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-family: inherit;
+  font-weight: 500;
+  margin-top: 4px;
+  transition: var(--transition);
+}
+.endereco-mapa-btn:hover { 
+  border-color: var(--accent); 
+  background: color-mix(in oklab, var(--accent) 12%, transparent); 
+}
+
+/* Modal do mapa */
+.modal-mapa {
+  max-width: 90vw !important;
+}
+.mapa-container {
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+.mapa-instrucao {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-bottom: 12px;
+  line-height: 1.5;
+}
+.mapa-coords {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-top: 8px;
+  text-align: center;
+}
+.custom-marker {
+  font-size: 2.5rem;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+  cursor: pointer;
+  transition: transform 0.1s;
+}
+.custom-marker:hover { transform: scale(1.1); }
+
