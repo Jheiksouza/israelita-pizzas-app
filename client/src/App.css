@@ -247,19 +247,7 @@
 }
 
 /* ===== HERO ===== */
-.theme-classic .cardapio-hero {
-  position: relative;
-  overflow: hidden;
-  border-radius: 0 !important;
-  margin-bottom: 0 !important;
-  min-height: auto !important;
-  box-shadow: none !important;
-  display: block;
-  background-image: url('./assets/delicious-img/hero-pizza.jpg') !important;
-  background-size: cover !important;
-  background-position: center !important;
-  background-repeat: no-repeat !important;
-}
+.theme-classic .cardapio-hero { background-image: url("/delicious-img/hero-pizza.jpg") !important; background-size: cover !important; background-position: center !important; display: block !important; height: 400px !important; visibility: visible !important; opacity: 1 !important; z-index: 10 !important; }
 
 /* Hide the default overlay */
 .theme-classic .cardapio-hero > .hero-overlay {
@@ -1393,9 +1381,7 @@
 
 /* ============ THEME-SPECIFIC STYLES ============ */
 
-.theme-elegance .cardapio-hero {
-  box-shadow: var(--shadow-lg), 0 0 60px rgba(212,175,55,0.06);
-}
+.theme-elegance .cardapio-hero { background-image: url("/delicious-img/hero-pizza.jpg") !important; background-size: cover !important; background-position: center !important; display: block !important; height: 400px !important; visibility: visible !important; opacity: 1 !important; z-index: 10 !important; }
 
 .theme-elegance .menu-card {
   background: rgba(20,20,32,0.7);
@@ -1556,9 +1542,7 @@
   display: none;
 }
 
-.theme-noturno .cardapio-hero {
-  box-shadow: var(--shadow-md), 0 0 60px rgba(0,188,212,0.06);
-}
+.theme-noturno .cardapio-hero { background-image: url("/delicious-img/hero-pizza.jpg") !important; background-size: cover !important; background-position: center !important; display: block !important; height: 400px !important; visibility: visible !important; opacity: 1 !important; z-index: 10 !important; }
 
 .theme-noturno .header {
   border-bottom: 1px solid var(--border);
@@ -1757,20 +1741,9 @@
 }
 
 /* ===== HERO ===== */
-.theme-neon .cardapio-hero {
-  display: flex !important;
-  position: relative;
-  height: 618px;
-  width: 100%;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-  border-radius: 0;
-  margin: 0;
-  box-shadow: none;
-}
+.theme-neon .cardapio-hero { background-image: url("/delicious-img/hero-pizza.jpg") !important; background-size: cover !important; background-position: center !important; display: block !important; height: 400px !important; visibility: visible !important; opacity: 1 !important; z-index: 10 !important; }
 @media (min-width: 768px) {
-  .theme-neon .cardapio-hero { height: 707px; }
+  .theme-neon .cardapio-hero { background-image: url("/delicious-img/hero-pizza.jpg") !important; background-size: cover !important; background-position: center !important; display: block !important; height: 400px !important; visibility: visible !important; opacity: 1 !important; z-index: 10 !important; }
 }
 
 /* Gradient overlays - 3 camadas */
@@ -2667,21 +2640,7 @@ body {
   to { opacity: 1; transform: translateY(0); }
 }
 
-.cardapio-hero {
-  position: relative;
-  border-radius: var(--radius-lg);
-  overflow: hidden;
-  margin-bottom: 32px;
-  min-height: 220px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: var(--shadow-md);
-  background-image: url('https://images.unsplash.com/photo-1513104890138-7c749659a591?w=1200&q=80');
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
-}
+.cardapio-hero { background-image: url("/delicious-img/hero-pizza.jpg") !important; background-size: cover !important; background-position: center !important; display: block !important; height: 400px !important; visibility: visible !important; opacity: 1 !important; z-index: 10 !important; }
 
 .cardapio-hero::before {
   content: '';
@@ -2717,11 +2676,7 @@ body {
   user-select: none;
 }
 
-.layout-modern .cardapio-hero {
-  min-height: 300px;
-  align-items: flex-end;
-  justify-content: flex-start;
-}
+.layout-modern .cardapio-hero { background-image: url("/delicious-img/hero-pizza.jpg") !important; background-size: cover !important; background-position: center !important; display: block !important; height: 400px !important; visibility: visible !important; opacity: 1 !important; z-index: 10 !important; }
 
 .layout-modern .hero-content {
   text-align: left;
@@ -2744,9 +2699,7 @@ body {
   font-size: 1rem;
 }
 
-.layout-compact .cardapio-hero {
-  min-height: 140px;
-}
+.layout-compact .cardapio-hero { background-image: url("/delicious-img/hero-pizza.jpg") !important; background-size: cover !important; background-position: center !important; display: block !important; height: 400px !important; visibility: visible !important; opacity: 1 !important; z-index: 10 !important; }
 
 .layout-compact .hero-content {
   text-align: right;
@@ -4304,9 +4257,7 @@ body {
     font-size: 1.8rem;
   }
 
-  .cardapio-hero {
-    min-height: 160px;
-  }
+  .cardapio-hero { background-image: url("/delicious-img/hero-pizza.jpg") !important; background-size: cover !important; background-position: center !important; display: block !important; height: 400px !important; visibility: visible !important; opacity: 1 !important; z-index: 10 !important; }
 
   .hero-content {
     padding: 32px 16px;
@@ -4361,9 +4312,7 @@ body {
     font-size: 1.4rem;
   }
 
-  .cardapio-hero {
-    min-height: 130px;
-  }
+  .cardapio-hero { background-image: url("/delicious-img/hero-pizza.jpg") !important; background-size: cover !important; background-position: center !important; display: block !important; height: 400px !important; visibility: visible !important; opacity: 1 !important; z-index: 10 !important; }
 
   .montar-title {
     font-size: 1.15rem;
@@ -4392,4 +4341,5 @@ body {
   }
 }
 
-.cardapio-hero { display: block !important; visibility: visible !important; opacity: 1 !important; z-index: 10 !important; }
+.cardapio-hero { background-image: url("/delicious-img/hero-pizza.jpg") !important; background-size: cover !important; background-position: center !important; display: block !important; height: 400px !important; visibility: visible !important; opacity: 1 !important; z-index: 10 !important; }
+

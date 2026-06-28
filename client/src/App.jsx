@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
-import heroPizza from './assets./assets/delicious-img/hero-pizza.jpg';
+
 
 const API = '/api'
 
