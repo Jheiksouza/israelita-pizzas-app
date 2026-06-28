@@ -5048,6 +5048,9 @@ body {
   background: var(--bg-surface);
   border-radius: var(--radius-sm);
   border: 1px solid var(--border-light);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .endereco-form .endereco-input {
@@ -5060,15 +5063,11 @@ body {
   font-size: 0.875rem;
   font-family: 'Inter', sans-serif;
   outline: none;
-  margin-bottom: 12px;
   transition: border-color 0.2s;
   box-sizing: border-box;
 }
 .endereco-form .endereco-input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(229,57,53,0.1); }
 .endereco-form .endereco-input::placeholder { color: var(--text-muted); }
-.endereco-form-row .endereco-input,
-.endereco-form-row-triple .endereco-input,
-.endereco-form-cep-row .endereco-input { margin-bottom: 0; }
 
 .endereco-form-cep-row {
   display: flex;
