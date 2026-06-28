@@ -81,11 +81,11 @@ app.post('/auth/signup', async (req, res) => {
     if (existente) return res.status(409).json({ erro: 'Email já cadastrado' })
     const hash = await bcrypt.hash(senha, 10)
     const { data, error } = await supabase.from('users').insert({
-      nome: nome || '', email, senha: hash, telefone: telefone || '', endereco: endereco || ''
+      nome: nome || '', email, senha: hash, telefone: telefone || '', endereco: endereco || '', enderecos: endereco ? [{ id: 'addr1', rua: endereco }] : [], enderecoSelecionado: endereco ? 'addr1' : null
     }).select()
     if (error) throw error
     const token = jwt.sign({ id: data[0].id, email: data[0].email, nome: data[0].nome }, JWT_SECRET, { expiresIn: '7d' })
-    res.status(201).json({ token, user: { id: data[0].id, nome: data[0].nome, email: data[0].email, telefone: data[0].telefone, endereco: data[0].endereco } })
+    res.status(201).json({ token, user: { id: data[0].id, nome: data[0].nome, email: data[0].email, telefone: data[0].telefone, endereco: data[0].endereco, enderecos: data[0].enderecos, enderecoSelecionado: data[0].enderecoSelecionado } })
   } catch (err) {
     console.error('Erro ao cadastrar:', err)
     res.status(500).json({ erro: 'Erro ao cadastrar' })
@@ -102,7 +102,7 @@ app.post('/auth/login', async (req, res) => {
     const ok = await bcrypt.compare(senha, user.senha)
     if (!ok) return res.status(401).json({ erro: 'Email ou senha inválidos' })
     const token = jwt.sign({ id: user.id, email: user.email, nome: user.nome }, JWT_SECRET, { expiresIn: '7d' })
-    res.json({ token, user: { id: user.id, nome: user.nome, email: user.email, telefone: user.telefone, endereco: user.endereco } })
+    res.json({ token, user: { id: user.id, nome: user.nome, email: user.email, telefone: user.telefone, endereco: user.endereco, enderecos: user.enderecos, enderecoSelecionado: user.enderecoSelecionado } })
   } catch (err) {
     console.error('Erro ao logar:', err)
     res.status(500).json({ erro: 'Erro ao fazer login' })
@@ -113,7 +113,7 @@ app.get('/auth/me', async (req, res) => {
   if (!req.user) return res.status(401).json({ erro: 'Não autenticado' })
   if (!checkSupabase(res)) return
   try {
-    const { data, error } = await supabase.from('users').select('id,nome,email,telefone,endereco').eq('id', req.user.id).single()
+    const { data, error } = await supabase.from('users').select('id,nome,email,telefone,endereco,enderecos,enderecoSelecionado').eq('id', req.user.id).single()
     if (error || !data) return res.status(404).json({ erro: 'Usuário não encontrado' })
     res.json(data)
   } catch (err) {
@@ -129,15 +129,34 @@ app.patch('/auth/me', async (req, res) => {
     const updates = {}
     if (nome !== undefined) updates.nome = nome
     if (telefone !== undefined) updates.telefone = telefone
-    if (endereco !== undefined) updates.endereco = endereco
+    if (endereco !== undefined) { updates.endereco = endereco; updates.enderecos = [{ id: 'addr1', rua: endereco }]; updates.enderecoSelecionado = 'addr1' }
     if (Object.keys(updates).length === 0) return res.status(400).json({ erro: 'Nenhum campo para atualizar' })
     const { data, error } = await supabase.from('users').update(updates).eq('id', req.user.id).select()
     if (error) throw error
     const token = jwt.sign({ id: data[0].id, email: data[0].email, nome: data[0].nome }, JWT_SECRET, { expiresIn: '7d' })
-    res.json({ token, user: { id: data[0].id, nome: data[0].nome, email: data[0].email, telefone: data[0].telefone, endereco: data[0].endereco } })
+    res.json({ token, user: { id: data[0].id, nome: data[0].nome, email: data[0].email, telefone: data[0].telefone, endereco: data[0].endereco, enderecos: data[0].enderecos, enderecoSelecionado: data[0].enderecoSelecionado } })
   } catch (err) {
     console.error('Erro ao atualizar usuário:', err)
     res.status(500).json({ erro: 'Erro ao atualizar dados' })
+  }
+})
+
+app.patch('/auth/enderecos', async (req, res) => {
+  if (!req.user) return res.status(401).json({ erro: 'Não autenticado' })
+  if (!checkSupabase(res)) return
+  try {
+    const { enderecos, enderecoSelecionado } = req.body
+    if (!Array.isArray(enderecos)) return res.status(400).json({ erro: 'enderecos deve ser um array' })
+    const updates = { enderecos }
+    if (enderecoSelecionado !== undefined) updates.enderecoSelecionado = enderecoSelecionado
+    const selecionado = enderecos.find(e => e.id === (enderecoSelecionado || undefined))
+    if (selecionado) updates.endereco = selecionado.rua || ''
+    const { data, error } = await supabase.from('users').update(updates).eq('id', req.user.id).select()
+    if (error) throw error
+    res.json({ enderecos: data[0].enderecos, endereco: data[0].endereco, enderecoSelecionado: data[0].enderecoSelecionado })
+  } catch (err) {
+    console.error('Erro ao atualizar endereços:', err)
+    res.status(500).json({ erro: 'Erro ao atualizar endereços' })
   }
 })
 
@@ -156,14 +175,14 @@ app.post('/auth/google', async (req, res) => {
     const { data: existing } = await supabase.from('users').select('*').eq('email', email).maybeSingle()
     if (existing) {
       const token = jwt.sign({ id: existing.id, email: existing.email, nome: existing.nome }, JWT_SECRET, { expiresIn: '7d' })
-      return res.json({ token, user: { id: existing.id, nome: existing.nome, email: existing.email, telefone: existing.telefone, endereco: existing.endereco } })
+      return res.json({ token, user: { id: existing.id, nome: existing.nome, email: existing.email, telefone: existing.telefone, endereco: existing.endereco, enderecos: existing.enderecos, enderecoSelecionado: existing.enderecoSelecionado } })
     }
     const { data: created, error } = await supabase.from('users').insert({
       nome: name || email.split('@')[0], email, senha: '', telefone: '', endereco: '', google_id: sub
     }).select()
     if (error) throw error
     const token = jwt.sign({ id: created[0].id, email: created[0].email, nome: created[0].nome }, JWT_SECRET, { expiresIn: '7d' })
-    res.status(201).json({ token, user: { id: created[0].id, nome: created[0].nome, email: created[0].email, telefone: '', endereco: '' } })
+    res.status(201).json({ token, user: { id: created[0].id, nome: created[0].nome, email: created[0].email, telefone: '', endereco: '', enderecos: [], enderecoSelecionado: null } })
   } catch (err) {
     console.error('Erro auth google:', err.message || err)
     res.status(500).json({ erro: err.message || 'Erro ao autenticar com Google' })

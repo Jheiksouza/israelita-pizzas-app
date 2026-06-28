@@ -49,6 +49,8 @@ function App() {
   const [pendentesCount, setPendentesCount] = useState(0)
   const [completarCadastro, setCompletarCadastro] = useState(false)
   const [cadastroForm, setCadastroForm] = useState({ nome: '', telefone: '', endereco: '' })
+  const [editandoEndereco, setEditandoEndereco] = useState(false)
+  const [novoEndereco, setNovoEndereco] = useState('')
   const pendentesRef = useRef(0)
   const alarmTimer = useRef(null)
   const alarmCtx = useRef(null)
@@ -434,10 +436,46 @@ function App() {
                     <input className="cart-drawer-input" placeholder="Endereço" value={cliente.endereco} onChange={e => setCliente({ ...cliente, endereco: e.target.value })} />
                   </div>
                   )}
-                  {user?.nome && user?.telefone && (
+                  {user?.nome && user?.telefone && !editandoEndereco && (
                     <div className="cart-drawer-user-info">
                       <p className="cart-drawer-user-info-name">{user.nome}</p>
                       <p className="cart-drawer-user-info-phone">{user.telefone}{user.endereco ? ` — ${user.endereco}` : ''}</p>
+                      <button className="cart-drawer-edit-address" onClick={() => { setNovoEndereco(''); setEditandoEndereco(true) }}>Alterar endereço</button>
+                    </div>
+                  )}
+                  {user?.nome && user?.telefone && editandoEndereco && (
+                    <div className="cart-drawer-address-picker">
+                      {(user.enderecos || []).map((addr, i) => (
+                        <label key={addr.id || i} className="cart-drawer-address-option">
+                          <input type="radio" name="endereco" checked={user.enderecoSelecionado === addr.id || (!user.enderecoSelecionado && i === 0)} onChange={async () => {
+                            try {
+                              const res = await fetch(`${API}/auth/enderecos`, {
+                                method: 'PATCH', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                                body: JSON.stringify({ enderecos: user.enderecos, enderecoSelecionado: addr.id })
+                              })
+                              const data = await res.json()
+                              if (res.ok) { setUser({ ...user, endereco: data.endereco, enderecoSelecionado: data.enderecoSelecionado }); localStorage.setItem('user', JSON.stringify({ ...user, endereco: data.endereco, enderecoSelecionado: data.enderecoSelecionado })) }
+                            } catch {}
+                          }} />
+                          <span className="cart-drawer-address-text">{addr.rua || addr}</span>
+                        </label>
+                      ))}
+                      <div className="cart-drawer-add-address-row">
+                        <input className="cart-drawer-input" placeholder="Novo endereço" value={novoEndereco} onChange={e => setNovoEndereco(e.target.value)} />
+                        <button className="cart-drawer-add-address-btn" disabled={!novoEndereco.trim()} onClick={async () => {
+                          if (!novoEndereco.trim()) return
+                          const novos = [...(user.enderecos || []), { id: 'addr' + Date.now(), rua: novoEndereco.trim() }]
+                          try {
+                            const res = await fetch(`${API}/auth/enderecos`, {
+                              method: 'PATCH', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                              body: JSON.stringify({ enderecos: novos, enderecoSelecionado: novos[novos.length - 1].id })
+                            })
+                            const data = await res.json()
+                            if (res.ok) { setUser({ ...user, enderecos: data.enderecos, endereco: data.endereco, enderecoSelecionado: data.enderecoSelecionado }); localStorage.setItem('user', JSON.stringify({ ...user, enderecos: data.enderecos, endereco: data.endereco, enderecoSelecionado: data.enderecoSelecionado })); setNovoEndereco('') }
+                          } catch {}
+                        }}>+</button>
+                      </div>
+                      <button className="cart-drawer-address-done" onClick={() => setEditandoEndereco(false)}>Concluído</button>
                     </div>
                   )}
                   <button className="cart-drawer-checkout" onClick={finalizarPedido}>Finalizar Pedido →</button>
