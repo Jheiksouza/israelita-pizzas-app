@@ -261,16 +261,14 @@ function Cardapio({ onAdicionar, pizzaEditando, onPizzaEditDone }) {
           <div className="hero-bg-gradient"></div>
         </div>
         <div className="hero-overlay" style={{ background: overlayBg }}></div>
-        {settingsTitle !== '' && (
-          <div className="hero-content">
-            <div className="hero-aberto-badge">
-              <span className="hero-aberto-dot"></span>
-              Aberto agora · 35min
-            </div>
-            <h2>{settingsTitle || 'Nosso Cardápio'}</h2>
-            {settingsSubtitle !== '' && <p>{settingsSubtitle || 'As melhores pizzas artesanais da cidade'}</p>}
+        <div className="hero-content">
+          <div className="hero-aberto-badge">
+            <span className="hero-aberto-dot"></span>
+            Aberto agora · 35min
           </div>
-        )}
+          <h2>{settingsTitle || 'Nosso Cardápio'}</h2>
+          <p>{settingsSubtitle || 'As melhores pizzas artesanais da cidade'}</p>
+        </div>
         {settingsLogo && (
           <img
             src={settingsLogo}
