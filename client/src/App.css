@@ -1645,13 +1645,13 @@
 }
 
 .pedido-pendente-destaque {
-  animation: pedidoGlow 1.5s ease-in-out infinite !important;
+  animation: pedidoGlow 1s ease-in-out infinite !important;
   position: relative;
 }
 
 @keyframes pedidoGlow {
-  0%, 100% { border-color: oklch(0.62 0.18 30 / 0.3) !important; box-shadow: 0 0 8px color-mix(in oklab, oklch(0.62 0.18 30) 20%, transparent); }
-  50% { border-color: oklch(0.62 0.18 30 / 0.8) !important; box-shadow: 0 0 20px color-mix(in oklab, oklch(0.62 0.18 30) 50%, transparent); }
+  0%, 100% { border-color: oklch(0.65 0.25 35 / 0.4) !important; box-shadow: 0 0 8px color-mix(in oklab, oklch(0.65 0.25 35) 30%, transparent); }
+  50% { border-color: oklch(0.65 0.25 35 / 1) !important; box-shadow: 0 0 28px color-mix(in oklab, oklch(0.65 0.25 35) 60%, transparent); }
 }
 
 .tab-badge {
@@ -1666,6 +1666,28 @@
   font-weight: 700;
   margin-left: 6px;
   vertical-align: middle;
+  animation: badgePulse 1s ease-in-out infinite;
+}
+
+.pedido-timer {
+  font-size: 0.85rem;
+  margin-top: 4px;
+}
+
+.pedido-timer-value {
+  color: var(--primary);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.timer-expirado {
+  color: oklch(0.55 0.22 25);
+  animation: timerUrgencia 0.5s ease-in-out infinite alternate;
+}
+
+@keyframes timerUrgencia {
+  from { opacity: 0.5; }
+  to { opacity: 1; }
 }
 
 .theme-classic .admin-table thead {

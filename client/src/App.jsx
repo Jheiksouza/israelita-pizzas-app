@@ -1021,10 +1021,29 @@ function CardapioSettings({ onClose, onThemeChange, onFontChange }) {
 function AdminOrders({ pendentesCount }) {
   const [pedidos, setPedidos] = useState([])
   const [filtro, setFiltro] = useState('todos')
+  const [, setTick] = useState(0)
 
   const carregar = () => fetch(`${API}/orders`).then(r => r.json()).then(data => setPedidos(data))
 
   useEffect(() => { carregar(); const id = setInterval(carregar, 10000); return () => clearInterval(id) }, [])
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      setTick(t => t + 1)
+      pedidos.forEach(p => {
+        if (p.status !== 'pendente' || !p.data) return
+        const elapsed = Date.now() - new Date(p.data).getTime()
+        if (elapsed >= 300000) {
+          fetch(`${API}/orders/${p.id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: 'recusado' })
+          }).then(() => carregar()).catch(() => {})
+        }
+      })
+    }, 1000)
+    return () => clearInterval(id)
+  }, [pedidos])
 
   const atualizarStatus = async (id, status) => {
     await fetch(`${API}/orders/${id}`, {
@@ -1035,7 +1054,17 @@ function AdminOrders({ pendentesCount }) {
     carregar()
   }
 
-  const filtrados = filtro === 'todos' ? pedidos : pedidos.filter(p => p.status === filtro)
+  const ordenados = [...pedidos].sort((a, b) => new Date(b.data || 0) - new Date(a.data || 0))
+  const filtrados = (filtro === 'todos' ? ordenados : ordenados.filter(p => p.status === filtro))
+
+  const tempoRestante = (data) => {
+    if (!data) return ''
+    const restante = 300000 - (Date.now() - new Date(data).getTime())
+    if (restante <= 0) return 'Cancelado'
+    const min = Math.floor(restante / 60000)
+    const seg = Math.floor((restante % 60000) / 1000)
+    return `${min}:${seg.toString().padStart(2, '0')}`
+  }
 
   const statusLabel = { pendente: 'Pendente', aceito: 'Aceito', entregue: 'Entregue', recusado: 'Recusado' }
   const statusClass = { pendente: 'status-pendente', aceito: 'status-aceito', entregue: 'status-entregue', recusado: 'status-recusado' }
@@ -1067,6 +1096,9 @@ function AdminOrders({ pendentesCount }) {
                 <p><strong>Telefone:</strong> {pedido.cliente?.telefone}</p>
                 <p><strong>Endereço:</strong> {pedido.cliente?.endereco || 'Não informado'}</p>
                 <p><strong>Data:</strong> {new Date(pedido.data).toLocaleString('pt-BR')}</p>
+                {pedido.status === 'pendente' && pedido.data && (
+                  <p className="pedido-timer"><strong>⏱ Cancela em:</strong> <span className={`pedido-timer-value${tempoRestante(pedido.data) === 'Cancelado' ? ' timer-expirado' : ''}`}>{tempoRestante(pedido.data)}</span></p>
+                )}
                 <div className="pedido-itens">
                   <strong>Itens:</strong>
                   {pedido.itens?.map(item => (
