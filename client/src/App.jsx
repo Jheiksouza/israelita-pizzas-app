@@ -376,28 +376,33 @@ function AuthModal({ onLogin, onClose }) {
   const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID
 
   useEffect(() => {
-    if (!googleBtnRef.current || !window.google?.accounts?.id) return
-    const initialized = googleBtnRef.current.dataset.gsiInitialized
-    if (initialized) return
-    googleBtnRef.current.dataset.gsiInitialized = '1'
-    google.accounts.id.initialize({
-      client_id: GOOGLE_CLIENT_ID,
-      callback: async (response) => {
-        if (!response.credential) { setErro('Falha na autenticação Google'); return }
-        setLoading(true)
-        try {
-          const res = await fetch(`${API}/auth/google`, {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ idToken: response.credential })
-          })
-          const data = await res.json()
-          if (!res.ok) { setErro(data.erro || 'Erro Google'); return }
-          onLogin(data.user, data.token)
-        } catch (_) { setErro('Erro de conexão') }
-        finally { setLoading(false) }
-      }
-    })
-    google.accounts.id.renderButton(googleBtnRef.current, { theme: 'outline', size: 'large', width: '100%', text: 'signin_with', shape: 'rectangular' })
+    let timer
+    const init = () => {
+      if (!googleBtnRef.current) return
+      if (googleBtnRef.current.dataset.gsiInitialized) return
+      if (!window.google?.accounts?.id) { timer = setTimeout(init, 200); return }
+      googleBtnRef.current.dataset.gsiInitialized = '1'
+      google.accounts.id.initialize({
+        client_id: GOOGLE_CLIENT_ID,
+        callback: async (response) => {
+          if (!response.credential) { setErro('Falha na autenticação Google'); return }
+          setLoading(true)
+          try {
+            const res = await fetch(`${API}/auth/google`, {
+              method: 'POST', headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ idToken: response.credential })
+            })
+            const data = await res.json()
+            if (!res.ok) { setErro(data.erro || 'Erro Google'); return }
+            onLogin(data.user, data.token)
+          } catch (_) { setErro('Erro de conexão') }
+          finally { setLoading(false) }
+        }
+      })
+      google.accounts.id.renderButton(googleBtnRef.current, { theme: 'outline', size: 'large', width: '100%', text: 'signin_with', shape: 'rectangular' })
+    }
+    init()
+    return () => clearTimeout(timer)
   }, [])
 
   const handleSubmit = async (e) => {
