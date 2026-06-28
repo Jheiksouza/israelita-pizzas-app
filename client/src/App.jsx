@@ -62,6 +62,7 @@ function App() {
   const pendentesRef = useRef(0)
   const alarmTimer = useRef(null)
   const alarmCtx = useRef(null)
+  const carrinhoSyncTimer = useRef(null)
   window.__authSetters = window.__authSetters || {}
 
   useEffect(() => {
@@ -69,6 +70,26 @@ function App() {
     const t = setTimeout(() => setBannerApp({ texto: '', key: 0 }), 3000)
     return () => clearTimeout(t)
   }, [bannerApp.key])
+
+  useEffect(() => {
+    if (!user || !token) return
+    fetch(`${API}/cart`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.json())
+      .then(data => { if (Array.isArray(data) && data.length) setCarrinho(data) })
+      .catch(() => {})
+  }, [user?.id])
+
+  useEffect(() => {
+    if (!user || !token) return
+    if (carrinhoSyncTimer.current) clearTimeout(carrinhoSyncTimer.current)
+    carrinhoSyncTimer.current = setTimeout(() => {
+      fetch(`${API}/cart`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ itens: carrinho })
+      }).catch(() => {})
+    }, 1000)
+    return () => { if (carrinhoSyncTimer.current) clearTimeout(carrinhoSyncTimer.current) }
+  }, [carrinho, user?.id])
 
   useEffect(() => {
     const handler = (event) => {

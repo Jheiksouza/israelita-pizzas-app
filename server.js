@@ -198,6 +198,34 @@ app.post('/auth/google', async (req, res) => {
   }
 })
 
+app.get('/cart', async (req, res) => {
+  if (!req.user) return res.status(401).json({ erro: 'Não autenticado' })
+  if (!checkSupabase(res)) return
+  try {
+    const { data, error } = await supabase.from('carts').select('itens').eq('user_id', req.user.id).maybeSingle()
+    if (error) throw error
+    res.json(data ? data.itens : [])
+  } catch (err) {
+    console.error('Erro ao buscar carrinho:', err.message)
+    res.status(500).json({ erro: 'Erro ao buscar carrinho' })
+  }
+})
+
+app.put('/cart', async (req, res) => {
+  if (!req.user) return res.status(401).json({ erro: 'Não autenticado' })
+  if (!checkSupabase(res)) return
+  try {
+    const { itens } = req.body
+    if (!Array.isArray(itens)) return res.status(400).json({ erro: 'itens deve ser um array' })
+    const { error } = await supabase.from('carts').upsert({ user_id: req.user.id, itens, updated_at: new Date().toISOString() }, { onConflict: 'user_id' })
+    if (error) throw error
+    res.json({ ok: true })
+  } catch (err) {
+    console.error('Erro ao salvar carrinho:', err.message)
+    res.status(500).json({ erro: 'Erro ao salvar carrinho' })
+  }
+})
+
 app.get('/orders/mine', async (req, res) => {
   if (!req.user) return res.status(401).json({ erro: 'Não autenticado' })
   if (!checkSupabase(res)) return
