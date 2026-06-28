@@ -11,6 +11,9 @@ function App() {
   const [font, setFont] = useState(() => localStorage.getItem('appFont') || 'classico')
   const [pizzaEditando, setPizzaEditando] = useState(null)
   const [bannerApp, setBannerApp] = useState({ texto: '', key: 0 })
+  const [cartOpen, setCartOpen] = useState(false)
+  const [cliente, setCliente] = useState({ nome: '', telefone: '', endereco: '' })
+  const [pedidoEnviado, setPedidoEnviado] = useState(false)
 
   useEffect(() => {
     if (!bannerApp.key) return
@@ -70,6 +73,22 @@ function App() {
 
   const limparCarrinho = () => setCarrinho([])
 
+  const finalizarPedido = async () => {
+    if (!cliente.nome || !cliente.telefone) return alert('Preencha nome e telefone')
+    try {
+      const res = await fetch(`${API}/orders`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cliente, itens: carrinho, total: totalCarrinho })
+      })
+      if (!res.ok) return alert('Erro ao enviar pedido. Tente novamente.')
+      setPedidoEnviado(true)
+      setCarrinho([])
+      setCliente({ nome: '', telefone: '', endereco: '' })
+      setTimeout(() => { setPedidoEnviado(false); setCartOpen(false) }, 3000)
+    } catch (_) { alert('Erro ao enviar pedido. Tente novamente.') }
+  }
+
   const totalCarrinho = carrinho.reduce((sum, i) => sum + i.preco * i.qtd, 0)
   const qtdCarrinho = carrinho.reduce((sum, i) => sum + i.qtd, 0)
 
@@ -103,7 +122,7 @@ function App() {
           </div>
           <nav className="nav">
             <button className={`nav-btn ${pagina === 'cardapio' ? 'active' : ''}`} onClick={() => setPagina('cardapio')}>Cardápio</button>
-            <button className={`nav-btn ${pagina === 'carrinho' ? 'active' : ''}`} onClick={() => setPagina('carrinho')}>
+            <button className={`nav-btn ${qtdCarrinho > 0 ? 'active' : ''}`} onClick={() => setCartOpen(true)}>
               Carrinho {qtdCarrinho > 0 && <span key={qtdCarrinho} className="badge">{qtdCarrinho}</span>}
             </button>
             <button className={`nav-btn ${pagina === 'admin' ? 'active' : ''}`} onClick={() => setPagina('admin')}>
@@ -115,17 +134,6 @@ function App() {
 
       <main className="main">
         {pagina === 'cardapio' && <Cardapio onAdicionar={adicionarAoCarrinho} onBanner={(msg) => { setBannerApp({ texto: msg, key: Date.now() }); tocarNotificacao() }} pizzaEditando={pizzaEditando} onPizzaEditDone={() => setPizzaEditando(null)} />}
-        {pagina === 'carrinho' && (
-          <CarrinhoView
-            itens={carrinho}
-            onRemover={removerDoCarrinho}
-            onAdicionar={adicionarAoCarrinho}
-            onLimparCarrinho={limparCarrinho}
-            total={totalCarrinho}
-            onVoltar={() => setPagina('cardapio')}
-            onEditarPizza={editarPizza}
-          />
-        )}
         {pagina === 'admin' && (
           <AdminPanel
             autenticado={adminAutenticado}
@@ -144,7 +152,7 @@ function App() {
           <span className="bottom-nav-icon">🍕</span>
           <span className="bottom-nav-label">Cardápio</span>
         </button>
-        <button className={`bottom-nav-btn ${pagina === 'carrinho' ? 'active' : ''}`} onClick={() => setPagina('carrinho')}>
+        <button className={`bottom-nav-btn ${qtdCarrinho > 0 ? 'active' : ''}`} onClick={() => setCartOpen(true)}>
           <span className="bottom-nav-icon">🛒</span>
           <span className="bottom-nav-label">Carrinho</span>
           {qtdCarrinho > 0 && <span key={qtdCarrinho} className="bottom-nav-badge">{qtdCarrinho}</span>}
@@ -161,6 +169,91 @@ function App() {
           <p className="footer-copy">© 2026</p>
         </div>
       </footer>
+
+      {cartOpen && (
+        <div className="cart-drawer-overlay">
+          <div className="cart-drawer-backdrop" onClick={() => setCartOpen(false)} />
+          <aside className="cart-drawer-panel">
+            <div className="cart-drawer-header">
+              <div>
+                <p className="cart-drawer-subtitle">Seu carrinho</p>
+                <p className="cart-drawer-title">{qtdCarrinho} {qtdCarrinho === 1 ? 'item' : 'itens'}</p>
+              </div>
+              <button className="cart-drawer-close" onClick={() => setCartOpen(false)}>✕</button>
+            </div>
+
+            {pedidoEnviado ? (
+              <div className="cart-drawer-body cart-drawer-success">
+                <div className="cart-drawer-success-icon">✅</div>
+                <p className="cart-drawer-success-title">Pedido enviado!</p>
+                <p className="cart-drawer-success-desc">Obrigado, {cliente.nome}! Seu pedido foi registrado.</p>
+              </div>
+            ) : carrinho.length === 0 ? (
+              <div className="cart-drawer-body cart-drawer-empty">
+                <div className="cart-drawer-empty-icon">🛒</div>
+                <p className="cart-drawer-empty-title">Carrinho vazio</p>
+                <p className="cart-drawer-empty-desc">Que tal montar uma pizza?</p>
+                <button className="cart-drawer-empty-btn" onClick={() => setCartOpen(false)}>Ver cardápio</button>
+              </div>
+            ) : (
+              <>
+                <div className="cart-drawer-items">
+                  {carrinho.map(item => (
+                    <div key={item.id} className="cart-drawer-item">
+                      <div className="cart-drawer-item-top">
+                        <div className="cart-drawer-item-info">
+                          <p className="cart-drawer-item-name">{item.nome}</p>
+                          {item.tipo === 'pizza' && (
+                            <p className="cart-drawer-item-detail">
+                              {item.tamanho} · {item.sabores?.join(', ')}
+                            </p>
+                          )}
+                        </div>
+                        <button className="cart-drawer-item-remove" onClick={() => removerDoCarrinho(item.id)}>✕</button>
+                      </div>
+                      <div className="cart-drawer-item-bottom">
+                        <div className="cart-drawer-qty">
+                          <button onClick={() => removerDoCarrinho(item.id)}>−</button>
+                          <span>{item.qtd}</span>
+                          <button onClick={() => adicionarAoCarrinho(item)}>+</button>
+                        </div>
+                        <p className="cart-drawer-item-price">R$ {(item.preco * item.qtd).toFixed(2)}</p>
+                      </div>
+                      {item.tipo === 'pizza' && (
+                        <button className="cart-drawer-item-edit" onClick={() => { editarPizza(item); setCartOpen(false) }}>
+                          ✏️ Editar
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                <div className="cart-drawer-footer">
+                  <div className="cart-drawer-total-row">
+                    <span className="cart-drawer-total-label">Subtotal</span>
+                    <span className="cart-drawer-total-value">R$ {totalCarrinho.toFixed(2)}</span>
+                  </div>
+                  <div className="cart-drawer-total-row">
+                    <span className="cart-drawer-total-label">Entrega</span>
+                    <span className="cart-drawer-total-free">Grátis</span>
+                  </div>
+                  <div className="cart-drawer-total-divider" />
+                  <div className="cart-drawer-total-row cart-drawer-total-final">
+                    <span className="cart-drawer-total-final-label">Total</span>
+                    <span className="cart-drawer-total-final-value">R$ {totalCarrinho.toFixed(2)}</span>
+                  </div>
+                  <div className="cart-drawer-form">
+                    <input className="cart-drawer-input" placeholder="Nome" value={cliente.nome} onChange={e => setCliente({ ...cliente, nome: e.target.value })} />
+                    <input className="cart-drawer-input" placeholder="Telefone" value={cliente.telefone} onChange={e => setCliente({ ...cliente, telefone: e.target.value })} />
+                    <input className="cart-drawer-input" placeholder="Endereço" value={cliente.endereco} onChange={e => setCliente({ ...cliente, endereco: e.target.value })} />
+                  </div>
+                  <button className="cart-drawer-checkout" onClick={finalizarPedido}>Finalizar Pedido →</button>
+                </div>
+              </>
+            )}
+          </aside>
+        </div>
+      )}
     </div>
   )
 }
@@ -515,94 +608,6 @@ function Cardapio({ onAdicionar, onBanner, pizzaEditando, onPizzaEditDone }) {
   )
 }
 
-function CarrinhoView({ itens, onRemover, onAdicionar, onLimparCarrinho, total, onVoltar, onEditarPizza }) {
-  const [cliente, setCliente] = useState({ nome: '', telefone: '', endereco: '' })
-  const [enviado, setEnviado] = useState(false)
-
-  const finalizar = async () => {
-    if (!cliente.nome || !cliente.telefone) return alert('Preencha nome e telefone')
-    const res = await fetch(`${API}/orders`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ cliente, itens, total })
-    })
-    if (!res.ok) return alert('Erro ao enviar pedido. Tente novamente.')
-    onLimparCarrinho()
-    setEnviado(true)
-  }
-
-  if (enviado) {
-    return (
-      <div className="carrinho-page">
-        <div className="empty-state">
-          <h2>✅ Pedido enviado!</h2>
-          <p>Obrigado, {cliente.nome}! Seu pedido foi registrado.</p>
-          <button className="btn-add" onClick={onVoltar}>Voltar ao Cardápio</button>
-        </div>
-      </div>
-    )
-  }
-
-  if (itens.length === 0) {
-    return (
-      <div className="carrinho-page">
-        <div className="empty-state">
-          <h2>🛒 Carrinho vazio</h2>
-          <p>Adicione itens do cardápio</p>
-          <button className="btn-add" onClick={onVoltar}>Ver Cardápio</button>
-        </div>
-      </div>
-    )
-  }
-
-  return (
-    <div className="carrinho-page">
-      <div id="carrinho-content">
-        <div className="carrinho-itens">
-          <div className="carrinho-itens-header">
-            <h2>Seu Carrinho</h2>
-            <span className="carrinho-count">{itens.length} {itens.length === 1 ? 'ITEM' : 'ITENS'}</span>
-          </div>
-          {itens.map(item => (
-            <div key={item.id} className="carrinho-item">
-              <div className="item-info">
-                <strong>{item.nome}</strong>
-                {item.tipo === 'pizza' && (
-                  <div className="pizza-detalhes">
-                    <span className="pizza-tamanho">{item.tamanho}</span>
-                    <span className="pizza-sabores">Sabores: {item.sabores?.join(', ')}</span>
-                  </div>
-                )}
-                <span>R$ {item.preco.toFixed(2)}</span>
-              </div>
-              <div className="item-qtd">
-                <button onClick={() => onRemover(item.id)}>-</button>
-                <span>{item.qtd}</span>
-                <button onClick={() => onAdicionar(item)}>+</button>
-                <span className="item-subtotal">R$ {(item.preco * item.qtd).toFixed(2)}</span>
-              </div>
-              {item.tipo === 'pizza' && (
-                <button className="btn-edit-pizza" onClick={() => onEditarPizza(item)} title="Editar pizza">
-                  ✏️ Editar
-                </button>
-              )}
-            </div>
-          ))}
-          <div className="carrinho-total">
-            <strong>Total: R$ {total.toFixed(2)}</strong>
-          </div>
-        </div>
-        <div className="cliente-form">
-          <h3>Dados para entrega</h3>
-          <input placeholder="Nome" value={cliente.nome} onChange={e => setCliente({ ...cliente, nome: e.target.value })} />
-          <input placeholder="Telefone" value={cliente.telefone} onChange={e => setCliente({ ...cliente, telefone: e.target.value })} />
-          <input placeholder="Endereço" value={cliente.endereco} onChange={e => setCliente({ ...cliente, endereco: e.target.value })} />
-          <button className="btn-add btn-finalizar" onClick={finalizar}>Finalizar Pedido</button>
-        </div>
-      </div>
-    </div>
-  )
-}
 
 function AdminPanel({ autenticado, onLogin, onThemeChange, onFontChange }) {
   const [aba, setAba] = useState('cardapio')
