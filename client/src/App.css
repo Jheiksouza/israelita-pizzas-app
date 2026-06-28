@@ -1072,6 +1072,11 @@
   backdrop-filter: none;
 }
 
+.theme-classic .menu-card .card-body {
+  padding: 0;
+  flex: none;
+}
+
 .theme-classic .menu-card:hover {
   border-color: oklch(0.75 0.13 75 / 0.4);
   transform: translateY(-4px);
@@ -1111,23 +1116,29 @@
 }
 
 .theme-classic .card-body .preco {
+  font-family: 'Playfair Display', var(--font-heading, 'Playfair Display'), Georgia, serif !important;
   font-size: 1.5rem;
   font-weight: 700;
   color: var(--primary);
+  letter-spacing: -0.02em;
   margin-bottom: 16px;
+  background: none !important;
+  -webkit-background-clip: unset;
+  -webkit-text-fill-color: unset;
+  background-clip: unset;
 }
 
 .theme-classic .card-body .btn-add {
   display: inline-block;
   padding: 8px 16px;
   border-radius: 9999px;
-  background: transparent;
+  background: var(--bg);
   border: 1px solid var(--border);
   color: var(--text-primary);
   font-size: 0.75rem;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.05em;
   cursor: pointer;
   transition: all 0.2s;
   font-family: 'Inter', sans-serif !important;
@@ -1136,7 +1147,7 @@
 .theme-classic .card-body .btn-add:hover {
   background: var(--primary);
   border-color: var(--primary);
-  color: var(--text-primary);
+  color: oklch(0.98 0.01 75);
 }
 
 /* ===== CARRINHO ===== */
