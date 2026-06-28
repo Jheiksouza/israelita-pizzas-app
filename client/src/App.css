@@ -1638,6 +1638,24 @@
   opacity: 0.8;
 }
 
+.cart-drawer-address-btn {
+  width: 100%;
+  padding: 12px 16px;
+  border: 2px dashed var(--border);
+  border-radius: 12px;
+  background: none;
+  color: var(--accent);
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-family: inherit;
+  text-align: left;
+  transition: var(--transition);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cart-drawer-address-btn:hover { border-color: var(--accent); background: color-mix(in oklab, var(--accent) 6%, transparent); }
+
 .cart-drawer-address-picker {
   background: color-mix(in oklab, var(--accent) 6%, transparent);
   border: 1px solid color-mix(in oklab, var(--accent) 15%, transparent);
@@ -4974,12 +4992,31 @@ body {
   border: none;
   color: var(--text-muted);
   cursor: pointer;
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   padding: 4px 6px;
   border-radius: 6px;
   flex-shrink: 0;
 }
 .endereco-remove:hover { background: var(--primary-soft); color: var(--primary); }
+
+.endereco-edit {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.8rem;
+  padding: 4px 4px;
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+.endereco-edit:hover { background: color-mix(in oklab, var(--accent) 15%, transparent); }
+
+.endereco-form-title {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+  font-weight: 500;
+}
 
 .endereco-add-btn {
   width: 100%;
@@ -5004,22 +5041,25 @@ body {
   border: 1px solid var(--border-light);
 }
 
-.endereco-input {
+.endereco-form .endereco-input {
   width: 100%;
-  padding: 10px 14px;
-  border-radius: var(--radius-xs);
-  border: 1px solid var(--border);
-  background: var(--bg);
+  padding: 12px 18px;
+  border-radius: var(--radius-md);
+  border: 1.5px solid var(--border);
+  background: var(--bg-surface);
   color: var(--text-primary);
-  font-size: 0.85rem;
+  font-size: 0.92rem;
   font-family: var(--font-body);
   outline: none;
-  margin-bottom: 8px;
-  transition: border-color 0.2s;
+  margin-bottom: 12px;
+  transition: var(--transition);
   box-sizing: border-box;
 }
-.endereco-input:focus { border-color: var(--primary); }
-.endereco-input::placeholder { color: var(--text-muted); }
+.endereco-form .endereco-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in oklab, var(--accent) 20%, transparent); }
+.endereco-form .endereco-input::placeholder { color: var(--text-muted); }
+.endereco-form-row .endereco-input,
+.endereco-form-row-triple .endereco-input,
+.endereco-form-cep-row .endereco-input { margin-bottom: 0; }
 
 .endereco-form-cep-row {
   display: flex;
@@ -5027,7 +5067,7 @@ body {
   align-items: center;
   margin-bottom: 4px;
 }
-.endereco-input-cep { flex: 1; }
+.endereco-form .endereco-input-cep { flex: 1; }
 
 .endereco-loading {
   font-size: 0.78rem;
@@ -5039,15 +5079,15 @@ body {
   display: flex;
   gap: 8px;
 }
-.endereco-input-rua { flex: 1; min-width: 0; }
-.endereco-input-num { width: 58px; flex-shrink: 0; min-width: 0; text-align: center; padding: 10px 6px; }
+.endereco-form .endereco-input-rua { flex: 1; min-width: 0; }
+.endereco-form .endereco-input-num { width: 62px; flex-shrink: 0; min-width: 0; text-align: center; padding: 12px 6px; }
 .endereco-form-row-triple {
   display: flex;
   gap: 8px;
 }
-.endereco-input-bairro { flex: 1; min-width: 0; }
-.endereco-input-cidade { flex: 1; min-width: 0; }
-.endereco-input-estado { width: 44px; flex-shrink: 0; min-width: 0; text-align: center; padding: 10px 4px; }
+.endereco-form .endereco-input-bairro { flex: 1; min-width: 0; }
+.endereco-form .endereco-input-cidade { flex: 1; min-width: 0; }
+.endereco-form .endereco-input-estado { width: 48px; flex-shrink: 0; min-width: 0; text-align: center; padding: 12px 4px; }
 
 .endereco-form-actions {
   display: flex;

@@ -58,6 +58,7 @@ function App() {
   const [completarCadastro, setCompletarCadastro] = useState(false)
   const [cadastroForm, setCadastroForm] = useState({ nome: '', telefone: '', endereco: '' })
   const [editandoEndereco, setEditandoEndereco] = useState(false)
+  const [mostrarEnderecoForm, setMostrarEnderecoForm] = useState(false)
   const pendentesRef = useRef(0)
   const alarmTimer = useRef(null)
   const alarmCtx = useRef(null)
@@ -349,6 +350,12 @@ function App() {
           }}
         />
       )}
+      {mostrarEnderecoForm && (
+        <EnderecoFormModal
+          onSave={(addr) => { setCliente(c => ({ ...c, endereco: addr })); setMostrarEnderecoForm(false) }}
+          onClose={() => setMostrarEnderecoForm(false)}
+        />
+      )}
       
       <nav className="bottom-nav">
         <button className={`bottom-nav-btn ${pagina === 'cardapio' ? 'active' : ''}`} onClick={() => setPagina('cardapio')}>
@@ -455,7 +462,9 @@ function App() {
                   <div className="cart-drawer-form">
                     <input className="cart-drawer-input" placeholder="Nome" value={cliente.nome} onChange={e => setCliente({ ...cliente, nome: e.target.value })} />
                     <input className="cart-drawer-input" placeholder="Telefone" value={cliente.telefone} onChange={e => setCliente({ ...cliente, telefone: e.target.value })} />
-                    <input className="cart-drawer-input" placeholder="Endereço" value={cliente.endereco} onChange={e => setCliente({ ...cliente, endereco: e.target.value })} />
+                    <button className="cart-drawer-address-btn" onClick={() => setMostrarEnderecoForm(true)}>
+                      {cliente.endereco ? `📍 ${cliente.endereco}` : '+ Adicionar endereço'}
+                    </button>
                   </div>
                   )}
                   {user?.nome && user?.telefone && (
@@ -1649,6 +1658,7 @@ function AddressModal({ user, token, onClose, onSave }) {
   const [form, setForm] = useState({ cep: '', rua: '', numero: '', referencia: '', bairro: '', cidade: '', estado: '' })
   const [buscandoCep, setBuscandoCep] = useState(false)
   const [mostrarForm, setMostrarForm] = useState(false)
+  const [editandoId, setEditandoId] = useState(null)
   const cepTimer = useRef(null)
 
   const handleCepChange = (value) => {
@@ -1679,21 +1689,25 @@ function AddressModal({ user, token, onClose, onSave }) {
 
   const handleAdd = async () => {
     if (!form.cep || !form.rua || !form.numero) return
-    const id = 'addr' + Date.now()
-    const novo = { id, ...form }
-    const novos = [...enderecos, novo]
+    const id = editandoId || 'addr' + Date.now()
+    const addr = { id, ...form }
+    const novos = editandoId
+      ? enderecos.map(a => a.id === editandoId ? addr : a)
+      : [...enderecos, addr]
+    const novoSelecionado = editandoId ? selecionado : id
     try {
       const res = await fetch(`${API}/auth/enderecos`, {
         method: 'PATCH', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ enderecos: novos, enderecoSelecionado: id })
+        body: JSON.stringify({ enderecos: novos, enderecoSelecionado: novoSelecionado })
       })
       const data = await res.json()
       if (res.ok) {
         setEnderecos(novos)
-        setSelecionado(id)
+        setSelecionado(novoSelecionado)
         setForm({ cep: '', rua: '', numero: '', referencia: '', bairro: '', cidade: '', estado: '' })
         setMostrarForm(false)
-        onSave({ enderecos: data.enderecos, endereco: data.endereco, enderecoSelecionado: id })
+        setEditandoId(null)
+        onSave({ enderecos: data.enderecos, endereco: data.endereco, enderecoSelecionado: novoSelecionado })
       }
     } catch {}
   }
@@ -1712,22 +1726,36 @@ function AddressModal({ user, token, onClose, onSave }) {
     } catch {}
   }
 
+  const handleEdit = (addr) => {
+    setForm({ cep: addr.cep || '', rua: addr.rua || '', numero: addr.numero || '', referencia: addr.referencia || '', bairro: addr.bairro || '', cidade: addr.cidade || '', estado: addr.estado || '' })
+    setEditandoId(addr.id)
+    setMostrarForm(true)
+  }
+
+  const cancelForm = () => {
+    setForm({ cep: '', rua: '', numero: '', referencia: '', bairro: '', cidade: '', estado: '' })
+    setMostrarForm(false)
+    setEditandoId(null)
+  }
+
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal modal-auth modal-endereco" onClick={e => e.stopPropagation()}>
         <button className="modal-close" onClick={onClose}>✕</button>
         <h3>Meus Endereços</h3>
         {enderecos.map((addr, i) => (
-          <label key={addr.id || i} className="endereco-option">
+          <div key={addr.id || i} className="endereco-option">
             <input type="radio" name="endereco-modal" checked={selecionado === addr.id} onChange={() => handleSelect(addr.id)} />
             <span className="endereco-text">{formatEndereco(addr)}</span>
+            <button className="endereco-edit" onClick={() => handleEdit(addr)}>✏️</button>
             {enderecos.length > 1 && <button className="endereco-remove" onClick={e => { e.preventDefault(); handleDelete(addr.id) }}>✕</button>}
-          </label>
+          </div>
         ))}
         {!mostrarForm ? (
           <button className="endereco-add-btn" onClick={() => setMostrarForm(true)}>+ Adicionar novo endereço</button>
         ) : (
           <div className="endereco-form">
+            <p className="endereco-form-title">{editandoId ? 'Editar endereço' : 'Novo endereço'}</p>
             <div className="endereco-form-cep-row">
               <input className="endereco-input endereco-input-cep" placeholder="CEP" value={form.cep} onChange={e => handleCepChange(e.target.value)} />
               {buscandoCep && <span className="endereco-loading">Consultando...</span>}
@@ -1743,12 +1771,66 @@ function AddressModal({ user, token, onClose, onSave }) {
               <input className="endereco-input endereco-input-estado" placeholder="UF" maxLength={2} value={form.estado} onChange={e => setForm(f => ({ ...f, estado: e.target.value }))} />
             </div>
             <div className="endereco-form-actions">
-              <button className="btn-add" onClick={handleAdd} disabled={!form.cep || !form.rua || !form.numero}>Adicionar</button>
-              <button className="btn-del" onClick={() => setMostrarForm(false)}>Cancelar</button>
+              <button className="btn-add" onClick={handleAdd} disabled={!form.cep || !form.rua || !form.numero}>{editandoId ? 'Salvar' : 'Adicionar'}</button>
+              <button className="btn-del" onClick={cancelForm}>Cancelar</button>
             </div>
           </div>
         )}
         <button className="btn-add" style={{ marginTop: 16 }} onClick={onClose}>Concluído</button>
+      </div>
+    </div>
+  )
+}
+
+function EnderecoFormModal({ onSave, onClose }) {
+  const [form, setForm] = useState({ cep: '', rua: '', numero: '', referencia: '', bairro: '', cidade: '', estado: '' })
+  const [buscandoCep, setBuscandoCep] = useState(false)
+  const cepTimer = useRef(null)
+
+  const handleCepChange = (value) => {
+    const fmt = formatCEP(value)
+    setForm(f => ({ ...f, cep: fmt }))
+    const digits = fmt.replace(/\D/g, '')
+    if (digits.length === 8) {
+      if (cepTimer.current) clearTimeout(cepTimer.current)
+      cepTimer.current = setTimeout(async () => {
+        setBuscandoCep(true)
+        const result = await buscarCEP(digits)
+        if (result) setForm(f => ({ ...f, ...result }))
+        setBuscandoCep(false)
+      }, 300)
+    }
+  }
+
+  const handleSave = () => {
+    if (!form.cep || !form.rua || !form.numero) return
+    onSave(formatEndereco(form))
+  }
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal modal-auth modal-endereco" onClick={e => e.stopPropagation()}>
+        <button className="modal-close" onClick={onClose}>✕</button>
+        <h3>Endereço de entrega</h3>
+        <div className="endereco-form">
+          <div className="endereco-form-cep-row">
+            <input className="endereco-input endereco-input-cep" placeholder="CEP" value={form.cep} onChange={e => handleCepChange(e.target.value)} />
+            {buscandoCep && <span className="endereco-loading">Consultando...</span>}
+          </div>
+          <div className="endereco-form-row">
+            <input className="endereco-input endereco-input-rua" placeholder="Rua" value={form.rua} onChange={e => setForm(f => ({ ...f, rua: e.target.value }))} />
+            <input className="endereco-input endereco-input-num" placeholder="Nº" maxLength={6} value={form.numero} onChange={e => setForm(f => ({ ...f, numero: e.target.value }))} />
+          </div>
+          <input className="endereco-input" placeholder="Complemento" value={form.referencia} onChange={e => setForm(f => ({ ...f, referencia: e.target.value }))} />
+          <div className="endereco-form-row endereco-form-row-triple">
+            <input className="endereco-input endereco-input-bairro" placeholder="Bairro" value={form.bairro} onChange={e => setForm(f => ({ ...f, bairro: e.target.value }))} />
+            <input className="endereco-input endereco-input-cidade" placeholder="Cidade" value={form.cidade} onChange={e => setForm(f => ({ ...f, cidade: e.target.value }))} />
+            <input className="endereco-input endereco-input-estado" placeholder="UF" maxLength={2} value={form.estado} onChange={e => setForm(f => ({ ...f, estado: e.target.value }))} />
+          </div>
+          <div className="endereco-form-actions">
+            <button className="btn-add" onClick={handleSave} disabled={!form.cep || !form.rua || !form.numero}>Salvar endereço</button>
+          </div>
+        </div>
       </div>
     </div>
   )
