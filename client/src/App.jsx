@@ -339,7 +339,15 @@ function Cardapio({ onAdicionar, pizzaEditando, onPizzaEditDone }) {
             <button
               key={t.id}
               className={`tamanho-btn ${tamanhoSel?.id === t.id ? 'active' : ''}`}
-              onClick={() => { setTamanhoSel(t); setSaboresSel([]); setBuscaSabor(''); setErro('') }}
+              onClick={() => { 
+                setTamanhoSel(t); 
+                setSaboresSel([]); 
+                setBuscaSabor(''); 
+                setErro('');
+                setTimeout(() => {
+                  document.getElementById('sabores-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                }, 100)
+              }}
             >
               <strong>{t.nome}</strong>
               <span className="tamanho-fatias">{fatiasMap[t.nome] || ''}</span>
@@ -351,7 +359,7 @@ function Cardapio({ onAdicionar, pizzaEditando, onPizzaEditDone }) {
         </div>
 
         {tamanhoSel && (
-          <>
+          <div id="sabores-section">
             <p className="sabores-label">
               Selecione os sabores para {tamanhoSel.nome}
               <span className="sabores-count"> ({saboresSel.length}/{tamanhoSel.maxSabores})</span>
@@ -401,7 +409,7 @@ function Cardapio({ onAdicionar, pizzaEditando, onPizzaEditDone }) {
                 </button>
               )
             })()}
-          </>
+          </div>
         )}
       </div>
 
