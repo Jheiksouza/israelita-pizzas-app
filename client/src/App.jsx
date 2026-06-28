@@ -426,15 +426,22 @@ function AuthModal({ onLogin, onClose }) {
   const handleGoogleLogin = () => {
     setErro('')
     try {
+      console.log('[Google] iniciando login...')
       const client = google.accounts.oauth2.initTokenClient({
         client_id: GOOGLE_CLIENT_ID,
         scope: 'openid email profile',
         callback: (response) => {
+          console.log('[Google] callback recebido:', response)
           if (response.error) { setErro('Erro ao autenticar com Google'); return }
+          console.log('[Google] access_token OK, enviando ao servidor...')
           fetch(`${API}/auth/google`, {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ accessToken: response.access_token })
-          }).then(r => r.json()).then(data => {
+          }).then(r => {
+            console.log('[Google] resposta do servidor status:', r.status)
+            return r.json()
+          }).then(data => {
+            console.log('[Google] dados recebidos:', data)
             if (data.token && data.user) {
               setUser(data.user); setToken(data.token)
               localStorage.setItem('user', JSON.stringify(data.user))
@@ -445,11 +452,15 @@ function AuthModal({ onLogin, onClose }) {
                 setCompletarCadastro(true)
               }
             } else setErro(data.erro || 'Erro ao autenticar')
-          }).catch(() => setErro('Erro de conexão'))
+          }).catch((err) => {
+            console.error('[Google] erro no fetch:', err)
+            setErro('Erro de conexão')
+          })
         }
       })
       client.requestAccessToken()
-    } catch (_) { setErro('Erro ao iniciar login Google') }
+      console.log('[Google] requestAccessToken chamado')
+    } catch (err) { console.error('[Google] erro no handleGoogleLogin:', err); setErro('Erro ao iniciar login Google') }
   }
 
   const handleSubmit = async (e) => {
