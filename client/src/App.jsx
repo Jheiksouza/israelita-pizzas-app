@@ -468,7 +468,7 @@ function App() {
                           return addr ? ` — ${formatEndereco(addr)}` : ''
                         })()}
                       </p>
-                      <button className="cart-drawer-edit-address" onClick={() => setEditandoEndereco(true)}>Alterar endereço</button>
+                      <button className="cart-drawer-edit-address" onClick={() => { setCartOpen(false); setEditandoEndereco(true) }}>Alterar endereço</button>
                     </div>
                   )}
                   <button className="cart-drawer-checkout" onClick={finalizarPedido}>Finalizar Pedido →</button>
