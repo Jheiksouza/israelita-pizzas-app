@@ -51,6 +51,7 @@ function App() {
   const [cadastroForm, setCadastroForm] = useState({ nome: '', telefone: '', endereco: '' })
   const [editandoEndereco, setEditandoEndereco] = useState(false)
   const [novoEndereco, setNovoEndereco] = useState('')
+  const novoEnderecoRef = useRef('')
   const pendentesRef = useRef(0)
   const alarmTimer = useRef(null)
   const alarmCtx = useRef(null)
@@ -462,9 +463,9 @@ function App() {
                         </label>
                       ))}
                       <div className="cart-drawer-add-address-row">
-                        <input className="cart-drawer-input" placeholder="Novo endereço" value={novoEndereco} onChange={e => setNovoEndereco(e.target.value)} />
-                        <button className="cart-drawer-add-address-btn" disabled={!novoEndereco.trim()} onClick={async () => {
-                          const val = novoEndereco.trim()
+                        <input className="cart-drawer-input" placeholder="Novo endereço" value={novoEndereco} onChange={e => { setNovoEndereco(e.target.value); novoEnderecoRef.current = e.target.value }} />
+                        <button className="cart-drawer-add-address-btn" onClick={async () => {
+                          const val = novoEnderecoRef.current.trim()
                           if (!val) return
                           console.log('[Endereco] adicionando:', val)
                           const base = user?.enderecos?.length > 0 ? user.enderecos : (user?.endereco ? [{ id: 'addr1', rua: user.endereco }] : [])
