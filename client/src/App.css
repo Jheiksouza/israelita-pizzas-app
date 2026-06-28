@@ -4391,3 +4391,5 @@ body {
     padding: 24px 20px;
   }
 }
+
+.cardapio-hero { display: block !important; visibility: visible !important; opacity: 1 !important; z-index: 10 !important; }
