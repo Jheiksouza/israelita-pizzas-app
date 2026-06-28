@@ -1659,6 +1659,7 @@ function AddressModal({ user, token, onClose, onSave }) {
   const [buscandoCep, setBuscandoCep] = useState(false)
   const [mostrarForm, setMostrarForm] = useState(false)
   const [editandoId, setEditandoId] = useState(null)
+  const [formErro, setFormErro] = useState('')
   const cepTimer = useRef(null)
 
   const handleCepChange = (value) => {
@@ -1688,7 +1689,10 @@ function AddressModal({ user, token, onClose, onSave }) {
   }
 
   const handleAdd = async () => {
-    if (!form.cep || !form.rua || !form.numero) return
+    setFormErro('')
+    if (!form.cep) { setFormErro('Preencha o CEP'); return }
+    if (!form.rua) { setFormErro('Preencha a Rua'); return }
+    if (!form.numero) { setFormErro('Preencha o Número'); return }
     const id = editandoId || 'addr' + Date.now()
     const addr = { id, ...form }
     const novos = editandoId
@@ -1756,13 +1760,14 @@ function AddressModal({ user, token, onClose, onSave }) {
         ) : (
           <div className="endereco-form">
             <p className="endereco-form-title">{editandoId ? 'Editar endereço' : 'Novo endereço'}</p>
+            {formErro && <p className="endereco-erro">{formErro}</p>}
             <div className="endereco-form-cep-row">
-              <input className="endereco-input endereco-input-cep" placeholder="CEP" value={form.cep} onChange={e => handleCepChange(e.target.value)} />
+              <input className="endereco-input endereco-input-cep" placeholder="CEP *" value={form.cep} onChange={e => { setFormErro(''); handleCepChange(e.target.value) }} />
               {buscandoCep && <span className="endereco-loading">Consultando...</span>}
             </div>
             <div className="endereco-form-row">
-              <input className="endereco-input endereco-input-rua" placeholder="Rua" value={form.rua} onChange={e => setForm(f => ({ ...f, rua: e.target.value }))} />
-              <input className="endereco-input endereco-input-num" placeholder="Nº" maxLength={6} value={form.numero} onChange={e => setForm(f => ({ ...f, numero: e.target.value }))} />
+              <input className="endereco-input endereco-input-rua" placeholder="Rua *" value={form.rua} onChange={e => { setFormErro(''); setForm(f => ({ ...f, rua: e.target.value })) }} />
+              <input className="endereco-input endereco-input-num" placeholder="Nº *" maxLength={6} value={form.numero} onChange={e => { setFormErro(''); setForm(f => ({ ...f, numero: e.target.value })) }} />
             </div>
             <input className="endereco-input" placeholder="Complemento" value={form.referencia} onChange={e => setForm(f => ({ ...f, referencia: e.target.value }))} />
             <div className="endereco-form-row endereco-form-row-triple">
@@ -1771,7 +1776,7 @@ function AddressModal({ user, token, onClose, onSave }) {
               <input className="endereco-input endereco-input-estado" placeholder="UF" maxLength={2} value={form.estado} onChange={e => setForm(f => ({ ...f, estado: e.target.value }))} />
             </div>
             <div className="endereco-form-actions">
-              <button className="btn-add" onClick={handleAdd} disabled={!form.cep || !form.rua || !form.numero}>{editandoId ? 'Salvar' : 'Adicionar'}</button>
+              <button className="btn-add" onClick={handleAdd}>{editandoId ? 'Salvar' : 'Adicionar'}</button>
               <button className="btn-del" onClick={cancelForm}>Cancelar</button>
             </div>
           </div>
@@ -1785,6 +1790,7 @@ function AddressModal({ user, token, onClose, onSave }) {
 function EnderecoFormModal({ onSave, onClose }) {
   const [form, setForm] = useState({ cep: '', rua: '', numero: '', referencia: '', bairro: '', cidade: '', estado: '' })
   const [buscandoCep, setBuscandoCep] = useState(false)
+  const [formErro, setFormErro] = useState('')
   const cepTimer = useRef(null)
 
   const handleCepChange = (value) => {
@@ -1803,7 +1809,10 @@ function EnderecoFormModal({ onSave, onClose }) {
   }
 
   const handleSave = () => {
-    if (!form.cep || !form.rua || !form.numero) return
+    setFormErro('')
+    if (!form.cep) { setFormErro('Preencha o CEP'); return }
+    if (!form.rua) { setFormErro('Preencha a Rua'); return }
+    if (!form.numero) { setFormErro('Preencha o Número'); return }
     onSave(formatEndereco(form))
   }
 
@@ -1813,13 +1822,14 @@ function EnderecoFormModal({ onSave, onClose }) {
         <button className="modal-close" onClick={onClose}>✕</button>
         <h3>Endereço de entrega</h3>
         <div className="endereco-form">
+          {formErro && <p className="endereco-erro">{formErro}</p>}
           <div className="endereco-form-cep-row">
-            <input className="endereco-input endereco-input-cep" placeholder="CEP" value={form.cep} onChange={e => handleCepChange(e.target.value)} />
+            <input className="endereco-input endereco-input-cep" placeholder="CEP *" value={form.cep} onChange={e => { setFormErro(''); handleCepChange(e.target.value) }} />
             {buscandoCep && <span className="endereco-loading">Consultando...</span>}
           </div>
           <div className="endereco-form-row">
-            <input className="endereco-input endereco-input-rua" placeholder="Rua" value={form.rua} onChange={e => setForm(f => ({ ...f, rua: e.target.value }))} />
-            <input className="endereco-input endereco-input-num" placeholder="Nº" maxLength={6} value={form.numero} onChange={e => setForm(f => ({ ...f, numero: e.target.value }))} />
+            <input className="endereco-input endereco-input-rua" placeholder="Rua *" value={form.rua} onChange={e => { setFormErro(''); setForm(f => ({ ...f, rua: e.target.value })) }} />
+            <input className="endereco-input endereco-input-num" placeholder="Nº *" maxLength={6} value={form.numero} onChange={e => { setFormErro(''); setForm(f => ({ ...f, numero: e.target.value })) }} />
           </div>
           <input className="endereco-input" placeholder="Complemento" value={form.referencia} onChange={e => setForm(f => ({ ...f, referencia: e.target.value }))} />
           <div className="endereco-form-row endereco-form-row-triple">
@@ -1828,7 +1838,7 @@ function EnderecoFormModal({ onSave, onClose }) {
             <input className="endereco-input endereco-input-estado" placeholder="UF" maxLength={2} value={form.estado} onChange={e => setForm(f => ({ ...f, estado: e.target.value }))} />
           </div>
           <div className="endereco-form-actions">
-            <button className="btn-add" onClick={handleSave} disabled={!form.cep || !form.rua || !form.numero}>Salvar endereço</button>
+            <button className="btn-add" onClick={handleSave}>Salvar endereço</button>
           </div>
         </div>
       </div>
