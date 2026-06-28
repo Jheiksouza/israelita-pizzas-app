@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
+import heroPizza from './assets/delicious-img/hero-pizza.jpg';
 
 const API = '/api'
 
@@ -1182,3 +1183,4 @@ function AdminLogin({ onLogin }) {
 }
 
 export default App
+

@@ -255,7 +255,7 @@
   min-height: auto !important;
   box-shadow: none !important;
   display: block;
-  background-image: url('/delicious-img/hero-pizza.jpg') !important;
+  background-image: url('./assets/delicious-img/hero-pizza.jpg') !important;
   background-size: cover !important;
   background-position: center !important;
   background-repeat: no-repeat !important;
@@ -4391,13 +4391,3 @@ body {
     padding: 24px 20px;
   }
 
-  .pedido-header {
-    flex-direction: column;
-    gap: 8px;
-    align-items: flex-start;
-  }
-
-  .float-pizza {
-    display: none;
-  }
-}
