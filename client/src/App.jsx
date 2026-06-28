@@ -1851,11 +1851,11 @@ function AddressModal({ user, token, onClose, onSave }) {
         <button className="modal-close" onClick={onClose}>✕</button>
         <h3>Meus Endereços</h3>
         {enderecos.map((addr, i) => (
-          <div key={addr.id || i} className="endereco-option">
-            <input type="radio" name="endereco-modal" checked={selecionado === addr.id} onChange={() => handleSelect(addr.id)} />
+          <div key={addr.id || i} className="endereco-option" onClick={() => handleSelect(addr.id)}>
+            <input type="radio" name="endereco-modal" checked={selecionado === addr.id} onChange={() => {}} />
             <span className="endereco-text">{formatEndereco(addr)}</span>
-            <button className="endereco-edit" onClick={() => handleEdit(addr)}>✏️</button>
-            {enderecos.length > 1 && <button className="endereco-remove" onClick={e => { e.preventDefault(); handleDelete(addr.id) }}>✕</button>}
+            <button className="endereco-edit" onClick={e => { e.stopPropagation(); handleEdit(addr) }}>✏️</button>
+            {enderecos.length > 1 && <button className="endereco-remove" onClick={e => { e.stopPropagation(); handleDelete(addr.id) }}>✕</button>}
           </div>
         ))}
         {!mostrarForm ? (
