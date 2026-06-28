@@ -1,12 +1,15 @@
 const express = require('express')
 const path = require('path')
 const cors = require('cors')
+const bcrypt = require('bcryptjs')
+const jwt = require('jsonwebtoken')
 const { createClient } = require('@supabase/supabase-js')
 
 try { require('dotenv').config() } catch (e) { /* dotenv opcional */ }
 
 const app = express()
 const PORT = process.env.PORT || 3001
+const JWT_SECRET = process.env.JWT_SECRET || 'israelita-pizzas-jwt-secret-dev'
 
 app.use(cors())
 app.use(express.json())
@@ -42,6 +45,17 @@ app.get('/health', (req, res) => {
   })
 })
 
+function authMiddleware(req, res, next) {
+  const header = req.headers.authorization
+  if (!header || !header.startsWith('Bearer ')) {
+    req.user = null; return next()
+  }
+  try {
+    req.user = jwt.verify(header.split(' ')[1], JWT_SECRET)
+  } catch (_) { req.user = null }
+  next()
+}
+
 function checkSupabase(res) {
   if (!supabase) {
     res.status(500).json({ erro: 'Banco de dados não configurado (SUPABASE_URL/KEY ausentes)' })
@@ -49,6 +63,101 @@ function checkSupabase(res) {
   }
   return true
 }
+
+app.use(authMiddleware)
+
+// ===== AUTH =====
+app.post('/auth/signup', async (req, res) => {
+  if (!checkSupabase(res)) return
+  try {
+    const { nome, email, senha, telefone, endereco } = req.body
+    if (!email || !senha) return res.status(400).json({ erro: 'Email e senha obrigatórios' })
+    const { data: existente } = await supabase.from('users').select('id').eq('email', email).single()
+    if (existente) return res.status(409).json({ erro: 'Email já cadastrado' })
+    const hash = await bcrypt.hash(senha, 10)
+    const { data, error } = await supabase.from('users').insert({
+      nome: nome || '', email, senha: hash, telefone: telefone || '', endereco: endereco || ''
+    }).select()
+    if (error) throw error
+    const token = jwt.sign({ id: data[0].id, email: data[0].email, nome: data[0].nome }, JWT_SECRET, { expiresIn: '7d' })
+    res.status(201).json({ token, user: { id: data[0].id, nome: data[0].nome, email: data[0].email, telefone: data[0].telefone, endereco: data[0].endereco } })
+  } catch (err) {
+    console.error('Erro ao cadastrar:', err)
+    res.status(500).json({ erro: 'Erro ao cadastrar' })
+  }
+})
+
+app.post('/auth/login', async (req, res) => {
+  if (!checkSupabase(res)) return
+  try {
+    const { email, senha } = req.body
+    if (!email || !senha) return res.status(400).json({ erro: 'Email e senha obrigatórios' })
+    const { data: user, error } = await supabase.from('users').select('*').eq('email', email).single()
+    if (error || !user) return res.status(401).json({ erro: 'Email ou senha inválidos' })
+    const ok = await bcrypt.compare(senha, user.senha)
+    if (!ok) return res.status(401).json({ erro: 'Email ou senha inválidos' })
+    const token = jwt.sign({ id: user.id, email: user.email, nome: user.nome }, JWT_SECRET, { expiresIn: '7d' })
+    res.json({ token, user: { id: user.id, nome: user.nome, email: user.email, telefone: user.telefone, endereco: user.endereco } })
+  } catch (err) {
+    console.error('Erro ao logar:', err)
+    res.status(500).json({ erro: 'Erro ao fazer login' })
+  }
+})
+
+app.get('/auth/me', async (req, res) => {
+  if (!req.user) return res.status(401).json({ erro: 'Não autenticado' })
+  if (!checkSupabase(res)) return
+  try {
+    const { data, error } = await supabase.from('users').select('id,nome,email,telefone,endereco').eq('id', req.user.id).single()
+    if (error || !data) return res.status(404).json({ erro: 'Usuário não encontrado' })
+    res.json(data)
+  } catch (err) {
+    res.status(500).json({ erro: 'Erro ao buscar usuário' })
+  }
+})
+
+app.get('/orders/mine', async (req, res) => {
+  if (!req.user) return res.status(401).json({ erro: 'Não autenticado' })
+  if (!checkSupabase(res)) return
+  try {
+    const { data, error } = await supabase.from('orders').select('*').eq('user_id', req.user.id).order('id', { ascending: false })
+    if (error) throw error
+    res.json(data || [])
+  } catch (err) {
+    res.status(500).json({ erro: 'Erro ao buscar pedidos' })
+  }
+})
+
+app.get('/orders/stats', async (req, res) => {
+  if (!checkSupabase(res)) return
+  try {
+    const { data, error } = await supabase.from('orders').select('*')
+    if (error) throw error
+    const orders = data || []
+    res.json({
+      totalPedidos: orders.length,
+      totalReceita: orders.filter(o => o.status === 'entregue').reduce((s, o) => s + (o.total || 0), 0),
+      pendentes: orders.filter(o => o.status === 'pendente').length,
+      aceitos: orders.filter(o => o.status === 'aceito').length,
+      entregues: orders.filter(o => o.status === 'entregue').length,
+      recusados: orders.filter(o => o.status === 'recusado').length,
+      receitaPendente: orders.filter(o => o.status === 'aceito').reduce((s, o) => s + (o.total || 0), 0)
+    })
+  } catch (err) {
+    res.status(500).json({ erro: 'Erro ao buscar estatísticas' })
+  }
+})
+
+app.get('/orders/:id', async (req, res) => {
+  if (!checkSupabase(res)) return
+  try {
+    const { data, error } = await supabase.from('orders').select('*').eq('id', parseInt(req.params.id)).single()
+    if (error || !data) return res.status(404).json({ erro: 'Pedido não encontrado' })
+    res.json(data)
+  } catch (err) {
+    res.status(500).json({ erro: 'Erro ao buscar pedido' })
+  }
+})
 
 // Cardápio
 app.get('/menu', async (req, res) => {
@@ -127,7 +236,8 @@ app.post('/orders', async (req, res) => {
       updatedAt: new Date().toISOString(),
       cliente,
       itens,
-      total
+      total,
+      user_id: req.user ? req.user.id : null
     }
 
     const { data, error } = await supabase.from('orders').insert(pedido).select()
@@ -150,28 +260,6 @@ app.patch('/orders/:id', async (req, res) => {
   } catch (err) {
     console.error('Erro ao atualizar pedido:', err)
     res.status(500).json({ erro: 'Erro ao atualizar pedido' })
-  }
-})
-
-app.get('/orders/stats', async (req, res) => {
-  if (!checkSupabase(res)) return
-  try {
-    const { data, error } = await supabase.from('orders').select('*')
-    if (error) throw error
-
-    const orders = data || []
-    const totalPedidos = orders.length
-    const totalReceita = orders.filter(o => o.status === 'entregue').reduce((s, o) => s + (o.total || 0), 0)
-    const pendentes = orders.filter(o => o.status === 'pendente').length
-    const aceitos = orders.filter(o => o.status === 'aceito').length
-    const entregues = orders.filter(o => o.status === 'entregue').length
-    const recusados = orders.filter(o => o.status === 'recusado').length
-    const receitaPendente = orders.filter(o => o.status === 'aceito').reduce((s, o) => s + (o.total || 0), 0)
-
-    res.json({ totalPedidos, totalReceita, pendentes, aceitos, entregues, recusados, receitaPendente })
-  } catch (err) {
-    console.error('Erro ao buscar stats:', err)
-    res.status(500).json({ erro: 'Erro ao buscar estatísticas' })
   }
 })
 

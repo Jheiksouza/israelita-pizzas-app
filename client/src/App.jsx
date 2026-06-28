@@ -12,8 +12,15 @@ function App() {
   const [pizzaEditando, setPizzaEditando] = useState(null)
   const [bannerApp, setBannerApp] = useState({ texto: '', key: 0 })
   const [cartOpen, setCartOpen] = useState(false)
+  const [user, setUser] = useState(() => {
+    const saved = localStorage.getItem('user')
+    return saved ? JSON.parse(saved) : null
+  })
+  const [token, setToken] = useState(() => localStorage.getItem('token') || '')
+  const [mostrarAuth, setMostrarAuth] = useState(false)
   const [cliente, setCliente] = useState({ nome: '', telefone: '', endereco: '' })
   const [pedidoEnviado, setPedidoEnviado] = useState(false)
+  const [pedidoCriadoId, setPedidoCriadoId] = useState(null)
   const [pendentesCount, setPendentesCount] = useState(0)
   const pendentesRef = useRef(0)
   const alarmTimer = useRef(null)
@@ -129,21 +136,41 @@ function App() {
   const finalizarPedido = async () => {
     if (!cliente.nome || !cliente.telefone) return alert('Preencha nome e telefone')
     try {
+      const headers = { 'Content-Type': 'application/json' }
+      if (token) headers['Authorization'] = `Bearer ${token}`
       const res = await fetch(`${API}/orders`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ cliente, itens: carrinho, total: totalCarrinho })
       })
       if (!res.ok) return alert('Erro ao enviar pedido. Tente novamente.')
+      const pedidoCriado = await res.json()
       setPedidoEnviado(true)
+      setPedidoCriadoId(pedidoCriado.id)
       setCarrinho([])
       setCliente({ nome: '', telefone: '', endereco: '' })
-      setTimeout(() => { setPedidoEnviado(false); setCartOpen(false) }, 3000)
+      setTimeout(() => { setPedidoEnviado(false); setCartOpen(false); setPedidoCriadoId(null) }, 8000)
     } catch (_) { alert('Erro ao enviar pedido. Tente novamente.') }
   }
 
   const totalCarrinho = carrinho.reduce((sum, i) => sum + i.preco * i.qtd, 0)
   const qtdCarrinho = carrinho.reduce((sum, i) => sum + i.qtd, 0)
+
+  const handleLogin = (userData, userToken) => {
+    setUser(userData)
+    setToken(userToken)
+    localStorage.setItem('user', JSON.stringify(userData))
+    localStorage.setItem('token', userToken)
+    setMostrarAuth(false)
+  }
+
+  const handleLogout = () => {
+    setUser(null)
+    setToken('')
+    localStorage.removeItem('user')
+    localStorage.removeItem('token')
+    setMostrarAuth(false)
+  }
 
   return (
     <div className={`app theme-${theme} font-${font}`}>
@@ -178,6 +205,15 @@ function App() {
             <button className={`nav-btn ${qtdCarrinho > 0 ? 'active' : ''}`} onClick={() => setCartOpen(true)}>
               Carrinho {qtdCarrinho > 0 && <span key={qtdCarrinho} className="badge">{qtdCarrinho}</span>}
             </button>
+            <button className={`nav-btn ${pagina === 'meus-pedidos' ? 'active' : ''}`} onClick={() => setPagina('meus-pedidos')}>Meus Pedidos</button>
+            {user ? (
+              <div className="user-nav">
+                <span className="user-nav-name">{user.nome}</span>
+                <button className="nav-btn" onClick={handleLogout}>Sair</button>
+              </div>
+            ) : (
+              <button className={`nav-btn ${mostrarAuth ? 'active' : ''}`} onClick={() => setMostrarAuth(true)}>Entrar / Cadastrar</button>
+            )}
             <button className={`nav-btn ${pagina === 'admin' ? 'active' : ''}`} onClick={() => setPagina('admin')}>
               {adminAutenticado ? 'Admin' : 'Entrar'}
               {adminAutenticado && pendentesCount > 0 && <span key={pendentesCount} className="badge badge-alerta">{pendentesCount}</span>}
@@ -200,7 +236,15 @@ function App() {
             onFontChange={setFont}
           />
         )}
+        {pagina === 'meus-pedidos' && <MeusPedidos token={token} onVoltar={() => setPagina('cardapio')} />}
       </main>
+
+      {mostrarAuth && (
+        <AuthModal
+          onLogin={handleLogin}
+          onClose={() => setMostrarAuth(false)}
+        />
+      )}
 
       <nav className="bottom-nav">
         <button className={`bottom-nav-btn ${pagina === 'cardapio' ? 'active' : ''}`} onClick={() => setPagina('cardapio')}>
@@ -211,6 +255,10 @@ function App() {
           <span className="bottom-nav-icon">🛒</span>
           <span className="bottom-nav-label">Carrinho</span>
           {qtdCarrinho > 0 && <span key={qtdCarrinho} className="bottom-nav-badge">{qtdCarrinho}</span>}
+        </button>
+        <button className={`bottom-nav-btn ${pagina === 'meus-pedidos' ? 'active' : ''}`} onClick={() => setPagina('meus-pedidos')}>
+          <span className="bottom-nav-icon">📋</span>
+          <span className="bottom-nav-label">Pedidos</span>
         </button>
         <button className={`bottom-nav-btn ${pagina === 'admin' ? 'active' : ''}`} onClick={() => setPagina('admin')}>
           <span className="bottom-nav-icon">⚙️</span>
@@ -243,6 +291,7 @@ function App() {
                 <div className="cart-drawer-success-icon">✅</div>
                 <p className="cart-drawer-success-title">Pedido enviado!</p>
                 <p className="cart-drawer-success-desc">Obrigado, {cliente.nome}! Seu pedido foi registrado.</p>
+                {pedidoCriadoId && <p className="cart-drawer-success-id">Nº do pedido: <strong>#{pedidoCriadoId}</strong></p>}
               </div>
             ) : carrinho.length === 0 ? (
               <div className="cart-drawer-body cart-drawer-empty">
@@ -310,6 +359,163 @@ function App() {
           </aside>
         </div>
       )}
+    </div>
+  )
+}
+
+function AuthModal({ onLogin, onClose }) {
+  const [modo, setModo] = useState('login')
+  const [nome, setNome] = useState('')
+  const [email, setEmail] = useState('')
+  const [senha, setSenha] = useState('')
+  const [telefone, setTelefone] = useState('')
+  const [endereco, setEndereco] = useState('')
+  const [erro, setErro] = useState('')
+  const [loading, setLoading] = useState(false)
+
+  const handleSubmit = async (e) => {
+    e.preventDefault(); setErro(''); setLoading(true)
+    try {
+      const endpoint = modo === 'login' ? '/auth/login' : '/auth/signup'
+      const body = modo === 'login' ? { email, senha } : { nome, email, senha, telefone, endereco }
+      const res = await fetch(`${API}${endpoint}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
+      })
+      const data = await res.json()
+      if (!res.ok) { setErro(data.erro || 'Erro'); return }
+      onLogin(data.user, data.token)
+    } catch (_) { setErro('Erro de conexão') }
+    finally { setLoading(false) }
+  }
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal modal-auth" onClick={e => e.stopPropagation()}>
+        <button className="modal-close" onClick={onClose}>✕</button>
+        <h3>{modo === 'login' ? 'Entrar' : 'Criar Conta'}</h3>
+        <form onSubmit={handleSubmit}>
+          {modo === 'signup' && (
+            <input placeholder="Nome" value={nome} onChange={e => setNome(e.target.value)} required />
+          )}
+          <input type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} required />
+          <input type="password" placeholder="Senha" value={senha} onChange={e => setSenha(e.target.value)} required />
+          {modo === 'signup' && (
+            <>
+              <input placeholder="Telefone" value={telefone} onChange={e => setTelefone(e.target.value)} />
+              <input placeholder="Endereço" value={endereco} onChange={e => setEndereco(e.target.value)} />
+            </>
+          )}
+          {erro && <p className="erro">{erro}</p>}
+          <button className="btn-add btn-full" disabled={loading}>{loading ? 'Aguarde...' : modo === 'login' ? 'Entrar' : 'Cadastrar'}</button>
+        </form>
+        <p className="auth-toggle">
+          {modo === 'login' ? (
+            <>Não tem conta? <button onClick={() => { setModo('signup'); setErro('') }}>Cadastre-se</button></>
+          ) : (
+            <>Já tem conta? <button onClick={() => { setModo('login'); setErro('') }}>Faça login</button></>
+          )}
+        </p>
+        <hr className="auth-divider" />
+        <p className="auth-info">Se preferir, faça o pedido sem cadastro. 
+          Depois você pode <button onClick={() => { setModo('login'); setErro('') }}>vincular seu pedido</button> com o email usado na compra.</p>
+      </div>
+    </div>
+  )
+}
+
+function MeusPedidos({ token, onVoltar }) {
+  const [pedidos, setPedidos] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [buscaId, setBuscaId] = useState('')
+  const [pedidoBuscado, setPedidoBuscado] = useState(null)
+
+  useEffect(() => {
+    if (!token) { setLoading(false); return }
+    fetch(`${API}/orders/mine`, { headers: { 'Authorization': `Bearer ${token}` } })
+      .then(r => r.json()).then(data => { setPedidos(data); setLoading(false) }).catch(() => setLoading(false))
+  }, [token])
+
+  const buscarPorId = async () => {
+    if (!buscaId) return
+    try {
+      const res = await fetch(`${API}/orders/${parseInt(buscaId)}`)
+      if (!res.ok) return alert('Pedido não encontrado')
+      const data = await res.json()
+      setPedidoBuscado(data)
+    } catch (_) { alert('Erro ao buscar pedido') }
+  }
+
+  const statusLabel = { pendente: 'Pendente', aceito: 'Aceito', entregue: 'Entregue', recusado: 'Recusado' }
+  const statusClass = { pendente: 'status-pendente', aceito: 'status-aceito', entregue: 'status-entregue', recusado: 'status-recusado' }
+
+  return (
+    <div className="carrinho-page">
+      <h2>Meus Pedidos</h2>
+
+      {!token && (
+        <div className="guest-tracking">
+          <p>Faça login para ver seus pedidos, ou busque pelo número do pedido:</p>
+          <div className="guest-tracking-row">
+            <input placeholder="Nº do pedido" value={buscaId} onChange={e => setBuscaId(e.target.value)} />
+            <button className="btn-add" onClick={buscarPorId}>Buscar</button>
+          </div>
+          {pedidoBuscado && (
+            <div className={`pedido-card${pedidoBuscado.status === 'pendente' ? ' pedido-pendente-destaque' : ''}`}>
+              <div className="pedido-header">
+                <strong>Pedido #{pedidoBuscado.id}</strong>
+                <span className={`status-badge ${statusClass[pedidoBuscado.status]}`}>{statusLabel[pedidoBuscado.status]}</span>
+              </div>
+              <div className="pedido-body">
+                <p><strong>Cliente:</strong> {pedidoBuscado.cliente?.nome}</p>
+                <p><strong>Data:</strong> {new Date(pedidoBuscado.data).toLocaleString('pt-BR')}</p>
+                <div className="pedido-itens">
+                  <strong>Itens:</strong>
+                  {pedidoBuscado.itens?.map(item => (
+                    <span key={item.id} className="pedido-item">{item.qtd}x {item.nome} - R$ {(item.preco * item.qtd).toFixed(2)}</span>
+                  ))}
+                </div>
+                <p className="pedido-total"><strong>Total: R$ {pedidoBuscado.total?.toFixed(2)}</strong></p>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {token && loading && <p>Carregando...</p>}
+
+      {token && !loading && pedidos.length === 0 && (
+        <div className="empty-state">
+          <p>Nenhum pedido encontrado</p>
+        </div>
+      )}
+
+      {token && pedidos.length > 0 && (
+        <div className="pedidos-lista">
+          {pedidos.map(pedido => (
+            <div key={pedido.id} className={`pedido-card${pedido.status === 'pendente' ? ' pedido-pendente-destaque' : ''}`}>
+              <div className="pedido-header">
+                <strong>Pedido #{pedido.id}</strong>
+                <span className={`status-badge ${statusClass[pedido.status]}`}>{statusLabel[pedido.status]}</span>
+              </div>
+              <div className="pedido-body">
+                <p><strong>Cliente:</strong> {pedido.cliente?.nome}</p>
+                <p><strong>Data:</strong> {new Date(pedido.data).toLocaleString('pt-BR')}</p>
+                <div className="pedido-itens">
+                  <strong>Itens:</strong>
+                  {pedido.itens?.map(item => (
+                    <span key={item.id} className="pedido-item">{item.qtd}x {item.nome} - R$ {(item.preco * item.qtd).toFixed(2)}</span>
+                  ))}
+                </div>
+                <p className="pedido-total"><strong>Total: R$ {pedido.total?.toFixed(2)}</strong></p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="carrinho-actions" style={{ marginTop: 24 }}>
+        <button className="btn-add" onClick={onVoltar}>← Voltar ao Cardápio</button>
+      </div>
     </div>
   )
 }

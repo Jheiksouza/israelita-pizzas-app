@@ -3,6 +3,17 @@
 -- Execute este SQL no SQL Editor do Supabase Dashboard
 -- =====================================================
 
+-- Tabela de usuários
+CREATE TABLE IF NOT EXISTS users (
+  id SERIAL PRIMARY KEY,
+  nome TEXT NOT NULL DEFAULT '',
+  email TEXT UNIQUE NOT NULL,
+  senha TEXT NOT NULL DEFAULT '',
+  telefone TEXT DEFAULT '',
+  endereco TEXT DEFAULT '',
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
 -- Tabela do cardápio
 CREATE TABLE IF NOT EXISTS menu (
   id SERIAL PRIMARY KEY,
@@ -27,7 +38,8 @@ CREATE TABLE IF NOT EXISTS orders (
   "updatedAt" TEXT NOT NULL DEFAULT '',
   cliente JSONB DEFAULT '{}',
   itens JSONB DEFAULT '[]',
-  total REAL DEFAULT 0
+  total REAL DEFAULT 0,
+  user_id INTEGER REFERENCES users(id) ON DELETE SET NULL
 );
 
 -- Seed do cardápio
@@ -50,8 +62,11 @@ ON CONFLICT (id) DO NOTHING;
 SELECT setval('menu_id_seq', COALESCE((SELECT MAX(id) FROM menu), 1));
 
 -- Permite acesso com a chave anon (sem autenticação)
+ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE menu ENABLE ROW LEVEL SECURITY;
 ALTER TABLE orders ENABLE ROW LEVEL SECURITY;
 
+CREATE POLICY "anon insert users" ON users FOR INSERT WITH CHECK (true);
+CREATE POLICY "anon select users" ON users FOR SELECT USING (true);
 CREATE POLICY "anon all menu" ON menu FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "anon all orders" ON orders FOR ALL USING (true) WITH CHECK (true);
