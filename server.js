@@ -124,14 +124,15 @@ app.get('/auth/me', async (req, res) => {
 app.post('/auth/google', async (req, res) => {
   if (!checkSupabase(res)) return
   try {
-    const { code } = req.body
-    if (!code) return res.status(400).json({ erro: 'Código ausente' })
-    const { tokens } = await googleClient.getToken({ code, redirect_uri: 'postmessage' })
-    if (!tokens.id_token) return res.status(401).json({ erro: 'Token ID ausente na resposta' })
-    const ticket = await googleClient.verifyIdToken({ idToken: tokens.id_token, audience: GOOGLE_CLIENT_ID })
-    const payload = ticket.getPayload()
-    if (!payload || !payload.email) return res.status(401).json({ erro: 'Token inválido' })
-    const { email, name, sub } = payload
+    const { accessToken } = req.body
+    if (!accessToken) return res.status(400).json({ erro: 'Token ausente' })
+    const resp = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+      headers: { Authorization: `Bearer ${accessToken}` }
+    })
+    if (!resp.ok) return res.status(401).json({ erro: 'Token inválido' })
+    const payload = await resp.json()
+    if (!payload || !payload.email) return res.status(401).json({ erro: 'Dados do usuário não encontrados' })
+    const { email, name, id: sub } = payload
     const { data: existing } = await supabase.from('users').select('*').eq('email', email).single()
     if (existing) {
       const token = jwt.sign({ id: existing.id, email: existing.email, nome: existing.nome }, JWT_SECRET, { expiresIn: '7d' })

@@ -32,6 +32,22 @@ function App() {
     return () => clearTimeout(t)
   }, [bannerApp.key])
 
+  useEffect(() => {
+    if (!window.location.pathname.startsWith('/auth/google/callback')) return
+    const hash = window.location.hash.replace(/^#/, '')
+    if (!hash) return
+    const params = Object.fromEntries(hash.split('&').map(p => p.split('=').map(decodeURIComponent)))
+    if (params.access_token) {
+      fetch(`${API}/auth/google`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ accessToken: params.access_token })
+      }).then(r => r.json()).then(data => {
+        if (data.token && data.user) handleLogin(data.user, data.token)
+      }).catch(() => {})
+      window.history.replaceState({}, '', '/')
+    }
+  }, [])
+
   const tocarAlarme = () => {
     try {
       if (alarmCtx.current) alarmCtx.current.close()
@@ -377,25 +393,13 @@ function AuthModal({ onLogin, onClose }) {
   const handleGoogleLogin = () => {
     if (!window.google?.accounts?.oauth2) return
     setErro('')
-    google.accounts.oauth2.initCodeClient({
+    google.accounts.oauth2.initTokenClient({
       client_id: GOOGLE_CLIENT_ID,
       scope: 'openid email profile',
-      callback: async (response) => {
-        if (response.error) { setErro('Autenticação Google cancelada'); return }
-        if (!response.code) { setErro('Código não recebido'); return }
-        setLoading(true)
-        try {
-          const res = await fetch(`${API}/auth/google`, {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ code: response.code })
-          })
-          const data = await res.json()
-          if (!res.ok) { setErro(data.erro || 'Erro Google'); return }
-          onLogin(data.user, data.token)
-        } catch (_) { setErro('Erro de conexão') }
-        finally { setLoading(false) }
-      },
-    }).requestCode()
+      redirect_uri: `${window.location.origin}/auth/google/callback`,
+      ux_mode: 'redirect',
+      callback: () => {}
+    }).requestAccessToken()
   }
 
   const handleSubmit = async (e) => {
