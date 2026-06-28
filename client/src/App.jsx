@@ -1,6 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react'
+import { buscarCEP, formatCEP, formatEndereco } from './cepHelper'
 
 const API = '/api'
+
+function getSelectedAddress(user) {
+  if (!user?.enderecos?.length) {
+    return user?.endereco ? { rua: user.endereco } : null
+  }
+  return user.enderecos.find(a => a.id === user.enderecoSelecionado) || user.enderecos[0]
+}
 
 window.__googleCallback = (response) => {
   const s = window.__authSetters
@@ -50,8 +58,6 @@ function App() {
   const [completarCadastro, setCompletarCadastro] = useState(false)
   const [cadastroForm, setCadastroForm] = useState({ nome: '', telefone: '', endereco: '' })
   const [editandoEndereco, setEditandoEndereco] = useState(false)
-  const [novoEndereco, setNovoEndereco] = useState('')
-  const novoEnderecoRef = useRef('')
   const pendentesRef = useRef(0)
   const alarmTimer = useRef(null)
   const alarmCtx = useRef(null)
@@ -188,8 +194,11 @@ function App() {
   const limparCarrinho = () => setCarrinho([])
 
   const finalizarPedido = async () => {
+    const enderecoFinal = user?.nome && user?.telefone
+      ? formatEndereco(getSelectedAddress(user)) || user.endereco || ''
+      : ''
     const dadosCliente = user?.nome && user?.telefone
-      ? { nome: user.nome, telefone: user.telefone, endereco: user.endereco || '' }
+      ? { nome: user.nome, telefone: user.telefone, endereco: enderecoFinal }
       : cliente
     if (!dadosCliente.nome || !dadosCliente.telefone) return alert('Preencha nome e telefone')
     try {
@@ -328,6 +337,18 @@ function App() {
           </div>
         </div>
       )}
+      {editandoEndereco && user && token && (
+        <AddressModal
+          user={user}
+          token={token}
+          onClose={() => setEditandoEndereco(false)}
+          onSave={(update) => {
+            const u = { ...user, ...update }
+            setUser(u)
+            localStorage.setItem('user', JSON.stringify(u))
+          }}
+        />
+      )}
       
       <nav className="bottom-nav">
         <button className={`bottom-nav-btn ${pagina === 'cardapio' ? 'active' : ''}`} onClick={() => setPagina('cardapio')}>
@@ -437,53 +458,17 @@ function App() {
                     <input className="cart-drawer-input" placeholder="Endereço" value={cliente.endereco} onChange={e => setCliente({ ...cliente, endereco: e.target.value })} />
                   </div>
                   )}
-                  {user?.nome && user?.telefone && !editandoEndereco && (
+                  {user?.nome && user?.telefone && (
                     <div className="cart-drawer-user-info">
                       <p className="cart-drawer-user-info-name">{user.nome}</p>
-                      <p className="cart-drawer-user-info-phone">{user.telefone}{user.endereco ? ` — ${user.endereco}` : ''}</p>
-                      <button className="cart-drawer-edit-address" onClick={() => { setNovoEndereco(''); setEditandoEndereco(true) }}>Alterar endereço</button>
-                    </div>
-                  )}
-                  {user?.nome && user?.telefone && editandoEndereco && (
-                    <div className="cart-drawer-address-picker">
-                      {((user.enderecos && user.enderecos.length > 0) ? user.enderecos : (user.endereco ? [{ id: 'addr1', rua: user.endereco }] : [])).map((addr, i) => (
-                        <label key={addr.id || i} className="cart-drawer-address-option">
-                          <input type="radio" name="endereco" checked={user.enderecoSelecionado === addr.id || (!user.enderecoSelecionado && i === 0)} onChange={async () => {
-                            try {
-                              const enderecos = user.enderecos && user.enderecos.length > 0 ? user.enderecos : [{ id: 'addr1', rua: user.endereco || '' }]
-                              const res = await fetch(`${API}/auth/enderecos`, {
-                                method: 'PATCH', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-                                body: JSON.stringify({ enderecos, enderecoSelecionado: addr.id })
-                              })
-                              const data = await res.json()
-                              if (res.ok) { const u = { ...user, endereco: data.endereco, enderecoSelecionado: data.enderecoSelecionado, enderecos: data.enderecos }; setUser(u); localStorage.setItem('user', JSON.stringify(u)) }
-                            } catch {}
-                          }} />
-                          <span className="cart-drawer-address-text">{addr.rua || addr}</span>
-                        </label>
-                      ))}
-                      <div className="cart-drawer-add-address-row">
-                        <input className="cart-drawer-input" placeholder="Novo endereço" value={novoEndereco} onChange={e => { setNovoEndereco(e.target.value); novoEnderecoRef.current = e.target.value }} />
-                        <button className="cart-drawer-add-address-btn" onClick={async () => {
-                          const val = novoEnderecoRef.current.trim()
-                          if (!val) return
-                          console.log('[Endereco] adicionando:', val)
-                          const base = user?.enderecos?.length > 0 ? user.enderecos : (user?.endereco ? [{ id: 'addr1', rua: user.endereco }] : [])
-                          console.log('[Endereco] base:', base)
-                          const novos = [...base, { id: 'addr' + Date.now(), rua: val }]
-                          try {
-                            const res = await fetch(`${API}/auth/enderecos`, {
-                              method: 'PATCH', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-                              body: JSON.stringify({ enderecos: novos, enderecoSelecionado: novos[novos.length - 1].id })
-                            })
-                            console.log('[Endereco] resposta status:', res.status)
-                            const data = await res.json()
-                            console.log('[Endereco] dados:', JSON.stringify(data))
-                            if (res.ok) { const u = { ...user, enderecos: data.enderecos, endereco: data.endereco, enderecoSelecionado: data.enderecoSelecionado }; setUser(u); localStorage.setItem('user', JSON.stringify(u)); setNovoEndereco('') }
-                          } catch (err) { console.error('[Endereco] erro:', err) }
-                        }}>+</button>
-                      </div>
-                      <button className="cart-drawer-address-done" onClick={() => setEditandoEndereco(false)}>Concluído</button>
+                      <p className="cart-drawer-user-info-phone">
+                        {user.telefone}
+                        {(() => {
+                          const addr = getSelectedAddress(user)
+                          return addr ? ` — ${formatEndereco(addr)}` : ''
+                        })()}
+                      </p>
+                      <button className="cart-drawer-edit-address" onClick={() => setEditandoEndereco(true)}>Alterar endereço</button>
                     </div>
                   )}
                   <button className="cart-drawer-checkout" onClick={finalizarPedido}>Finalizar Pedido →</button>
@@ -1649,6 +1634,121 @@ function AdminLogin({ onLogin }) {
           {erro && <p className="erro">{erro}</p>}
           <button type="submit" className="btn-add">Entrar</button>
         </form>
+      </div>
+    </div>
+  )
+}
+
+function AddressModal({ user, token, onClose, onSave }) {
+  const [enderecos, setEnderecos] = useState(() => {
+    if (user?.enderecos?.length) return user.enderecos
+    if (user?.endereco) return [{ id: 'addr1', rua: user.endereco }]
+    return []
+  })
+  const [selecionado, setSelecionado] = useState(user?.enderecoSelecionado || enderecos[0]?.id || '')
+  const [form, setForm] = useState({ cep: '', rua: '', numero: '', referencia: '', bairro: '', cidade: '', estado: '' })
+  const [buscandoCep, setBuscandoCep] = useState(false)
+  const [mostrarForm, setMostrarForm] = useState(false)
+  const cepTimer = useRef(null)
+
+  const handleCepChange = (value) => {
+    const fmt = formatCEP(value)
+    setForm(f => ({ ...f, cep: fmt }))
+    const digits = fmt.replace(/\D/g, '')
+    if (digits.length === 8) {
+      if (cepTimer.current) clearTimeout(cepTimer.current)
+      cepTimer.current = setTimeout(async () => {
+        setBuscandoCep(true)
+        const result = await buscarCEP(digits)
+        if (result) setForm(f => ({ ...f, ...result }))
+        setBuscandoCep(false)
+      }, 300)
+    }
+  }
+
+  const handleSelect = async (id) => {
+    try {
+      const res = await fetch(`${API}/auth/enderecos`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ enderecos, enderecoSelecionado: id })
+      })
+      const data = await res.json()
+      if (res.ok) { setSelecionado(id); onSave({ enderecos: data.enderecos, endereco: data.endereco, enderecoSelecionado: id }) }
+    } catch {}
+  }
+
+  const handleAdd = async () => {
+    if (!form.cep || !form.rua || !form.numero) return
+    const id = 'addr' + Date.now()
+    const novo = { id, ...form }
+    const novos = [...enderecos, novo]
+    try {
+      const res = await fetch(`${API}/auth/enderecos`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ enderecos: novos, enderecoSelecionado: id })
+      })
+      const data = await res.json()
+      if (res.ok) {
+        setEnderecos(novos)
+        setSelecionado(id)
+        setForm({ cep: '', rua: '', numero: '', referencia: '', bairro: '', cidade: '', estado: '' })
+        setMostrarForm(false)
+        onSave({ enderecos: data.enderecos, endereco: data.endereco, enderecoSelecionado: id })
+      }
+    } catch {}
+  }
+
+  const handleDelete = async (id) => {
+    if (enderecos.length <= 1) return
+    const novos = enderecos.filter(a => a.id !== id)
+    const novoId = selecionado === id ? novos[0].id : selecionado
+    try {
+      const res = await fetch(`${API}/auth/enderecos`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ enderecos: novos, enderecoSelecionado: novoId })
+      })
+      const data = await res.json()
+      if (res.ok) { setEnderecos(novos); setSelecionado(novoId); onSave({ enderecos: data.enderecos, endereco: data.endereco, enderecoSelecionado: novoId }) }
+    } catch {}
+  }
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal modal-auth modal-endereco" onClick={e => e.stopPropagation()}>
+        <button className="modal-close" onClick={onClose}>✕</button>
+        <h3>Meus Endereços</h3>
+        {enderecos.map((addr, i) => (
+          <label key={addr.id || i} className="endereco-option">
+            <input type="radio" name="endereco-modal" checked={selecionado === addr.id} onChange={() => handleSelect(addr.id)} />
+            <span className="endereco-text">{formatEndereco(addr)}</span>
+            {enderecos.length > 1 && <button className="endereco-remove" onClick={e => { e.preventDefault(); handleDelete(addr.id) }}>✕</button>}
+          </label>
+        ))}
+        {!mostrarForm ? (
+          <button className="endereco-add-btn" onClick={() => setMostrarForm(true)}>+ Adicionar novo endereço</button>
+        ) : (
+          <div className="endereco-form">
+            <div className="endereco-form-cep-row">
+              <input className="endereco-input endereco-input-cep" placeholder="CEP" value={form.cep} onChange={e => handleCepChange(e.target.value)} />
+              {buscandoCep && <span className="endereco-loading">Consultando...</span>}
+            </div>
+            <input className="endereco-input" placeholder="Rua" value={form.rua} onChange={e => setForm(f => ({ ...f, rua: e.target.value }))} />
+            <div className="endereco-form-row">
+              <input className="endereco-input endereco-input-num" placeholder="Número" value={form.numero} onChange={e => setForm(f => ({ ...f, numero: e.target.value }))} />
+              <input className="endereco-input endereco-input-ref" placeholder="Referência" value={form.referencia} onChange={e => setForm(f => ({ ...f, referencia: e.target.value }))} />
+            </div>
+            <input className="endereco-input" placeholder="Bairro" value={form.bairro} onChange={e => setForm(f => ({ ...f, bairro: e.target.value }))} />
+            <div className="endereco-form-row">
+              <input className="endereco-input endereco-input-cidade" placeholder="Cidade" value={form.cidade} onChange={e => setForm(f => ({ ...f, cidade: e.target.value }))} />
+              <input className="endereco-input endereco-input-estado" placeholder="Estado" value={form.estado} onChange={e => setForm(f => ({ ...f, estado: e.target.value }))} />
+            </div>
+            <div className="endereco-form-actions">
+              <button className="btn-add" onClick={handleAdd} disabled={!form.cep || !form.rua || !form.numero}>Adicionar</button>
+              <button className="btn-del" onClick={() => setMostrarForm(false)}>Cancelar</button>
+            </div>
+          </div>
+        )}
+        <button className="btn-full" style={{ marginTop: 16 }} onClick={onClose}>Concluído</button>
       </div>
     </div>
   )

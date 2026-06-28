@@ -4941,3 +4941,111 @@ body {
 
 .cardapio-hero { display: block !important; position: relative !important; min-height: 500px !important; }
 
+/* ===== ENDEREÇO MODAL ===== */
+.modal-endereco { max-width: 480px; }
+.modal-endereco h3 { margin-bottom: 20px; }
+
+.endereco-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  margin-bottom: 8px;
+  cursor: pointer;
+  transition: var(--transition);
+}
+.endereco-option:hover { border-color: var(--accent); background: color-mix(in oklab, var(--accent) 6%, transparent); }
+.endereco-option input[type="radio"] { accent-color: var(--accent); flex-shrink: 0; }
+
+.endereco-text {
+  flex: 1;
+  font-size: 0.85rem;
+  color: var(--text-primary);
+  line-height: 1.4;
+}
+
+.endereco-remove {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.85rem;
+  padding: 4px 6px;
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+.endereco-remove:hover { background: var(--primary-soft); color: var(--primary); }
+
+.endereco-add-btn {
+  width: 100%;
+  padding: 12px;
+  border: 2px dashed var(--border);
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--accent);
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-family: inherit;
+  margin-top: 4px;
+  transition: var(--transition);
+}
+.endereco-add-btn:hover { border-color: var(--accent); background: color-mix(in oklab, var(--accent) 6%, transparent); }
+
+.endereco-form {
+  margin-top: 12px;
+  padding: 16px;
+  background: var(--bg-surface);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-light);
+}
+
+.endereco-input {
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: var(--radius-xs);
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text-primary);
+  font-size: 0.85rem;
+  font-family: var(--font-body);
+  outline: none;
+  margin-bottom: 8px;
+  transition: border-color 0.2s;
+  box-sizing: border-box;
+}
+.endereco-input:focus { border-color: var(--primary); }
+.endereco-input::placeholder { color: var(--text-muted); }
+
+.endereco-form-cep-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 4px;
+}
+.endereco-input-cep { flex: 1; }
+
+.endereco-loading {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.endereco-form-row {
+  display: flex;
+  gap: 8px;
+}
+.endereco-input-num { width: 100px; flex-shrink: 0; }
+.endereco-input-ref { flex: 1; }
+.endereco-input-cidade { flex: 1; }
+.endereco-input-estado { width: 80px; flex-shrink: 0; }
+
+.endereco-form-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+.endereco-form-actions .btn-add { flex: 1; }
+.endereco-form-actions .btn-del { flex: 1; text-align: center; }
+
