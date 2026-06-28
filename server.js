@@ -318,7 +318,8 @@ app.post('/orders', async (req, res) => {
       updatedAt: new Date().toISOString(),
       cliente,
       itens,
-      total
+      total,
+      user_id: req.user ? req.user.id : null
     }
 
     const { data, error } = await supabase.from('orders').insert(pedido).select()
