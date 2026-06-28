@@ -464,17 +464,22 @@ function App() {
                       <div className="cart-drawer-add-address-row">
                         <input className="cart-drawer-input" placeholder="Novo endereço" value={novoEndereco} onChange={e => setNovoEndereco(e.target.value)} />
                         <button className="cart-drawer-add-address-btn" disabled={!novoEndereco.trim()} onClick={async () => {
-                          if (!novoEndereco.trim()) return
-                          const base = user.enderecos && user.enderecos.length > 0 ? user.enderecos : (user.endereco ? [{ id: 'addr1', rua: user.endereco }] : [])
-                          const novos = [...base, { id: 'addr' + Date.now(), rua: novoEndereco.trim() }]
+                          const val = novoEndereco.trim()
+                          if (!val) return
+                          console.log('[Endereco] adicionando:', val)
+                          const base = user?.enderecos?.length > 0 ? user.enderecos : (user?.endereco ? [{ id: 'addr1', rua: user.endereco }] : [])
+                          console.log('[Endereco] base:', base)
+                          const novos = [...base, { id: 'addr' + Date.now(), rua: val }]
                           try {
                             const res = await fetch(`${API}/auth/enderecos`, {
                               method: 'PATCH', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
                               body: JSON.stringify({ enderecos: novos, enderecoSelecionado: novos[novos.length - 1].id })
                             })
+                            console.log('[Endereco] resposta status:', res.status)
                             const data = await res.json()
+                            console.log('[Endereco] dados:', data)
                             if (res.ok) { const u = { ...user, enderecos: data.enderecos, endereco: data.endereco, enderecoSelecionado: data.enderecoSelecionado }; setUser(u); localStorage.setItem('user', JSON.stringify(u)); setNovoEndereco('') }
-                          } catch {}
+                          } catch (err) { console.error('[Endereco] erro:', err) }
                         }}>+</button>
                       </div>
                       <button className="cart-drawer-address-done" onClick={() => setEditandoEndereco(false)}>Concluído</button>
