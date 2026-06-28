@@ -22,6 +22,8 @@ function App() {
   const [pedidoEnviado, setPedidoEnviado] = useState(false)
   const [pedidoCriadoId, setPedidoCriadoId] = useState(null)
   const [pendentesCount, setPendentesCount] = useState(0)
+  const [completarCadastro, setCompletarCadastro] = useState(false)
+  const [cadastroForm, setCadastroForm] = useState({ nome: '', telefone: '', endereco: '' })
   const pendentesRef = useRef(0)
   const alarmTimer = useRef(null)
   const alarmCtx = useRef(null)
@@ -33,19 +35,37 @@ function App() {
   }, [bannerApp.key])
 
   useEffect(() => {
-    if (!window.location.pathname.startsWith('/auth/google/callback')) return
-    const hash = window.location.hash.replace(/^#/, '')
-    if (!hash) return
-    const params = Object.fromEntries(hash.split('&').map(p => p.split('=').map(decodeURIComponent)))
-    if (params.access_token) {
+    if (window.location.pathname.startsWith('/auth/google/callback')) {
+      const hash = window.location.hash.replace(/^#/, '')
+      if (hash && window.opener) {
+        const params = Object.fromEntries(hash.split('&').map(p => p.split('=').map(decodeURIComponent)))
+        if (params.access_token) {
+          window.opener.postMessage({ type: 'google-login', accessToken: params.access_token }, window.location.origin)
+          window.close()
+        }
+      }
+      return
+    }
+    const handler = (event) => {
+      if (event.data?.type !== 'google-login' || !event.data.accessToken) return
       fetch(`${API}/auth/google`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ accessToken: params.access_token })
+        body: JSON.stringify({ accessToken: event.data.accessToken })
       }).then(r => r.json()).then(data => {
-        if (data.token && data.user) handleLogin(data.user, data.token)
+        if (data.token && data.user) {
+          setUser(data.user); setToken(data.token)
+          localStorage.setItem('user', JSON.stringify(data.user))
+          localStorage.setItem('token', data.token)
+          setMostrarAuth(false)
+          if (!data.user.telefone || !data.user.endereco) {
+            setCadastroForm({ nome: data.user.nome || '', telefone: data.user.telefone || '', endereco: data.user.endereco || '' })
+            setCompletarCadastro(true)
+          }
+        }
       }).catch(() => {})
-      window.history.replaceState({}, '', '/')
     }
+    window.addEventListener('message', handler)
+    return () => window.removeEventListener('message', handler)
   }, [])
 
   const tocarAlarme = () => {
@@ -261,7 +281,31 @@ function App() {
           onClose={() => setMostrarAuth(false)}
         />
       )}
-
+      {completarCadastro && (
+        <div className="modal-overlay" onClick={() => {}}>
+          <div className="modal modal-auth" onClick={e => e.stopPropagation()}>
+            <h3>Complete seu cadastro</h3>
+            <p style={{fontSize:'0.85rem',color:'var(--text-muted)',marginBottom:16}}>Preencha os dados que estão faltando para finalizar.</p>
+            <input placeholder="Nome" value={cadastroForm.nome} onChange={e => setCadastroForm(f => ({...f, nome: e.target.value}))} required />
+            <input placeholder="Telefone" value={cadastroForm.telefone} onChange={e => setCadastroForm(f => ({...f, telefone: e.target.value}))} required />
+            <input placeholder="Endereço" value={cadastroForm.endereco} onChange={e => setCadastroForm(f => ({...f, endereco: e.target.value}))} required />
+            <button className="btn-add btn-full" onClick={async () => {
+              if (!cadastroForm.nome || !cadastroForm.telefone) return alert('Preencha nome e telefone')
+              try {
+                const res = await fetch(`${API}/auth/me`, {
+                  method: 'PATCH', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                  body: JSON.stringify(cadastroForm)
+                })
+                const data = await res.json()
+                if (!res.ok) return alert(data.erro || 'Erro ao salvar')
+                setUser(data.user); localStorage.setItem('user', JSON.stringify(data.user)); setToken(data.token); localStorage.setItem('token', data.token)
+                setCompletarCadastro(false)
+              } catch { alert('Erro de conexão') }
+            }}>Salvar</button>
+          </div>
+        </div>
+      )}
+      
       <nav className="bottom-nav">
         <button className={`bottom-nav-btn ${pagina === 'cardapio' ? 'active' : ''}`} onClick={() => setPagina('cardapio')}>
           <span className="bottom-nav-icon">🍕</span>
@@ -391,15 +435,18 @@ function AuthModal({ onLogin, onClose }) {
   const GOOGLE_CLIENT_ID = '433687511785-95t4n2nulpja1aotvq6rfo74oui708im.apps.googleusercontent.com'
 
   const handleGoogleLogin = () => {
-    if (!window.google?.accounts?.oauth2) return
-    setErro('')
-    google.accounts.oauth2.initTokenClient({
+    const w = 500, h = 600
+    const left = Math.max(0, Math.round((window.screen.width - w) / 2))
+    const top = Math.max(0, Math.round((window.screen.height - h) / 2))
+    const params = new URLSearchParams({
       client_id: GOOGLE_CLIENT_ID,
-      scope: 'openid email profile',
       redirect_uri: `${window.location.origin}/auth/google/callback`,
-      ux_mode: 'redirect',
-      callback: () => {}
-    }).requestAccessToken()
+      response_type: 'token',
+      scope: 'openid email profile',
+      state: Math.random().toString(36).substring(2)
+    })
+    window.open(`https://accounts.google.com/o/oauth2/v2/auth?${params}`, 'google-login', `width=${w},height=${h},left=${left},top=${top},scrollbars=yes`)
+    setErro('')
   }
 
   const handleSubmit = async (e) => {

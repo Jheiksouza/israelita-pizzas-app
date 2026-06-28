@@ -121,6 +121,26 @@ app.get('/auth/me', async (req, res) => {
   }
 })
 
+app.patch('/auth/me', async (req, res) => {
+  if (!req.user) return res.status(401).json({ erro: 'Não autenticado' })
+  if (!checkSupabase(res)) return
+  try {
+    const { nome, telefone, endereco } = req.body
+    const updates = {}
+    if (nome !== undefined) updates.nome = nome
+    if (telefone !== undefined) updates.telefone = telefone
+    if (endereco !== undefined) updates.endereco = endereco
+    if (Object.keys(updates).length === 0) return res.status(400).json({ erro: 'Nenhum campo para atualizar' })
+    const { data, error } = await supabase.from('users').update(updates).eq('id', req.user.id).select()
+    if (error) throw error
+    const token = jwt.sign({ id: data[0].id, email: data[0].email, nome: data[0].nome }, JWT_SECRET, { expiresIn: '7d' })
+    res.json({ token, user: { id: data[0].id, nome: data[0].nome, email: data[0].email, telefone: data[0].telefone, endereco: data[0].endereco } })
+  } catch (err) {
+    console.error('Erro ao atualizar usuário:', err)
+    res.status(500).json({ erro: 'Erro ao atualizar dados' })
+  }
+})
+
 app.post('/auth/google', async (req, res) => {
   if (!checkSupabase(res)) return
   try {
