@@ -372,6 +372,33 @@ function AuthModal({ onLogin, onClose }) {
   const [endereco, setEndereco] = useState('')
   const [erro, setErro] = useState('')
   const [loading, setLoading] = useState(false)
+  const googleBtnRef = useRef(null)
+  const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID
+
+  useEffect(() => {
+    if (!googleBtnRef.current || !window.google?.accounts?.id) return
+    const initialized = googleBtnRef.current.dataset.gsiInitialized
+    if (initialized) return
+    googleBtnRef.current.dataset.gsiInitialized = '1'
+    google.accounts.id.initialize({
+      client_id: GOOGLE_CLIENT_ID,
+      callback: async (response) => {
+        if (!response.credential) { setErro('Falha na autenticação Google'); return }
+        setLoading(true)
+        try {
+          const res = await fetch(`${API}/auth/google`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ idToken: response.credential })
+          })
+          const data = await res.json()
+          if (!res.ok) { setErro(data.erro || 'Erro Google'); return }
+          onLogin(data.user, data.token)
+        } catch (_) { setErro('Erro de conexão') }
+        finally { setLoading(false) }
+      }
+    })
+    google.accounts.id.renderButton(googleBtnRef.current, { theme: 'outline', size: 'large', width: '100%', text: 'signin_with', shape: 'rectangular' })
+  }, [])
 
   const handleSubmit = async (e) => {
     e.preventDefault(); setErro(''); setLoading(true)
@@ -393,6 +420,8 @@ function AuthModal({ onLogin, onClose }) {
       <div className="modal modal-auth" onClick={e => e.stopPropagation()}>
         <button className="modal-close" onClick={onClose}>✕</button>
         <h3>{modo === 'login' ? 'Entrar' : 'Criar Conta'}</h3>
+        <div className="google-btn-wrapper" ref={googleBtnRef} />
+        <hr className="auth-divider" />
         <form onSubmit={handleSubmit}>
           {modo === 'signup' && (
             <input placeholder="Nome" value={nome} onChange={e => setNome(e.target.value)} required />

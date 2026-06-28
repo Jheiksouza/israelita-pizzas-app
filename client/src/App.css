@@ -4157,6 +4157,9 @@ body {
 /* ===== CART SUCCESS ORDER ID ===== */
 .cart-drawer-success-id { margin-top: 12px; font-size: 0.9rem; color: var(--text-primary); background: var(--bg-surface); padding: 8px 16px; border-radius: 12px; }
 
+.google-btn-wrapper { display: flex; justify-content: center; margin-bottom: 4px; }
+.google-btn-wrapper > div { width: 100% !important; }
+
 .admin-header-actions {
   display: flex;
   gap: 8px;

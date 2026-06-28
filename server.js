@@ -4,8 +4,12 @@ const cors = require('cors')
 const bcrypt = require('bcryptjs')
 const jwt = require('jsonwebtoken')
 const { createClient } = require('@supabase/supabase-js')
+const { OAuth2Client } = require('google-auth-library')
 
 try { require('dotenv').config() } catch (e) { /* dotenv opcional */ }
+
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || ''
+const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID)
 
 const app = express()
 const PORT = process.env.PORT || 3001
@@ -113,6 +117,32 @@ app.get('/auth/me', async (req, res) => {
     res.json(data)
   } catch (err) {
     res.status(500).json({ erro: 'Erro ao buscar usuário' })
+  }
+})
+
+app.post('/auth/google', async (req, res) => {
+  if (!checkSupabase(res)) return
+  try {
+    const { idToken } = req.body
+    if (!idToken) return res.status(400).json({ erro: 'Token ausente' })
+    const ticket = await googleClient.verifyIdToken({ idToken, audience: GOOGLE_CLIENT_ID })
+    const payload = ticket.getPayload()
+    if (!payload || !payload.email) return res.status(401).json({ erro: 'Token inválido' })
+    const { email, name, sub } = payload
+    const { data: existing } = await supabase.from('users').select('*').eq('email', email).single()
+    if (existing) {
+      const token = jwt.sign({ id: existing.id, email: existing.email, nome: existing.nome }, JWT_SECRET, { expiresIn: '7d' })
+      return res.json({ token, user: { id: existing.id, nome: existing.nome, email: existing.email, telefone: existing.telefone, endereco: existing.endereco } })
+    }
+    const { data: created, error } = await supabase.from('users').insert({
+      nome: name || email.split('@')[0], email, senha: '', telefone: '', endereco: '', google_id: sub
+    }).select()
+    if (error) throw error
+    const token = jwt.sign({ id: created[0].id, email: created[0].email, nome: created[0].nome }, JWT_SECRET, { expiresIn: '7d' })
+    res.status(201).json({ token, user: { id: created[0].id, nome: created[0].nome, email: created[0].email, telefone: '', endereco: '' } })
+  } catch (err) {
+    console.error('Erro auth google:', err)
+    res.status(500).json({ erro: 'Erro ao autenticar com Google' })
   }
 })
 

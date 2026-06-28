@@ -11,8 +11,11 @@ CREATE TABLE IF NOT EXISTS users (
   senha TEXT NOT NULL DEFAULT '',
   telefone TEXT DEFAULT '',
   endereco TEXT DEFAULT '',
+  google_id TEXT UNIQUE DEFAULT NULL,
   created_at TIMESTAMP DEFAULT NOW()
 );
+
+ALTER TABLE users ADD COLUMN IF NOT EXISTS google_id TEXT UNIQUE DEFAULT NULL;
 
 -- Tabela do cardápio
 CREATE TABLE IF NOT EXISTS menu (
