@@ -129,7 +129,14 @@ app.patch('/auth/me', async (req, res) => {
     const updates = {}
     if (nome !== undefined) updates.nome = nome
     if (telefone !== undefined) updates.telefone = telefone
-    if (endereco !== undefined) { updates.endereco = endereco; updates.enderecos = [{ id: 'addr1', rua: endereco }]; updates.enderecoSelecionado = 'addr1' }
+    if (endereco !== undefined) { 
+      updates.endereco = endereco
+      const { data: current } = await supabase.from('users').select('enderecos').eq('id', req.user.id).single()
+      if (!current?.enderecos || current.enderecos.length === 0) {
+        updates.enderecos = [{ id: 'addr1', rua: endereco }]
+        updates.enderecoSelecionado = 'addr1'
+      }
+    }
     if (Object.keys(updates).length === 0) return res.status(400).json({ erro: 'Nenhum campo para atualizar' })
     const { data, error } = await supabase.from('users').update(updates).eq('id', req.user.id).select()
     if (error) throw error
