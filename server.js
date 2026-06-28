@@ -165,7 +165,7 @@ app.patch('/auth/enderecos', async (req, res) => {
     res.json({ enderecos: data[0].enderecos, endereco: data[0].endereco, enderecoSelecionado: data[0].enderecoselecionado })
   } catch (err) {
     console.error('Erro ao atualizar endereços:', err.message, err.stack)
-    res.status(500).json({ erro: err.message || 'Erro ao atualizar endereços' })
+    res.status(500).json({ erro: err.message, stack: (err.stack || '').split('\n').slice(0, 3).join('|') })
   }
 })
 

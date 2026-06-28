@@ -478,7 +478,7 @@ function App() {
                             })
                             console.log('[Endereco] resposta status:', res.status)
                             const data = await res.json()
-                            console.log('[Endereco] dados:', data)
+                            console.log('[Endereco] dados:', JSON.stringify(data))
                             if (res.ok) { const u = { ...user, enderecos: data.enderecos, endereco: data.endereco, enderecoSelecionado: data.enderecoSelecionado }; setUser(u); localStorage.setItem('user', JSON.stringify(u)); setNovoEndereco('') }
                           } catch (err) { console.error('[Endereco] erro:', err) }
                         }}>+</button>
