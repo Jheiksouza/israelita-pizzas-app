@@ -524,9 +524,10 @@
   font-weight: 700;
   color: var(--text-primary);
   padding: 0 24px;
-  margin-bottom: 24px;
+  margin-bottom: 40px;
   margin-top: 32px;
 }
+.theme-classic .section-title::after { display: none; }
 @media (min-width: 768px) {
   .theme-classic .section-title { font-size: 3rem; }
 }

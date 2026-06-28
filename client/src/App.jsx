@@ -492,7 +492,7 @@ function Cardapio({ onAdicionar, onBanner, pizzaEditando, onPizzaEditDone }) {
         <>
           <h3 className="section-title">
             <span className="section-subtitle-label classic-only">Acompanha bem</span>
-            Bebidas e Produtos
+            Bebidas & extras
           </h3>
           <div className="menu-grid">
             {filtrados.map(item => (
