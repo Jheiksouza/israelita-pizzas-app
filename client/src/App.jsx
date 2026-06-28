@@ -1815,7 +1815,26 @@ function AddressModal({ user, token, onClose, onSave }) {
   }
 
   const handleEdit = (addr) => {
-    setForm({ cep: addr.cep || '', rua: addr.rua || '', numero: addr.numero || '', referencia: addr.referencia || '', bairro: addr.bairro || '', cidade: addr.cidade || '', estado: addr.estado || '' })
+    // Se o endereço está no formato legado (apenas rua com endereço completo), tenta parsear
+    let cep = addr.cep || ''
+    let rua = addr.rua || ''
+    let numero = addr.numero || ''
+    let referencia = addr.referencia || ''
+    let bairro = addr.bairro || ''
+    let cidade = addr.cidade || ''
+    let estado = addr.estado || ''
+
+    // Se tem apenas rua preenchida e parece ser endereço completo, tenta extrair partes
+    if (rua && !numero && !bairro && !cidade && !estado) {
+      // Tenta extrair número do final da rua (ex: "Rua das Flores, 123")
+      const numMatch = rua.match(/^(.+?),\s*(\d+[a-zA-Z]?)\s*$/)
+      if (numMatch) {
+        rua = numMatch[1].trim()
+        numero = numMatch[2].trim()
+      }
+    }
+
+    setForm({ cep, rua, numero, referencia, bairro, cidade, estado })
     setEditandoId(addr.id)
     setMostrarForm(true)
   }

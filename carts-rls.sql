@@ -1,0 +1,2 @@
+ALTER TABLE carts ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "anon all carts" ON carts FOR ALL USING (true) WITH CHECK (true);
