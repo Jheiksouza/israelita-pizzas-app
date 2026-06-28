@@ -477,7 +477,7 @@ function App() {
                           return addr ? ` — ${formatEndereco(addr)}` : ''
                         })()}
                       </p>
-                      <button className="cart-drawer-edit-address" onClick={() => { setCartOpen(false); setEditandoEndereco(true) }}>Alterar endereço</button>
+                      <button className="cart-drawer-edit-address" onClick={() => setEditandoEndereco(true)}>Alterar endereço</button>
                     </div>
                   )}
                   <button className="cart-drawer-checkout" onClick={finalizarPedido}>Finalizar Pedido →</button>
@@ -1781,7 +1781,7 @@ function AddressModal({ user, token, onClose, onSave }) {
             </div>
           </div>
         )}
-        <button className="btn-add" style={{ marginTop: 16 }} onClick={onClose}>Concluído</button>
+        {!mostrarForm && <button className="btn-add" style={{marginTop:16}} onClick={onClose}>Concluído</button>}
       </div>
     </div>
   )
