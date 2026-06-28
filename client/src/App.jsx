@@ -38,7 +38,10 @@ window.__googleCallback = (response) => {
 
 function App() {
   const [pagina, setPagina] = useState('cardapio')
-  const [carrinho, setCarrinho] = useState([])
+  const [carrinho, setCarrinho] = useState(() => {
+    const saved = localStorage.getItem('carrinho_guest')
+    return saved ? JSON.parse(saved) : []
+  })
   const [adminAutenticado, setAdminAutenticado] = useState(false)
   const [theme, setTheme] = useState(() => localStorage.getItem('appTheme') || 'classic')
   const [font, setFont] = useState(() => localStorage.getItem('appFont') || 'classico')
@@ -75,9 +78,20 @@ function App() {
     if (!user || !token) return
     fetch(`${API}/cart`, { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.json())
-      .then(data => { if (Array.isArray(data) && data.length) setCarrinho(data) })
+      .then(data => { 
+        if (Array.isArray(data) && data.length) {
+          setCarrinho(data)
+        }
+      })
       .catch(() => {})
   }, [user?.id])
+
+  // Salvar carrinho no localStorage para usuários não logados
+  useEffect(() => {
+    if (!user || !token) {
+      localStorage.setItem('carrinho_guest', JSON.stringify(carrinho))
+    }
+  }, [carrinho, user?.id])
 
   useEffect(() => {
     if (!user || !token) return
@@ -245,11 +259,41 @@ function App() {
   const qtdCarrinho = carrinho.reduce((sum, i) => sum + i.qtd, 0)
 
   const handleLogin = (userData, userToken) => {
+    const guestCart = JSON.parse(localStorage.getItem('carrinho_guest') || '[]')
     setUser(userData)
     setToken(userToken)
     localStorage.setItem('user', JSON.stringify(userData))
     localStorage.setItem('token', userToken)
     setMostrarAuth(false)
+    // Carregar carrinho do servidor após login
+    fetch(`${API}/cart`, { headers: { Authorization: `Bearer ${userToken}` } })
+      .then(r => r.json())
+      .then(serverCart => {
+        if (Array.isArray(serverCart) && serverCart.length) {
+          // Mesclar: prioriza carrinho do servidor, adiciona itens do guest que não existem
+          const merged = [...serverCart]
+          guestCart.forEach(gItem => {
+            const exists = merged.find(sItem => sItem.id === gItem.id && sItem.tipo === gItem.tipo)
+            if (!exists) merged.push(gItem)
+            else exists.qtd += gItem.qtd
+          })
+          setCarrinho(merged)
+          // Sincar carrinho mesclado no servidor
+          fetch(`${API}/cart`, {
+            method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${userToken}` },
+            body: JSON.stringify({ itens: merged })
+          }).catch(() => {})
+        } else if (guestCart.length) {
+          // Sem carrinho no servidor, enviar o do guest
+          setCarrinho(guestCart)
+          fetch(`${API}/cart`, {
+            method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${userToken}` },
+            body: JSON.stringify({ itens: guestCart })
+          }).catch(() => {})
+        }
+      })
+      .catch(() => { if (guestCart.length) setCarrinho(guestCart) })
+    localStorage.removeItem('carrinho_guest')
   }
 
   const handleLogout = () => {
@@ -258,6 +302,8 @@ function App() {
     localStorage.removeItem('user')
     localStorage.removeItem('token')
     setMostrarAuth(false)
+    // Manter carrinho no servidor, limpar local
+    setCarrinho([])
   }
 
   Object.assign(window.__authSetters, { setUser, setToken, setMostrarAuth, setCadastroForm, setCompletarCadastro })

@@ -45,6 +45,13 @@ CREATE TABLE IF NOT EXISTS orders (
   user_id INTEGER REFERENCES users(id) ON DELETE SET NULL
 );
 
+-- Tabela de carrinhos
+CREATE TABLE IF NOT EXISTS carts (
+  user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  itens JSONB DEFAULT '[]',
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
 -- Seed do cardápio
 INSERT INTO menu (id, nome, descricao, preco, categoria, imagem, tipo, "maxSabores", classificacao, preco_tradicional, preco_especial, preco_nobre) VALUES
 (1, 'Mussarela', 'Molho de tomate, mussarela, orégano', NULL, 'Pizzas Salgadas', '', 'sabor', NULL, 'tradicional', NULL, NULL, NULL),
@@ -73,3 +80,4 @@ CREATE POLICY "anon insert users" ON users FOR INSERT WITH CHECK (true);
 CREATE POLICY "anon select users" ON users FOR SELECT USING (true);
 CREATE POLICY "anon all menu" ON menu FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "anon all orders" ON orders FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "anon all carts" ON carts FOR ALL USING (true) WITH CHECK (true);
