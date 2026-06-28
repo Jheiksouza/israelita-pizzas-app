@@ -5039,10 +5039,15 @@ body {
   display: flex;
   gap: 8px;
 }
-.endereco-input-num { width: 70px; flex-shrink: 0; min-width: 0; }
-.endereco-input-ref { flex: 1; min-width: 0; }
+.endereco-input-rua { flex: 1; min-width: 0; }
+.endereco-input-num { width: 64px; flex-shrink: 0; min-width: 0; text-align: center; }
+.endereco-form-row-triple {
+  display: flex;
+  gap: 8px;
+}
+.endereco-input-bairro { flex: 1; min-width: 0; }
 .endereco-input-cidade { flex: 1; min-width: 0; }
-.endereco-input-estado { width: 70px; flex-shrink: 0; min-width: 0; }
+.endereco-input-estado { width: 60px; flex-shrink: 0; min-width: 0; text-align: center; }
 
 .endereco-form-actions {
   display: flex;

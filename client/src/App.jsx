@@ -1732,15 +1732,15 @@ function AddressModal({ user, token, onClose, onSave }) {
               <input className="endereco-input endereco-input-cep" placeholder="CEP" value={form.cep} onChange={e => handleCepChange(e.target.value)} />
               {buscandoCep && <span className="endereco-loading">Consultando...</span>}
             </div>
-            <input className="endereco-input" placeholder="Rua" value={form.rua} onChange={e => setForm(f => ({ ...f, rua: e.target.value }))} />
             <div className="endereco-form-row">
-              <input className="endereco-input endereco-input-num" placeholder="Número" value={form.numero} onChange={e => setForm(f => ({ ...f, numero: e.target.value }))} />
-              <input className="endereco-input endereco-input-ref" placeholder="Referência" value={form.referencia} onChange={e => setForm(f => ({ ...f, referencia: e.target.value }))} />
+              <input className="endereco-input endereco-input-rua" placeholder="Rua" value={form.rua} onChange={e => setForm(f => ({ ...f, rua: e.target.value }))} />
+              <input className="endereco-input endereco-input-num" placeholder="Nº" maxLength={6} value={form.numero} onChange={e => setForm(f => ({ ...f, numero: e.target.value }))} />
             </div>
-            <input className="endereco-input" placeholder="Bairro" value={form.bairro} onChange={e => setForm(f => ({ ...f, bairro: e.target.value }))} />
-            <div className="endereco-form-row">
+            <input className="endereco-input" placeholder="Complemento" value={form.referencia} onChange={e => setForm(f => ({ ...f, referencia: e.target.value }))} />
+            <div className="endereco-form-row endereco-form-row-triple">
+              <input className="endereco-input endereco-input-bairro" placeholder="Bairro" value={form.bairro} onChange={e => setForm(f => ({ ...f, bairro: e.target.value }))} />
               <input className="endereco-input endereco-input-cidade" placeholder="Cidade" value={form.cidade} onChange={e => setForm(f => ({ ...f, cidade: e.target.value }))} />
-              <input className="endereco-input endereco-input-estado" placeholder="Estado" value={form.estado} onChange={e => setForm(f => ({ ...f, estado: e.target.value }))} />
+              <input className="endereco-input endereco-input-estado" placeholder="UF" maxLength={2} value={form.estado} onChange={e => setForm(f => ({ ...f, estado: e.target.value }))} />
             </div>
             <div className="endereco-form-actions">
               <button className="btn-add" onClick={handleAdd} disabled={!form.cep || !form.rua || !form.numero}>Adicionar</button>
