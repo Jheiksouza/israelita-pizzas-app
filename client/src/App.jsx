@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 
 
 const API = '/api'
@@ -27,6 +27,7 @@ function App() {
   const pendentesRef = useRef(0)
   const alarmTimer = useRef(null)
   const alarmCtx = useRef(null)
+  const settersRef = useRef(null)
 
   useEffect(() => {
     if (!bannerApp.key) return
@@ -422,14 +423,18 @@ function AuthModal({ onLogin, onClose }) {
   const [erro, setErro] = useState('')
   const [loading, setLoading] = useState(false)
   const GOOGLE_CLIENT_ID = '433687511785-95t4n2nulpja1aotvq6rfo74oui708im.apps.googleusercontent.com'
+  if (!settersRef.current) {
+    settersRef.current = { setUser, setToken, setMostrarAuth, setCadastroForm, setCompletarCadastro, setErro }
+  }
 
-  const handleGoogleLogin = useCallback(() => {
-    setErro('')
+  const handleGoogleLogin = () => {
+    const s = settersRef.current
+    s.setErro('')
     try {
       console.log('[Google] iniciando login...')
       const cb = (response) => {
         console.log('[Google] callback recebido:', response)
-        if (response.error) { setErro('Erro ao autenticar com Google'); return }
+        if (response.error) { s.setErro('Erro ao autenticar com Google'); return }
         console.log('[Google] access_token OK, enviando ao servidor...')
         ;(async () => {
           try {
@@ -441,18 +446,18 @@ function AuthModal({ onLogin, onClose }) {
             const data = await r.json()
             console.log('[Google] dados recebidos:', data)
             if (data.token && data.user) {
-              setUser(data.user); setToken(data.token)
+              s.setUser(data.user); s.setToken(data.token)
               localStorage.setItem('user', JSON.stringify(data.user))
               localStorage.setItem('token', data.token)
-              setMostrarAuth(false)
+              s.setMostrarAuth(false)
               if (!data.user.telefone || !data.user.endereco) {
-                setCadastroForm({ nome: data.user.nome || '', telefone: data.user.telefone || '', endereco: data.user.endereco || '' })
-                setCompletarCadastro(true)
+                s.setCadastroForm({ nome: data.user.nome || '', telefone: data.user.telefone || '', endereco: data.user.endereco || '' })
+                s.setCompletarCadastro(true)
               }
-            } else setErro(data.erro || 'Erro ao autenticar')
+            } else s.setErro(data.erro || 'Erro ao autenticar')
           } catch (err) {
             console.error('[Google] erro no fetch:', err)
-            setErro('Erro de conexão')
+            s.setErro('Erro de conexão')
           }
         })()
       }
@@ -463,8 +468,8 @@ function AuthModal({ onLogin, onClose }) {
       })
       client.requestAccessToken()
       console.log('[Google] requestAccessToken chamado')
-    } catch (err) { console.error('[Google] erro no handleGoogleLogin:', err); setErro('Erro ao iniciar login Google') }
-  }, [])
+    } catch (err) { console.error('[Google] erro no handleGoogleLogin:', err); s.setErro('Erro ao iniciar login Google') }
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault(); setErro(''); setLoading(true)
