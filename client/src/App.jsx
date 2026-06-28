@@ -251,7 +251,15 @@ function Cardapio({ onAdicionar, pizzaEditando, onPizzaEditDone }) {
 
   return (
     <div className={`cardapio-page layout-${layout}`}>
-      <div className="cardapio-hero" style={settingsCover ? { backgroundImage: `url("${settingsCover}")` } : {}}>
+      <div className="cardapio-hero">
+        <div className="hero-bg">
+          <img
+            src={settingsCover || "/delicious-img/hero-pizza.jpg"}
+            alt=""
+            className="hero-bg-img"
+          />
+          <div className="hero-bg-gradient"></div>
+        </div>
         <div className="hero-overlay" style={{ background: overlayBg }}></div>
         {settingsTitle !== '' && (
           <div className="hero-content">
