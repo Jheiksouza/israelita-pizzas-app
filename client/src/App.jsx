@@ -1,7 +1,32 @@
 import React, { useState, useEffect, useRef } from 'react'
 
-
 const API = '/api'
+
+window.__googleCallback = (response) => {
+  const s = window.__authSetters
+  if (!s) return
+  if (response.error) { if (s.setErro) s.setErro('Erro ao autenticar com Google'); return }
+  ;(async () => {
+    try {
+      const r = await fetch(`${API}/auth/google`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ accessToken: response.access_token })
+      })
+      const data = await r.json()
+      if (data.token && data.user) {
+        s.setUser && s.setUser(data.user);
+        s.setToken && s.setToken(data.token)
+        localStorage.setItem('user', JSON.stringify(data.user))
+        localStorage.setItem('token', data.token)
+        s.setMostrarAuth && s.setMostrarAuth(false)
+        if (!data.user.telefone || !data.user.endereco) {
+          s.setCadastroForm && s.setCadastroForm({ nome: data.user.nome || '', telefone: data.user.telefone || '', endereco: data.user.endereco || '' })
+          s.setCompletarCadastro && s.setCompletarCadastro(true)
+        }
+      } else if (s.setErro) s.setErro(data.erro || 'Erro ao autenticar')
+    } catch (_) { if (s.setErro) s.setErro('Erro de conexão') }
+  })()
+}
 
 function App() {
   const [pagina, setPagina] = useState('cardapio')
@@ -27,7 +52,7 @@ function App() {
   const pendentesRef = useRef(0)
   const alarmTimer = useRef(null)
   const alarmCtx = useRef(null)
-  window.__authSetters = window.__authSetters || { setUser: null, setToken: null, setMostrarAuth: null, setCadastroForm: null, setCompletarCadastro: null, setErro: null }
+  window.__authSetters = window.__authSetters || {}
 
   useEffect(() => {
     if (!bannerApp.key) return
@@ -197,6 +222,8 @@ function App() {
     localStorage.removeItem('token')
     setMostrarAuth(false)
   }
+
+  Object.assign(window.__authSetters, { setUser, setToken, setMostrarAuth, setCadastroForm, setCompletarCadastro })
 
   return (
     <div className={`app theme-${theme} font-${font}`}>
@@ -423,50 +450,17 @@ function AuthModal({ onLogin, onClose }) {
   const [erro, setErro] = useState('')
   const [loading, setLoading] = useState(false)
   const GOOGLE_CLIENT_ID = '433687511785-95t4n2nulpja1aotvq6rfo74oui708im.apps.googleusercontent.com'
-  Object.assign(window.__authSetters, { setUser, setToken, setMostrarAuth, setCadastroForm, setCompletarCadastro, setErro })
+  window.__authSetters.setErro = setErro
 
   const handleGoogleLogin = () => {
-    window.__authSetters.setErro('')
     try {
-      console.log('[Google] iniciando login...')
-      const cb = (response) => {
-        const s = window.__authSetters
-        console.log('[Google] callback recebido:', response)
-        if (response.error) { s.setErro('Erro ao autenticar com Google'); return }
-        console.log('[Google] access_token OK, enviando ao servidor...')
-        ;(async () => {
-          try {
-            const r = await fetch(`${API}/auth/google`, {
-              method: 'POST', headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ accessToken: response.access_token })
-            })
-            console.log('[Google] resposta do servidor status:', r.status)
-            const data = await r.json()
-            console.log('[Google] dados recebidos:', data)
-            if (data.token && data.user) {
-              s.setUser(data.user); s.setToken(data.token)
-              localStorage.setItem('user', JSON.stringify(data.user))
-              localStorage.setItem('token', data.token)
-              s.setMostrarAuth(false)
-              if (!data.user.telefone || !data.user.endereco) {
-                s.setCadastroForm({ nome: data.user.nome || '', telefone: data.user.telefone || '', endereco: data.user.endereco || '' })
-                s.setCompletarCadastro(true)
-              }
-            } else s.setErro(data.erro || 'Erro ao autenticar')
-          } catch (err) {
-            console.error('[Google] erro no fetch:', err)
-            s.setErro('Erro de conexão')
-          }
-        })()
-      }
       const client = google.accounts.oauth2.initTokenClient({
         client_id: GOOGLE_CLIENT_ID,
         scope: 'openid email profile',
-        callback: cb
+        callback: window.__googleCallback
       })
       client.requestAccessToken()
-      console.log('[Google] requestAccessToken chamado')
-    } catch (err) { console.error('[Google] erro no handleGoogleLogin:', err); window.__authSetters.setErro('Erro ao iniciar login Google') }
+    } catch (_) {}
   }
 
   const handleSubmit = async (e) => {
