@@ -521,6 +521,7 @@ function AuthModal({ onLogin, onClose }) {
   const [endereco, setEndereco] = useState('')
   const [erro, setErro] = useState('')
   const [loading, setLoading] = useState(false)
+  const [mostrarEnderecoModal, setMostrarEnderecoModal] = useState(false)
   const GOOGLE_CLIENT_ID = '433687511785-95t4n2nulpja1aotvq6rfo74oui708im.apps.googleusercontent.com'
   window.__authSetters.setErro = setErro
 
@@ -564,12 +565,28 @@ function AuthModal({ onLogin, onClose }) {
           {modo === 'signup' && (
             <>
               <input placeholder="Telefone" value={telefone} onChange={e => setTelefone(e.target.value)} />
-              <input placeholder="Endereço" value={endereco} onChange={e => setEndereco(e.target.value)} />
+              {!mostrarEnderecoModal ? (
+                <button
+                  type="button"
+                  className="cart-drawer-address-btn"
+                  onClick={() => setMostrarEnderecoModal(true)}
+                  style={{ width: '100%', marginTop: 8 }}
+                >
+                  {endereco ? `📍 ${endereco}` : '+ Adicionar endereço'}
+                </button>
+              ) : null}
             </>
           )}
           {erro && <p className="erro">{erro}</p>}
           <button className="btn-add btn-full" disabled={loading}>{loading ? 'Aguarde...' : modo === 'login' ? 'Entrar' : 'Cadastrar'}</button>
         </form>
+        {mostrarEnderecoModal && (
+          <EnderecoFormModal
+            enderecoInicial={endereco}
+            onSave={(addr) => { setEndereco(addr); setMostrarEnderecoModal(false); }}
+            onClose={() => setMostrarEnderecoModal(false)}
+          />
+        )}
         <p className="auth-toggle">
           {modo === 'login' ? (
             <>Não tem conta? <button onClick={() => { setModo('signup'); setErro('') }}>Cadastre-se</button></>
@@ -1808,8 +1825,15 @@ function AddressModal({ user, token, onClose, onSave }) {
   )
 }
 
-function EnderecoFormModal({ onSave, onClose }) {
-  const [form, setForm] = useState({ cep: '', rua: '', numero: '', referencia: '', bairro: '', cidade: '', estado: '' })
+function EnderecoFormModal({ onSave, onClose, enderecoInicial }) {
+  const [form, setForm] = useState(() => {
+    if (enderecoInicial) {
+      const cepMatch = enderecoInicial.match(/^(\d{5}-?\d{3})/)
+      const cep = cepMatch ? cepMatch[1] : ''
+      return { cep, rua: '', numero: '', referencia: '', bairro: '', cidade: '', estado: '' }
+    }
+    return { cep: '', rua: '', numero: '', referencia: '', bairro: '', cidade: '', estado: '' }
+  })
   const [buscandoCep, setBuscandoCep] = useState(false)
   const [formErro, setFormErro] = useState('')
   const cepTimer = useRef(null)
