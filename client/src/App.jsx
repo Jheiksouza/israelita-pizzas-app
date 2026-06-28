@@ -21,16 +21,28 @@ function App() {
   const tocarNotificacao = () => {
     try {
       const ctx = new (window.AudioContext || window.webkitAudioContext)()
-      const osc = ctx.createOscillator()
-      const gain = ctx.createGain()
-      osc.type = 'sine'
-      osc.connect(gain); gain.connect(ctx.destination)
       const t = ctx.currentTime
-      osc.frequency.setValueAtTime(660, t)
-      osc.frequency.setValueAtTime(880, t + 0.12)
-      gain.gain.setValueAtTime(0.2, t)
-      gain.gain.exponentialRampToValueAtTime(0.01, t + 0.4)
-      osc.start(t); osc.stop(t + 0.4)
+      // Ruido de impacto (talher no prato)
+      const buf = ctx.createBuffer(1, ctx.sampleRate * 0.04, ctx.sampleRate)
+      const d = buf.getChannelData(0)
+      for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.exp(-i / (d.length * 0.15))
+      const noise = ctx.createBufferSource()
+      noise.buffer = buf
+      const bp = ctx.createBiquadFilter()
+      bp.type = 'bandpass'; bp.frequency.value = 5000; bp.Q.value = 0.8
+      const gn = ctx.createGain()
+      gn.gain.setValueAtTime(0.35, t); gn.gain.exponentialRampToValueAtTime(0.01, t + 0.04)
+      noise.connect(bp); bp.connect(gn); gn.connect(ctx.destination)
+      noise.start(t); noise.stop(t + 0.04)
+      // Anel metálico (o "tinido" do prato)
+      const osc = ctx.createOscillator()
+      osc.type = 'triangle'
+      osc.frequency.setValueAtTime(3200, t)
+      osc.frequency.exponentialRampToValueAtTime(1800, t + 0.12)
+      const go = ctx.createGain()
+      go.gain.setValueAtTime(0.12, t); go.gain.exponentialRampToValueAtTime(0.01, t + 0.18)
+      osc.connect(go); go.connect(ctx.destination)
+      osc.start(t); osc.stop(t + 0.18)
     } catch (_) {}
   }
 
