@@ -182,6 +182,9 @@ function Cardapio({ onAdicionar, onBanner, pizzaEditando, onPizzaEditDone }) {
         .map(nome => menu.find(i => i.tipo === 'sabor' && i.nome === nome)?.id)
         .filter(Boolean)
       setSaboresSel(saboresIds)
+      setTimeout(() => {
+        document.getElementById('sabores-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }, 150)
     }
   }, [pizzaEditando, menu])
 
