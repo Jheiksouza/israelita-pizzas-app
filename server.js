@@ -126,7 +126,7 @@ app.post('/auth/google', async (req, res) => {
   try {
     const { code } = req.body
     if (!code) return res.status(400).json({ erro: 'Código ausente' })
-    const { tokens } = await googleClient.getToken(code)
+    const { tokens } = await googleClient.getToken({ code, redirect_uri: 'postmessage' })
     if (!tokens.id_token) return res.status(401).json({ erro: 'Token ID ausente na resposta' })
     const ticket = await googleClient.verifyIdToken({ idToken: tokens.id_token, audience: GOOGLE_CLIENT_ID })
     const payload = ticket.getPayload()
