@@ -4942,7 +4942,7 @@ body {
 .cardapio-hero { display: block !important; position: relative !important; min-height: 500px !important; }
 
 /* ===== ENDEREÇO MODAL ===== */
-.modal-endereco { max-width: 520px; }
+.modal-endereco { max-width: 540px; }
 .modal-endereco h3 { margin-bottom: 20px; }
 
 .endereco-option {
@@ -5040,14 +5040,14 @@ body {
   gap: 8px;
 }
 .endereco-input-rua { flex: 1; min-width: 0; }
-.endereco-input-num { width: 64px; flex-shrink: 0; min-width: 0; text-align: center; }
+.endereco-input-num { width: 58px; flex-shrink: 0; min-width: 0; text-align: center; padding: 10px 6px; }
 .endereco-form-row-triple {
   display: flex;
   gap: 8px;
 }
 .endereco-input-bairro { flex: 1; min-width: 0; }
 .endereco-input-cidade { flex: 1; min-width: 0; }
-.endereco-input-estado { width: 60px; flex-shrink: 0; min-width: 0; text-align: center; }
+.endereco-input-estado { width: 44px; flex-shrink: 0; min-width: 0; text-align: center; padding: 10px 4px; }
 
 .endereco-form-actions {
   display: flex;
