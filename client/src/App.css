@@ -247,7 +247,7 @@
 }
 
 /* ===== HERO ===== */
-.theme-classic .cardapio-hero { display: block !important; position: relative !important; min-height: 400px !important; }
+.theme-classic .cardapio-hero { display: block !important; position: relative !important; min-height: 500px !important; }
 
 /* Hide the default overlay */
 .theme-classic .cardapio-hero > .hero-overlay {
@@ -335,7 +335,7 @@
     display: block;
     position: absolute;
     right: 24px;
-    top: 55%;
+    top: 60%;
     transform: translateY(-50%);
     z-index: 2;
     width: 45%;
@@ -1373,7 +1373,7 @@
 
 /* ============ THEME-SPECIFIC STYLES ============ */
 
-.theme-elegance .cardapio-hero { display: block !important; position: relative !important; min-height: 400px !important; }
+.theme-elegance .cardapio-hero { display: block !important; position: relative !important; min-height: 500px !important; }
 
 .theme-elegance .menu-card {
   background: rgba(20,20,32,0.7);
@@ -1534,7 +1534,7 @@
   display: none;
 }
 
-.theme-noturno .cardapio-hero { display: block !important; position: relative !important; min-height: 400px !important; }
+.theme-noturno .cardapio-hero { display: block !important; position: relative !important; min-height: 500px !important; }
 
 .theme-noturno .header {
   border-bottom: 1px solid var(--border);
@@ -1733,9 +1733,9 @@
 }
 
 /* ===== HERO ===== */
-.theme-neon .cardapio-hero { display: block !important; position: relative !important; min-height: 400px !important; }
+.theme-neon .cardapio-hero { display: block !important; position: relative !important; min-height: 500px !important; }
 @media (min-width: 768px) {
-  .theme-neon .cardapio-hero { display: block !important; position: relative !important; min-height: 400px !important; }
+  .theme-neon .cardapio-hero { display: block !important; position: relative !important; min-height: 500px !important; }
 }
 
 .theme-neon .cardapio-hero > .hero-overlay {
@@ -2615,7 +2615,7 @@ body {
   to { opacity: 1; transform: translateY(0); }
 }
 
-.cardapio-hero { display: block !important; position: relative !important; min-height: 400px !important; }
+.cardapio-hero { display: block !important; position: relative !important; min-height: 500px !important; }
 
 .hero-bg {
   position: absolute;
@@ -2675,7 +2675,7 @@ body {
   user-select: none;
 }
 
-.layout-modern .cardapio-hero { display: block !important; position: relative !important; min-height: 400px !important; }
+.layout-modern .cardapio-hero { display: block !important; position: relative !important; min-height: 500px !important; }
 
 .layout-modern .hero-content {
   text-align: left;
@@ -2698,7 +2698,7 @@ body {
   font-size: 1rem;
 }
 
-.layout-compact .cardapio-hero { display: block !important; position: relative !important; min-height: 400px !important; }
+.layout-compact .cardapio-hero { display: block !important; position: relative !important; min-height: 500px !important; }
 
 .layout-compact .hero-content {
   text-align: right;
@@ -4256,7 +4256,7 @@ body {
     font-size: 1.8rem;
   }
 
-  .cardapio-hero { display: block !important; position: relative !important; min-height: 400px !important; }
+  .cardapio-hero { display: block !important; position: relative !important; min-height: 500px !important; }
 
   .hero-content {
     padding: 32px 16px;
@@ -4311,7 +4311,7 @@ body {
     font-size: 1.4rem;
   }
 
-  .cardapio-hero { display: block !important; position: relative !important; min-height: 400px !important; }
+  .cardapio-hero { display: block !important; position: relative !important; min-height: 500px !important; }
 
   .montar-title {
     font-size: 1.15rem;
@@ -4340,5 +4340,5 @@ body {
   }
 }
 
-.cardapio-hero { display: block !important; position: relative !important; min-height: 400px !important; }
+.cardapio-hero { display: block !important; position: relative !important; min-height: 500px !important; }
 
