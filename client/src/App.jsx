@@ -371,7 +371,7 @@ function Cardapio({ onAdicionar, onBanner, pizzaEditando, onPizzaEditDone }) {
               className={`tamanho-btn ${tamanhoSel?.id === t.id ? 'active' : ''}`}
               onClick={() => { 
                 setTamanhoSel(t); 
-                setSaboresSel([]); 
+                setSaboresSel(prev => t.maxSabores >= prev.length ? prev : prev.slice(0, t.maxSabores))
                 setBuscaSabor(''); 
                 setErro('');
                 setTimeout(() => {
