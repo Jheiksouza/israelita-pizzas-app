@@ -14,12 +14,65 @@ function App() {
   const [cartOpen, setCartOpen] = useState(false)
   const [cliente, setCliente] = useState({ nome: '', telefone: '', endereco: '' })
   const [pedidoEnviado, setPedidoEnviado] = useState(false)
+  const [pendentesCount, setPendentesCount] = useState(0)
+  const pendentesRef = useRef(0)
+  const alarmTimer = useRef(null)
+  const alarmCtx = useRef(null)
 
   useEffect(() => {
     if (!bannerApp.key) return
     const t = setTimeout(() => setBannerApp({ texto: '', key: 0 }), 3000)
     return () => clearTimeout(t)
   }, [bannerApp.key])
+
+  const tocarAlarme = () => {
+    try {
+      if (alarmCtx.current) alarmCtx.current.close()
+      alarmCtx.current = new (window.AudioContext || window.webkitAudioContext)()
+      const ctx = alarmCtx.current
+      const tocarBeep = () => {
+        if (!ctx || ctx.state === 'closed') return
+        if (ctx.state === 'suspended') ctx.resume()
+        const t = ctx.currentTime
+        for (let i = 0; i < 3; i++) {
+          const osc = ctx.createOscillator()
+          const gain = ctx.createGain()
+          osc.type = 'square'
+          osc.frequency.value = 880 + i * 60
+          gain.gain.setValueAtTime(0.15, t + i * 0.12)
+          gain.gain.exponentialRampToValueAtTime(0.01, t + i * 0.12 + 0.1)
+          osc.connect(gain); gain.connect(ctx.destination)
+          osc.start(t + i * 0.12); osc.stop(t + i * 0.12 + 0.1)
+        }
+      }
+      tocarBeep()
+      alarmTimer.current = setInterval(tocarBeep, 3000)
+    } catch (_) {}
+  }
+
+  const pararAlarme = () => {
+    if (alarmTimer.current) { clearInterval(alarmTimer.current); alarmTimer.current = null }
+    if (alarmCtx.current) { alarmCtx.current.close(); alarmCtx.current = null }
+  }
+
+  useEffect(() => {
+    if (!adminAutenticado) { pararAlarme(); setPendentesCount(0); pendentesRef.current = 0; return }
+    const verificar = () => {
+      fetch(`${API}/orders`)
+        .then(r => r.json())
+        .then(data => {
+          const pendentes = data.filter(p => p.status === 'pendente').length
+          if (pendentes > pendentesRef.current) tocarAlarme()
+          else if (pendentes === 0) pararAlarme()
+          pendentesRef.current = pendentes
+          setPendentesCount(pendentes)
+        })
+        .catch(() => {})
+    }
+    verificar()
+    const id = setInterval(verificar, 5000)
+    return () => { clearInterval(id); pararAlarme() }
+  }, [adminAutenticado])
 
   const tocarNotificacao = () => {
     try {
@@ -127,6 +180,7 @@ function App() {
             </button>
             <button className={`nav-btn ${pagina === 'admin' ? 'active' : ''}`} onClick={() => setPagina('admin')}>
               {adminAutenticado ? 'Admin' : 'Entrar'}
+              {adminAutenticado && pendentesCount > 0 && <span key={pendentesCount} className="badge badge-alerta">{pendentesCount}</span>}
             </button>
           </nav>
         </div>
@@ -160,6 +214,7 @@ function App() {
         <button className={`bottom-nav-btn ${pagina === 'admin' ? 'active' : ''}`} onClick={() => setPagina('admin')}>
           <span className="bottom-nav-icon">⚙️</span>
           <span className="bottom-nav-label">Admin</span>
+          {adminAutenticado && pendentesCount > 0 && <span key={pendentesCount} className="bottom-nav-badge">{pendentesCount}</span>}
         </button>
       </nav>
       <footer className="classic-footer">
