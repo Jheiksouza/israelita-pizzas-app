@@ -9,7 +9,8 @@ const { OAuth2Client } = require('google-auth-library')
 try { require('dotenv').config() } catch (e) { /* dotenv opcional */ }
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || ''
-const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID)
+const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || ''
+const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, 'postmessage')
 
 const app = express()
 const PORT = process.env.PORT || 3001
@@ -123,9 +124,11 @@ app.get('/auth/me', async (req, res) => {
 app.post('/auth/google', async (req, res) => {
   if (!checkSupabase(res)) return
   try {
-    const { idToken } = req.body
-    if (!idToken) return res.status(400).json({ erro: 'Token ausente' })
-    const ticket = await googleClient.verifyIdToken({ idToken, audience: GOOGLE_CLIENT_ID })
+    const { code } = req.body
+    if (!code) return res.status(400).json({ erro: 'Código ausente' })
+    const { tokens } = await googleClient.getToken(code)
+    if (!tokens.id_token) return res.status(401).json({ erro: 'Token ID ausente na resposta' })
+    const ticket = await googleClient.verifyIdToken({ idToken: tokens.id_token, audience: GOOGLE_CLIENT_ID })
     const payload = ticket.getPayload()
     if (!payload || !payload.email) return res.status(401).json({ erro: 'Token inválido' })
     const { email, name, sub } = payload
