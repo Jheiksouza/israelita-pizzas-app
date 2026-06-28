@@ -4164,7 +4164,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 200;
+  z-index: 10001;
   animation: fadeIn 0.2s ease;
 }
 
@@ -4947,23 +4947,26 @@ body {
 
 .endereco-option {
   display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 10px;
   border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  margin-bottom: 8px;
+  border-radius: var(--radius-xs);
+  margin-bottom: 6px;
   cursor: pointer;
   transition: var(--transition);
+  overflow: hidden;
 }
 .endereco-option:hover { border-color: var(--accent); background: color-mix(in oklab, var(--accent) 6%, transparent); }
-.endereco-option input[type="radio"] { accent-color: var(--accent); flex-shrink: 0; }
+.endereco-option input[type="radio"] { accent-color: var(--accent); flex-shrink: 0; margin-top: 2px; }
 
 .endereco-text {
   flex: 1;
-  font-size: 0.85rem;
+  min-width: 0;
+  font-size: 0.82rem;
   color: var(--text-primary);
-  line-height: 1.4;
+  line-height: 1.35;
+  word-break: break-word;
 }
 
 .endereco-remove {
@@ -5036,10 +5039,10 @@ body {
   display: flex;
   gap: 8px;
 }
-.endereco-input-num { width: 100px; flex-shrink: 0; }
-.endereco-input-ref { flex: 1; }
-.endereco-input-cidade { flex: 1; }
-.endereco-input-estado { width: 80px; flex-shrink: 0; }
+.endereco-input-num { width: 70px; flex-shrink: 0; min-width: 0; }
+.endereco-input-ref { flex: 1; min-width: 0; }
+.endereco-input-cidade { flex: 1; min-width: 0; }
+.endereco-input-estado { width: 70px; flex-shrink: 0; min-width: 0; }
 
 .endereco-form-actions {
   display: flex;

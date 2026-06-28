@@ -1748,7 +1748,7 @@ function AddressModal({ user, token, onClose, onSave }) {
             </div>
           </div>
         )}
-        <button className="btn-full" style={{ marginTop: 16 }} onClick={onClose}>Concluído</button>
+        <button className="btn-add" style={{ marginTop: 16 }} onClick={onClose}>Concluído</button>
       </div>
     </div>
   )
