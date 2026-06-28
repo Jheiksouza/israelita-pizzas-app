@@ -104,7 +104,7 @@ function App() {
           <nav className="nav">
             <button className={`nav-btn ${pagina === 'cardapio' ? 'active' : ''}`} onClick={() => setPagina('cardapio')}>Cardápio</button>
             <button className={`nav-btn ${pagina === 'carrinho' ? 'active' : ''}`} onClick={() => setPagina('carrinho')}>
-              Carrinho {qtdCarrinho > 0 && <span className="badge">{qtdCarrinho}</span>}
+              Carrinho {qtdCarrinho > 0 && <span key={qtdCarrinho} className="badge">{qtdCarrinho}</span>}
             </button>
             <button className={`nav-btn ${pagina === 'admin' ? 'active' : ''}`} onClick={() => setPagina('admin')}>
               {adminAutenticado ? 'Admin' : 'Entrar'}
@@ -147,7 +147,7 @@ function App() {
         <button className={`bottom-nav-btn ${pagina === 'carrinho' ? 'active' : ''}`} onClick={() => setPagina('carrinho')}>
           <span className="bottom-nav-icon">🛒</span>
           <span className="bottom-nav-label">Carrinho</span>
-          {qtdCarrinho > 0 && <span className="bottom-nav-badge">{qtdCarrinho}</span>}
+          {qtdCarrinho > 0 && <span key={qtdCarrinho} className="bottom-nav-badge">{qtdCarrinho}</span>}
         </button>
         <button className={`bottom-nav-btn ${pagina === 'admin' ? 'active' : ''}`} onClick={() => setPagina('admin')}>
           <span className="bottom-nav-icon">⚙️</span>

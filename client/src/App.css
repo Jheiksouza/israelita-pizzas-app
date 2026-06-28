@@ -244,6 +244,7 @@
   font-size: 0.75rem !important;
   font-weight: 700 !important;
   box-shadow: 0 0 12px color-mix(in oklab, var(--primary) 60%, transparent);
+  animation: badgePop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .banner-max-sabores {
@@ -1287,6 +1288,16 @@
 
 .theme-classic .bottom-nav-badge {
   background: var(--primary) !important;
+  animation: badgePop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes badgePop {
+  0% { transform: scale(0); }
+  40% { transform: scale(1.35); }
+  60% { transform: scale(0.9); }
+  75% { transform: scale(1.12); }
+  90% { transform: scale(0.97); }
+  100% { transform: scale(1); }
 }
 
 /* ===== ADMIN ===== */
