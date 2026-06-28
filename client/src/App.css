@@ -1644,6 +1644,30 @@
   border-radius: 16px;
 }
 
+.pedido-pendente-destaque {
+  animation: pedidoGlow 1.5s ease-in-out infinite !important;
+  position: relative;
+}
+
+@keyframes pedidoGlow {
+  0%, 100% { border-color: oklch(0.62 0.18 30 / 0.3) !important; box-shadow: 0 0 8px color-mix(in oklab, oklch(0.62 0.18 30) 20%, transparent); }
+  50% { border-color: oklch(0.62 0.18 30 / 0.8) !important; box-shadow: 0 0 20px color-mix(in oklab, oklch(0.62 0.18 30) 50%, transparent); }
+}
+
+.tab-badge {
+  display: inline-grid;
+  place-items: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: 9999px;
+  background: var(--primary);
+  color: oklch(0.98 0.01 75);
+  font-size: 0.65rem;
+  font-weight: 700;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+
 .theme-classic .admin-table thead {
   background: rgba(201,68,42,0.12) !important;
 }

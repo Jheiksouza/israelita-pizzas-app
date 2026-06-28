@@ -191,6 +191,7 @@ function App() {
         {pagina === 'admin' && (
           <AdminPanel
             autenticado={adminAutenticado}
+            pendentesCount={pendentesCount}
             onLogin={() => {
               setAdminAutenticado(true)
               sessionStorage.setItem('adminAuth', 'true')
@@ -664,7 +665,7 @@ function Cardapio({ onAdicionar, onBanner, pizzaEditando, onPizzaEditDone }) {
 }
 
 
-function AdminPanel({ autenticado, onLogin, onThemeChange, onFontChange }) {
+function AdminPanel({ autenticado, onLogin, onThemeChange, onFontChange, pendentesCount }) {
   const [aba, setAba] = useState('cardapio')
 
   if (!autenticado) return <AdminLogin onLogin={onLogin} />
@@ -673,11 +674,14 @@ function AdminPanel({ autenticado, onLogin, onThemeChange, onFontChange }) {
     <div className="admin-page">
       <div className="admin-tabs">
         <button className={`tab-btn ${aba === 'cardapio' ? 'active' : ''}`} onClick={() => setAba('cardapio')}>Cardápio</button>
-        <button className={`tab-btn ${aba === 'pedidos' ? 'active' : ''}`} onClick={() => setAba('pedidos')}>Pedidos</button>
+        <button className={`tab-btn ${aba === 'pedidos' ? 'active' : ''}`} onClick={() => setAba('pedidos')}>
+          Pedidos
+          {pendentesCount > 0 && <span className="tab-badge">{pendentesCount}</span>}
+        </button>
         <button className={`tab-btn ${aba === 'financeiro' ? 'active' : ''}`} onClick={() => setAba('financeiro')}>Financeiro</button>
       </div>
       {aba === 'cardapio' && <AdminMenu onThemeChange={onThemeChange} onFontChange={onFontChange} />}
-      {aba === 'pedidos' && <AdminOrders />}
+      {aba === 'pedidos' && <AdminOrders pendentesCount={pendentesCount} />}
       {aba === 'financeiro' && <AdminFinanceiro />}
     </div>
   )
@@ -1014,39 +1018,11 @@ function CardapioSettings({ onClose, onThemeChange, onFontChange }) {
   )
 }
 
-function playNotificacao() {
-  try {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)()
-    const osc = ctx.createOscillator()
-    const gain = ctx.createGain()
-    osc.connect(gain)
-    gain.connect(ctx.destination)
-    osc.frequency.value = 880
-    gain.gain.value = 0.3
-    osc.start()
-    osc.stop(ctx.currentTime + 0.3)
-    setTimeout(() => {
-      const osc2 = ctx.createOscillator()
-      osc2.connect(gain)
-      osc2.frequency.value = 1100
-      gain.gain.value = 0.2
-      osc2.start()
-      osc2.stop(ctx.currentTime + 0.2)
-    }, 150)
-  } catch (e) {}
-}
-
-function AdminOrders() {
+function AdminOrders({ pendentesCount }) {
   const [pedidos, setPedidos] = useState([])
   const [filtro, setFiltro] = useState('todos')
-  const pendentesRef = React.useRef(0)
 
-  const carregar = () => fetch(`${API}/orders`).then(r => r.json()).then(data => {
-    const pendentes = data.filter(p => p.status === 'pendente').length
-    if (pendentes > pendentesRef.current) playNotificacao()
-    pendentesRef.current = pendentes
-    setPedidos(data)
-  })
+  const carregar = () => fetch(`${API}/orders`).then(r => r.json()).then(data => setPedidos(data))
 
   useEffect(() => { carregar(); const id = setInterval(carregar, 10000); return () => clearInterval(id) }, [])
 
@@ -1081,7 +1057,7 @@ function AdminOrders() {
       ) : (
         <div className="pedidos-lista">
           {filtrados.map(pedido => (
-            <div key={pedido.id} className="pedido-card">
+            <div key={pedido.id} className={`pedido-card${pedido.status === 'pendente' ? ' pedido-pendente-destaque' : ''}`}>
               <div className="pedido-header">
                 <strong>Pedido #{pedido.id}</strong>
                 <span className={`status-badge ${statusClass[pedido.status]}`}>{statusLabel[pedido.status]}</span>
