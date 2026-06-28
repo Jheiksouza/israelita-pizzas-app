@@ -148,6 +148,13 @@ function Cardapio({ onAdicionar, pizzaEditando, onPizzaEditDone }) {
   const [saboresSel, setSaboresSel] = useState([])
   const [buscaSabor, setBuscaSabor] = useState('')
   const [erro, setErro] = useState('')
+  const [banner, setBanner] = useState({ texto: '', key: 0 })
+
+  useEffect(() => {
+    if (!banner.key) return
+    const t = setTimeout(() => setBanner({ texto: '', key: 0 }), 3000)
+    return () => clearTimeout(t)
+  }, [banner.key])
 
   useEffect(() => {
     if (!pizzaEditando || menu.length === 0) return
@@ -211,7 +218,13 @@ function Cardapio({ onAdicionar, pizzaEditando, onPizzaEditDone }) {
       return
     }
     if (saboresSel.length >= tamanhoSel.maxSabores) {
-      setErro(`Máximo de ${tamanhoSel.maxSabores} sabor${tamanhoSel.maxSabores > 1 ? 'es' : ''}`)
+      const tentou = saboresSel.length + 1
+      const next = tamanhos
+        .filter(t => t.maxSabores > tamanhoSel.maxSabores)
+        .sort((a, b) => a.maxSabores - b.maxSabores)[0]
+      let msg = `${tamanhoSel.nome}, máximo ${tamanhoSel.maxSabores} sabor${tamanhoSel.maxSabores > 1 ? 'es' : ''}.`
+      if (next) msg += ` Se quiser ${tentou} sabores, escolha o tamanho ${next.nome}.`
+      setBanner({ texto: msg, key: Date.now() })
       return
     }
     setErro('')
@@ -250,7 +263,9 @@ function Cardapio({ onAdicionar, pizzaEditando, onPizzaEditDone }) {
   }
 
   return (
-    <div className={`cardapio-page layout-${layout}`}>
+    <>
+      {banner.texto && <div className="banner-max-sabores">{banner.texto}</div>}
+      <div className={`cardapio-page layout-${layout}`}>
       <div className="cardapio-hero">
         <div className="hero-bg">
           <img
@@ -479,6 +494,7 @@ function Cardapio({ onAdicionar, pizzaEditando, onPizzaEditDone }) {
         </>
       )}
     </div>
+    </>
   )
 }
 
