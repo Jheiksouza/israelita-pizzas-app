@@ -27,7 +27,7 @@ function App() {
   const pendentesRef = useRef(0)
   const alarmTimer = useRef(null)
   const alarmCtx = useRef(null)
-  const settersRef = useRef(null)
+  window.__authSetters = window.__authSetters || { setUser: null, setToken: null, setMostrarAuth: null, setCadastroForm: null, setCompletarCadastro: null, setErro: null }
 
   useEffect(() => {
     if (!bannerApp.key) return
@@ -423,16 +423,14 @@ function AuthModal({ onLogin, onClose }) {
   const [erro, setErro] = useState('')
   const [loading, setLoading] = useState(false)
   const GOOGLE_CLIENT_ID = '433687511785-95t4n2nulpja1aotvq6rfo74oui708im.apps.googleusercontent.com'
-  if (!settersRef.current) {
-    settersRef.current = { setUser, setToken, setMostrarAuth, setCadastroForm, setCompletarCadastro, setErro }
-  }
+  Object.assign(window.__authSetters, { setUser, setToken, setMostrarAuth, setCadastroForm, setCompletarCadastro, setErro })
 
   const handleGoogleLogin = () => {
-    const s = settersRef.current
-    s.setErro('')
+    window.__authSetters.setErro('')
     try {
       console.log('[Google] iniciando login...')
       const cb = (response) => {
+        const s = window.__authSetters
         console.log('[Google] callback recebido:', response)
         if (response.error) { s.setErro('Erro ao autenticar com Google'); return }
         console.log('[Google] access_token OK, enviando ao servidor...')
@@ -468,7 +466,7 @@ function AuthModal({ onLogin, onClose }) {
       })
       client.requestAccessToken()
       console.log('[Google] requestAccessToken chamado')
-    } catch (err) { console.error('[Google] erro no handleGoogleLogin:', err); s.setErro('Erro ao iniciar login Google') }
+    } catch (err) { console.error('[Google] erro no handleGoogleLogin:', err); window.__authSetters.setErro('Erro ao iniciar login Google') }
   }
 
   const handleSubmit = async (e) => {
