@@ -185,14 +185,17 @@ function App() {
   const limparCarrinho = () => setCarrinho([])
 
   const finalizarPedido = async () => {
-    if (!cliente.nome || !cliente.telefone) return alert('Preencha nome e telefone')
+    const dadosCliente = user?.nome && user?.telefone
+      ? { nome: user.nome, telefone: user.telefone, endereco: user.endereco || '' }
+      : cliente
+    if (!dadosCliente.nome || !dadosCliente.telefone) return alert('Preencha nome e telefone')
     try {
       const headers = { 'Content-Type': 'application/json' }
       if (token) headers['Authorization'] = `Bearer ${token}`
       const res = await fetch(`${API}/orders`, {
         method: 'POST',
         headers,
-        body: JSON.stringify({ cliente, itens: carrinho, total: totalCarrinho })
+        body: JSON.stringify({ cliente: dadosCliente, itens: carrinho, total: totalCarrinho })
       })
       if (!res.ok) return alert('Erro ao enviar pedido. Tente novamente.')
       const pedidoCriado = await res.json()
@@ -424,11 +427,19 @@ function App() {
                     <span className="cart-drawer-total-final-label">Total</span>
                     <span className="cart-drawer-total-final-value">R$ {totalCarrinho.toFixed(2)}</span>
                   </div>
+                  {(!user || !user.nome || !user.telefone) && (
                   <div className="cart-drawer-form">
                     <input className="cart-drawer-input" placeholder="Nome" value={cliente.nome} onChange={e => setCliente({ ...cliente, nome: e.target.value })} />
                     <input className="cart-drawer-input" placeholder="Telefone" value={cliente.telefone} onChange={e => setCliente({ ...cliente, telefone: e.target.value })} />
                     <input className="cart-drawer-input" placeholder="Endereço" value={cliente.endereco} onChange={e => setCliente({ ...cliente, endereco: e.target.value })} />
                   </div>
+                  )}
+                  {user?.nome && user?.telefone && (
+                    <div className="cart-drawer-user-info">
+                      <p className="cart-drawer-user-info-name">{user.nome}</p>
+                      <p className="cart-drawer-user-info-phone">{user.telefone}{user.endereco ? ` — ${user.endereco}` : ''}</p>
+                    </div>
+                  )}
                   <button className="cart-drawer-checkout" onClick={finalizarPedido}>Finalizar Pedido →</button>
                 </div>
               </>
