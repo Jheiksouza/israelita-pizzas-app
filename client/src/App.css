@@ -247,7 +247,7 @@
 }
 
 /* ===== HERO ===== */
-.theme-classic .cardapio-hero { background-image: url("/delicious-img/hero-pizza.jpg") !important; background-size: cover !important; background-position: center !important; display: block !important; height: 400px !important; visibility: visible !important; opacity: 1 !important; z-index: 10 !important; }
+.theme-classic .cardapio-hero { background-image: url("/delicious-img/hero-pizza.jpg") !important; background-size: cover !important; background-position: center !important; display: block !important; height: 400px !important; visibility: visible !important; opacity: 1 !important; z-index: 10 !important; position: relative !important; }
 
 /* Hide the default overlay */
 .theme-classic .cardapio-hero > .hero-overlay {
@@ -1381,7 +1381,7 @@
 
 /* ============ THEME-SPECIFIC STYLES ============ */
 
-.theme-elegance .cardapio-hero { background-image: url("/delicious-img/hero-pizza.jpg") !important; background-size: cover !important; background-position: center !important; display: block !important; height: 400px !important; visibility: visible !important; opacity: 1 !important; z-index: 10 !important; }
+.theme-elegance .cardapio-hero { background-image: url("/delicious-img/hero-pizza.jpg") !important; background-size: cover !important; background-position: center !important; display: block !important; height: 400px !important; visibility: visible !important; opacity: 1 !important; z-index: 10 !important; position: relative !important; }
 
 .theme-elegance .menu-card {
   background: rgba(20,20,32,0.7);
@@ -1542,7 +1542,7 @@
   display: none;
 }
 
-.theme-noturno .cardapio-hero { background-image: url("/delicious-img/hero-pizza.jpg") !important; background-size: cover !important; background-position: center !important; display: block !important; height: 400px !important; visibility: visible !important; opacity: 1 !important; z-index: 10 !important; }
+.theme-noturno .cardapio-hero { background-image: url("/delicious-img/hero-pizza.jpg") !important; background-size: cover !important; background-position: center !important; display: block !important; height: 400px !important; visibility: visible !important; opacity: 1 !important; z-index: 10 !important; position: relative !important; }
 
 .theme-noturno .header {
   border-bottom: 1px solid var(--border);
@@ -1741,9 +1741,9 @@
 }
 
 /* ===== HERO ===== */
-.theme-neon .cardapio-hero { background-image: url("/delicious-img/hero-pizza.jpg") !important; background-size: cover !important; background-position: center !important; display: block !important; height: 400px !important; visibility: visible !important; opacity: 1 !important; z-index: 10 !important; }
+.theme-neon .cardapio-hero { background-image: url("/delicious-img/hero-pizza.jpg") !important; background-size: cover !important; background-position: center !important; display: block !important; height: 400px !important; visibility: visible !important; opacity: 1 !important; z-index: 10 !important; position: relative !important; }
 @media (min-width: 768px) {
-  .theme-neon .cardapio-hero { background-image: url("/delicious-img/hero-pizza.jpg") !important; background-size: cover !important; background-position: center !important; display: block !important; height: 400px !important; visibility: visible !important; opacity: 1 !important; z-index: 10 !important; }
+  .theme-neon .cardapio-hero { background-image: url("/delicious-img/hero-pizza.jpg") !important; background-size: cover !important; background-position: center !important; display: block !important; height: 400px !important; visibility: visible !important; opacity: 1 !important; z-index: 10 !important; position: relative !important; }
 }
 
 /* Gradient overlays - 3 camadas */
@@ -2640,7 +2640,7 @@ body {
   to { opacity: 1; transform: translateY(0); }
 }
 
-.cardapio-hero { background-image: url("/delicious-img/hero-pizza.jpg") !important; background-size: cover !important; background-position: center !important; display: block !important; height: 400px !important; visibility: visible !important; opacity: 1 !important; z-index: 10 !important; }
+.cardapio-hero { background-image: url("/delicious-img/hero-pizza.jpg") !important; background-size: cover !important; background-position: center !important; display: block !important; height: 400px !important; visibility: visible !important; opacity: 1 !important; z-index: 10 !important; position: relative !important; }
 
 .cardapio-hero::before {
   content: '';
@@ -2676,7 +2676,7 @@ body {
   user-select: none;
 }
 
-.layout-modern .cardapio-hero { background-image: url("/delicious-img/hero-pizza.jpg") !important; background-size: cover !important; background-position: center !important; display: block !important; height: 400px !important; visibility: visible !important; opacity: 1 !important; z-index: 10 !important; }
+.layout-modern .cardapio-hero { background-image: url("/delicious-img/hero-pizza.jpg") !important; background-size: cover !important; background-position: center !important; display: block !important; height: 400px !important; visibility: visible !important; opacity: 1 !important; z-index: 10 !important; position: relative !important; }
 
 .layout-modern .hero-content {
   text-align: left;
@@ -2699,7 +2699,7 @@ body {
   font-size: 1rem;
 }
 
-.layout-compact .cardapio-hero { background-image: url("/delicious-img/hero-pizza.jpg") !important; background-size: cover !important; background-position: center !important; display: block !important; height: 400px !important; visibility: visible !important; opacity: 1 !important; z-index: 10 !important; }
+.layout-compact .cardapio-hero { background-image: url("/delicious-img/hero-pizza.jpg") !important; background-size: cover !important; background-position: center !important; display: block !important; height: 400px !important; visibility: visible !important; opacity: 1 !important; z-index: 10 !important; position: relative !important; }
 
 .layout-compact .hero-content {
   text-align: right;
@@ -4257,7 +4257,7 @@ body {
     font-size: 1.8rem;
   }
 
-  .cardapio-hero { background-image: url("/delicious-img/hero-pizza.jpg") !important; background-size: cover !important; background-position: center !important; display: block !important; height: 400px !important; visibility: visible !important; opacity: 1 !important; z-index: 10 !important; }
+  .cardapio-hero { background-image: url("/delicious-img/hero-pizza.jpg") !important; background-size: cover !important; background-position: center !important; display: block !important; height: 400px !important; visibility: visible !important; opacity: 1 !important; z-index: 10 !important; position: relative !important; }
 
   .hero-content {
     padding: 32px 16px;
@@ -4312,7 +4312,7 @@ body {
     font-size: 1.4rem;
   }
 
-  .cardapio-hero { background-image: url("/delicious-img/hero-pizza.jpg") !important; background-size: cover !important; background-position: center !important; display: block !important; height: 400px !important; visibility: visible !important; opacity: 1 !important; z-index: 10 !important; }
+  .cardapio-hero { background-image: url("/delicious-img/hero-pizza.jpg") !important; background-size: cover !important; background-position: center !important; display: block !important; height: 400px !important; visibility: visible !important; opacity: 1 !important; z-index: 10 !important; position: relative !important; }
 
   .montar-title {
     font-size: 1.15rem;
@@ -4341,5 +4341,5 @@ body {
   }
 }
 
-.cardapio-hero { background-image: url("/delicious-img/hero-pizza.jpg") !important; background-size: cover !important; background-position: center !important; display: block !important; height: 400px !important; visibility: visible !important; opacity: 1 !important; z-index: 10 !important; }
+.cardapio-hero { background-image: url("/delicious-img/hero-pizza.jpg") !important; background-size: cover !important; background-position: center !important; display: block !important; height: 400px !important; visibility: visible !important; opacity: 1 !important; z-index: 10 !important; position: relative !important; }
 

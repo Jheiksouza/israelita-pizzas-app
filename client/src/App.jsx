@@ -274,7 +274,7 @@ function Cardapio({ onAdicionar, pizzaEditando, onPizzaEditDone }) {
         <div className="hero-decorative">
           <div className="hero-deco-glow"></div>
           <div className="hero-deco-image">
-            <img src="./assets/delicious-img/hero-pizza.jpg" alt="Pizza artesanal" />
+            <img src="/delicious-img/hero-pizza.jpg" alt="Pizza artesanal" />
             <div className="hero-deco-badge-hero">
               <span className="hero-deco-badge-label">desde 2008</span>
               <span className="hero-deco-badge-text">Receita da nonna</span>
