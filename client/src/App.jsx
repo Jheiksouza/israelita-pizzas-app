@@ -35,17 +35,6 @@ function App() {
   }, [bannerApp.key])
 
   useEffect(() => {
-    if (window.location.pathname.startsWith('/auth/google/callback')) {
-      const hash = window.location.hash.replace(/^#/, '')
-      if (hash && window.opener) {
-        const params = Object.fromEntries(hash.split('&').map(p => p.split('=').map(decodeURIComponent)))
-        if (params.access_token) {
-          window.opener.postMessage({ type: 'google-login', accessToken: params.access_token }, window.location.origin)
-          window.close()
-        }
-      }
-      return
-    }
     const handler = (event) => {
       if (event.data?.type !== 'google-login' || !event.data.accessToken) return
       fetch(`${API}/auth/google`, {
@@ -435,18 +424,32 @@ function AuthModal({ onLogin, onClose }) {
   const GOOGLE_CLIENT_ID = '433687511785-95t4n2nulpja1aotvq6rfo74oui708im.apps.googleusercontent.com'
 
   const handleGoogleLogin = () => {
-    const w = 500, h = 600
-    const left = Math.max(0, Math.round((window.screen.width - w) / 2))
-    const top = Math.max(0, Math.round((window.screen.height - h) / 2))
-    const params = new URLSearchParams({
-      client_id: GOOGLE_CLIENT_ID,
-      redirect_uri: `${window.location.origin}/auth/google/callback`,
-      response_type: 'token',
-      scope: 'openid email profile',
-      state: Math.random().toString(36).substring(2)
-    })
-    window.open(`https://accounts.google.com/o/oauth2/v2/auth?${params}`, 'google-login', `width=${w},height=${h},left=${left},top=${top},scrollbars=yes`)
     setErro('')
+    try {
+      const client = google.accounts.oauth2.initTokenClient({
+        client_id: GOOGLE_CLIENT_ID,
+        scope: 'openid email profile',
+        callback: (response) => {
+          if (response.error) { setErro('Erro ao autenticar com Google'); return }
+          fetch(`${API}/auth/google`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ accessToken: response.access_token })
+          }).then(r => r.json()).then(data => {
+            if (data.token && data.user) {
+              setUser(data.user); setToken(data.token)
+              localStorage.setItem('user', JSON.stringify(data.user))
+              localStorage.setItem('token', data.token)
+              setMostrarAuth(false)
+              if (!data.user.telefone || !data.user.endereco) {
+                setCadastroForm({ nome: data.user.nome || '', telefone: data.user.telefone || '', endereco: data.user.endereco || '' })
+                setCompletarCadastro(true)
+              }
+            } else setErro(data.erro || 'Erro ao autenticar')
+          }).catch(() => setErro('Erro de conexão'))
+        }
+      })
+      client.requestAccessToken()
+    } catch (_) { setErro('Erro ao iniciar login Google') }
   }
 
   const handleSubmit = async (e) => {
