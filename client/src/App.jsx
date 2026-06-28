@@ -1821,6 +1821,7 @@ function EnderecoFormModal({ onSave, onClose }) {
       <div className="modal modal-auth modal-endereco" onClick={e => e.stopPropagation()}>
         <button className="modal-close" onClick={onClose}>✕</button>
         <h3>Endereço de entrega</h3>
+        <p className="endereco-subtitle">Insira o CEP e parte do seu endereço será preenchido automaticamente</p>
         <div className="endereco-form">
           {formErro && <p className="endereco-erro">{formErro}</p>}
           <div className="endereco-form-cep-row">
