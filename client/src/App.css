@@ -251,17 +251,22 @@
   top: 0;
   left: 0;
   right: 0;
-  z-index: 999;
+  z-index: 9999;
   background: oklch(0.52 0.22 30);
   color: oklch(0.98 0.01 75);
   text-align: center;
-  padding: 14px 24px;
-  font-family: 'Inter', sans-serif;
-  font-size: 0.9rem;
+  padding: 20px 24px;
+  font-family: 'Inter', var(--font-body, 'Inter'), sans-serif;
+  font-size: 0.95rem;
   font-weight: 500;
   line-height: 1.5;
-  box-shadow: 0 4px 20px color-mix(in oklab, oklch(0.52 0.22 30) 40%, transparent);
+  box-shadow: 0 4px 24px color-mix(in oklab, oklch(0.52 0.22 30) 50%, transparent);
   animation: bannerSlideIn 0.3s ease-out;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 76px;
+  pointer-events: none;
 }
 
 @keyframes bannerSlideIn {

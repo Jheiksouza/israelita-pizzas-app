@@ -10,6 +10,29 @@ function App() {
   const [theme, setTheme] = useState(() => localStorage.getItem('appTheme') || 'classic')
   const [font, setFont] = useState(() => localStorage.getItem('appFont') || 'classico')
   const [pizzaEditando, setPizzaEditando] = useState(null)
+  const [bannerApp, setBannerApp] = useState({ texto: '', key: 0 })
+
+  useEffect(() => {
+    if (!bannerApp.key) return
+    const t = setTimeout(() => setBannerApp({ texto: '', key: 0 }), 3000)
+    return () => clearTimeout(t)
+  }, [bannerApp.key])
+
+  const tocarNotificacao = () => {
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)()
+      const osc = ctx.createOscillator()
+      const gain = ctx.createGain()
+      osc.type = 'sine'
+      osc.connect(gain); gain.connect(ctx.destination)
+      const t = ctx.currentTime
+      osc.frequency.setValueAtTime(660, t)
+      osc.frequency.setValueAtTime(880, t + 0.12)
+      gain.gain.setValueAtTime(0.2, t)
+      gain.gain.exponentialRampToValueAtTime(0.01, t + 0.4)
+      osc.start(t); osc.stop(t + 0.4)
+    } catch (_) {}
+  }
 
   useEffect(() => {
     const saved = sessionStorage.getItem('adminAuth')
@@ -68,6 +91,7 @@ function App() {
         <div className="classic-orb orb-left"></div>
         <div className="classic-orb orb-right"></div>
       </div>
+      {bannerApp.texto && <div className="banner-max-sabores" role="alert">{bannerApp.texto}</div>}
       <header className="header">
         <div className="header-content">
           <div className="logo" onClick={() => setPagina('cardapio')}>
@@ -90,7 +114,7 @@ function App() {
       </header>
 
       <main className="main">
-        {pagina === 'cardapio' && <Cardapio onAdicionar={adicionarAoCarrinho} pizzaEditando={pizzaEditando} onPizzaEditDone={() => setPizzaEditando(null)} />}
+        {pagina === 'cardapio' && <Cardapio onAdicionar={adicionarAoCarrinho} onBanner={(msg) => { setBannerApp({ texto: msg, key: Date.now() }); tocarNotificacao() }} pizzaEditando={pizzaEditando} onPizzaEditDone={() => setPizzaEditando(null)} />}
         {pagina === 'carrinho' && (
           <CarrinhoView
             itens={carrinho}
@@ -141,20 +165,13 @@ function App() {
   )
 }
 
-function Cardapio({ onAdicionar, pizzaEditando, onPizzaEditDone }) {
+function Cardapio({ onAdicionar, onBanner, pizzaEditando, onPizzaEditDone }) {
   const [menu, setMenu] = useState([])
   const [categoria, setCategoria] = useState('Todas')
   const [tamanhoSel, setTamanhoSel] = useState(null)
   const [saboresSel, setSaboresSel] = useState([])
   const [buscaSabor, setBuscaSabor] = useState('')
   const [erro, setErro] = useState('')
-  const [banner, setBanner] = useState({ texto: '', key: 0 })
-
-  useEffect(() => {
-    if (!banner.key) return
-    const t = setTimeout(() => setBanner({ texto: '', key: 0 }), 3000)
-    return () => clearTimeout(t)
-  }, [banner.key])
 
   useEffect(() => {
     if (!pizzaEditando || menu.length === 0) return
@@ -224,7 +241,7 @@ function Cardapio({ onAdicionar, pizzaEditando, onPizzaEditDone }) {
         .sort((a, b) => a.maxSabores - b.maxSabores)[0]
       let msg = `${tamanhoSel.nome}, máximo ${tamanhoSel.maxSabores} sabor${tamanhoSel.maxSabores > 1 ? 'es' : ''}.`
       if (next) msg += ` Se quiser ${tentou} sabores, escolha o tamanho ${next.nome}.`
-      setBanner({ texto: msg, key: Date.now() })
+      onBanner(msg)
       return
     }
     setErro('')
@@ -263,9 +280,7 @@ function Cardapio({ onAdicionar, pizzaEditando, onPizzaEditDone }) {
   }
 
   return (
-    <>
-      {banner.texto && <div className="banner-max-sabores">{banner.texto}</div>}
-      <div className={`cardapio-page layout-${layout}`}>
+    <div className={`cardapio-page layout-${layout}`}>
       <div className="cardapio-hero">
         <div className="hero-bg">
           <img
@@ -494,7 +509,6 @@ function Cardapio({ onAdicionar, pizzaEditando, onPizzaEditDone }) {
         </>
       )}
     </div>
-    </>
   )
 }
 
