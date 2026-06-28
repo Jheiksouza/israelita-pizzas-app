@@ -445,16 +445,17 @@ function App() {
                   )}
                   {user?.nome && user?.telefone && editandoEndereco && (
                     <div className="cart-drawer-address-picker">
-                      {(user.enderecos || []).map((addr, i) => (
+                      {((user.enderecos && user.enderecos.length > 0) ? user.enderecos : (user.endereco ? [{ id: 'addr1', rua: user.endereco }] : [])).map((addr, i) => (
                         <label key={addr.id || i} className="cart-drawer-address-option">
                           <input type="radio" name="endereco" checked={user.enderecoSelecionado === addr.id || (!user.enderecoSelecionado && i === 0)} onChange={async () => {
                             try {
+                              const enderecos = user.enderecos && user.enderecos.length > 0 ? user.enderecos : [{ id: 'addr1', rua: user.endereco || '' }]
                               const res = await fetch(`${API}/auth/enderecos`, {
                                 method: 'PATCH', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-                                body: JSON.stringify({ enderecos: user.enderecos, enderecoSelecionado: addr.id })
+                                body: JSON.stringify({ enderecos, enderecoSelecionado: addr.id })
                               })
                               const data = await res.json()
-                              if (res.ok) { setUser({ ...user, endereco: data.endereco, enderecoSelecionado: data.enderecoSelecionado }); localStorage.setItem('user', JSON.stringify({ ...user, endereco: data.endereco, enderecoSelecionado: data.enderecoSelecionado })) }
+                              if (res.ok) { const u = { ...user, endereco: data.endereco, enderecoSelecionado: data.enderecoSelecionado, enderecos: data.enderecos }; setUser(u); localStorage.setItem('user', JSON.stringify(u)) }
                             } catch {}
                           }} />
                           <span className="cart-drawer-address-text">{addr.rua || addr}</span>
@@ -464,14 +465,15 @@ function App() {
                         <input className="cart-drawer-input" placeholder="Novo endereço" value={novoEndereco} onChange={e => setNovoEndereco(e.target.value)} />
                         <button className="cart-drawer-add-address-btn" disabled={!novoEndereco.trim()} onClick={async () => {
                           if (!novoEndereco.trim()) return
-                          const novos = [...(user.enderecos || []), { id: 'addr' + Date.now(), rua: novoEndereco.trim() }]
+                          const base = user.enderecos && user.enderecos.length > 0 ? user.enderecos : (user.endereco ? [{ id: 'addr1', rua: user.endereco }] : [])
+                          const novos = [...base, { id: 'addr' + Date.now(), rua: novoEndereco.trim() }]
                           try {
                             const res = await fetch(`${API}/auth/enderecos`, {
                               method: 'PATCH', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
                               body: JSON.stringify({ enderecos: novos, enderecoSelecionado: novos[novos.length - 1].id })
                             })
                             const data = await res.json()
-                            if (res.ok) { setUser({ ...user, enderecos: data.enderecos, endereco: data.endereco, enderecoSelecionado: data.enderecoSelecionado }); localStorage.setItem('user', JSON.stringify({ ...user, enderecos: data.enderecos, endereco: data.endereco, enderecoSelecionado: data.enderecoSelecionado })); setNovoEndereco('') }
+                            if (res.ok) { const u = { ...user, enderecos: data.enderecos, endereco: data.endereco, enderecoSelecionado: data.enderecoSelecionado }; setUser(u); localStorage.setItem('user', JSON.stringify(u)); setNovoEndereco('') }
                           } catch {}
                         }}>+</button>
                       </div>
