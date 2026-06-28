@@ -77,7 +77,7 @@ app.post('/auth/signup', async (req, res) => {
   try {
     const { nome, email, senha, telefone, endereco } = req.body
     if (!email || !senha) return res.status(400).json({ erro: 'Email e senha obrigatórios' })
-    const { data: existente } = await supabase.from('users').select('id').eq('email', email).single()
+    const { data: existente } = await supabase.from('users').select('id').eq('email', email).maybeSingle()
     if (existente) return res.status(409).json({ erro: 'Email já cadastrado' })
     const hash = await bcrypt.hash(senha, 10)
     const { data, error } = await supabase.from('users').insert({
@@ -97,7 +97,7 @@ app.post('/auth/login', async (req, res) => {
   try {
     const { email, senha } = req.body
     if (!email || !senha) return res.status(400).json({ erro: 'Email e senha obrigatórios' })
-    const { data: user, error } = await supabase.from('users').select('*').eq('email', email).single()
+    const { data: user, error } = await supabase.from('users').select('*').eq('email', email).maybeSingle()
     if (error || !user) return res.status(401).json({ erro: 'Email ou senha inválidos' })
     const ok = await bcrypt.compare(senha, user.senha)
     if (!ok) return res.status(401).json({ erro: 'Email ou senha inválidos' })
@@ -153,7 +153,7 @@ app.post('/auth/google', async (req, res) => {
     const payload = await resp.json()
     if (!payload || !payload.email) return res.status(401).json({ erro: 'Dados do usuário não encontrados' })
     const { email, name, id: sub } = payload
-    const { data: existing } = await supabase.from('users').select('*').eq('email', email).single()
+    const { data: existing } = await supabase.from('users').select('*').eq('email', email).maybeSingle()
     if (existing) {
       const token = jwt.sign({ id: existing.id, email: existing.email, nome: existing.nome }, JWT_SECRET, { expiresIn: '7d' })
       return res.json({ token, user: { id: existing.id, nome: existing.nome, email: existing.email, telefone: existing.telefone, endereco: existing.endereco } })
@@ -165,8 +165,8 @@ app.post('/auth/google', async (req, res) => {
     const token = jwt.sign({ id: created[0].id, email: created[0].email, nome: created[0].nome }, JWT_SECRET, { expiresIn: '7d' })
     res.status(201).json({ token, user: { id: created[0].id, nome: created[0].nome, email: created[0].email, telefone: '', endereco: '' } })
   } catch (err) {
-    console.error('Erro auth google:', err)
-    res.status(500).json({ erro: 'Erro ao autenticar com Google' })
+    console.error('Erro auth google:', err.message || err)
+    res.status(500).json({ erro: err.message || 'Erro ao autenticar com Google' })
   }
 })
 
