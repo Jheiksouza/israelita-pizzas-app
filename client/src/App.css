@@ -255,7 +255,7 @@
   min-height: auto !important;
   box-shadow: none !important;
   display: block;
-  background-image: url('./assets/delicious-img/hero-pizza.jpg') !important;
+  background-image: url('/delicious-img/hero-pizza.jpg') !important;
   background-size: cover !important;
   background-position: center !important;
   background-repeat: no-repeat !important;
