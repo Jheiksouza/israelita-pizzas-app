@@ -311,6 +311,7 @@
   color: var(--accent);
   margin-bottom: 24px;
   font-family: 'Inter', sans-serif !important;
+  backdrop-filter: blur(4px);
 }
 
 .theme-classic .hero-aberto-dot {
