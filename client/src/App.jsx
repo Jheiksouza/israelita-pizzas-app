@@ -1187,10 +1187,12 @@ function AdminPanel({ autenticado, onLogin, onThemeChange, onFontChange, pendent
           {pendentesCount > 0 && <span className="tab-badge">{pendentesCount}</span>}
         </button>
         <button className={`tab-btn ${aba === 'financeiro' ? 'active' : ''}`} onClick={() => setAba('financeiro')}>Financeiro</button>
+        <button className={`tab-btn ${aba === 'rastreio' ? 'active' : ''}`} onClick={() => setAba('rastreio')}>📍 Rastreio</button>
       </div>
       {aba === 'cardapio' && <AdminMenu onThemeChange={onThemeChange} onFontChange={onFontChange} />}
       {aba === 'pedidos' && <AdminOrders pendentesCount={pendentesCount} />}
       {aba === 'financeiro' && <AdminFinanceiro />}
+      {aba === 'rastreio' && <RastreioPage />}
     </div>
   )
 }
@@ -2296,6 +2298,113 @@ function MapClickHandler({ onClick }) {
   return null
 }
 
+function RastreioPage() {
+  const [pos, setPos] = useState(null)
+  const [status, setStatus] = useState('desconectado')
+  const [ultimaAtualizacao, setUltimaAtualizacao] = useState(null)
+
+  useEffect(() => {
+    let mounted = true
+    const buscar = () => {
+      fetch(`${API}/motoboy/position`)
+        .then(r => r.json())
+        .then(data => {
+          if (!mounted) return
+          if (data?.lat && data?.lng) {
+            setPos({ lat: data.lat, lng: data.lng })
+            const diff = Date.now() - (data.timestamp || 0)
+            setStatus(diff < 45000 ? 'conectado' : 'perdendo_sinal')
+            setUltimaAtualizacao(data.timestamp)
+          } else {
+            setPos(null)
+            setStatus('desconectado')
+            setUltimaAtualizacao(null)
+          }
+        })
+        .catch(() => { if (mounted) { setStatus('desconectado') } })
+    }
+    buscar()
+    const id = setInterval(buscar, 5000)
+    return () => { mounted = false; clearInterval(id) }
+  }, [])
+
+  // Atualiza status a cada 5s também (verifica se passou de 45s sem atualização)
+  useEffect(() => {
+    const verificar = () => {
+      if (ultimaAtualizacao && Date.now() - ultimaAtualizacao > 45000) {
+        setStatus('perdendo_sinal')
+      }
+    }
+    const id = setInterval(verificar, 5000)
+    return () => clearInterval(id)
+  }, [ultimaAtualizacao])
+
+  const center = pos || { lat: -25.4290, lng: -49.2671 }
+
+  const statusText = {
+    conectado: 'Com sinal',
+    perdendo_sinal: 'Perdendo sinal',
+    desconectado: 'Sem sinal'
+  }
+  const statusColor = {
+    conectado: '#43A047',
+    perdendo_sinal: '#FF8F00',
+    desconectado: '#E53935'
+  }
+
+  return (
+    <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <h2 style={{ margin: 0, fontSize: '1.15rem', flex: 1 }}>📍 Rastreio do Motoboy</h2>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 14px', borderRadius: '50px', background: `${statusColor[status]}15`, border: `2px solid ${statusColor[status]}` }}>
+          <div style={{ width: 10, height: 10, borderRadius: '50%', background: statusColor[status], animation: status === 'conectado' ? 'motoboyBtnPulse 1s infinite alternate' : 'none' }} />
+          <span style={{ fontSize: '0.82rem', fontWeight: 600, color: statusColor[status] }}>{statusText[status]}</span>
+        </div>
+      </div>
+
+      {!pos && status === 'desconectado' && (
+        <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--text-muted)' }}>
+          <div style={{ fontSize: '3rem', marginBottom: 12 }}>🛵</div>
+          <p style={{ margin: 0, fontWeight: 600, fontSize: '1rem' }}>Motoboy desconectado</p>
+          <p style={{ margin: '4px 0 0', fontSize: '0.85rem' }}>Aguardando sinal do motoboy...</p>
+        </div>
+      )}
+
+      {pos && (
+        <div style={{ height: 'calc(100vh - 220px)', minHeight: 300, borderRadius: 'var(--radius-md)', overflow: 'hidden', boxShadow: 'var(--shadow-sm)' }}>
+          <MapContainer center={[center.lat, center.lng]} zoom={15} scrollWheelZoom={true} style={{ width: '100%', height: '100%' }}>
+            <TileLayer attribution='&copy; OpenStreetMap' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+            {pos && (
+              <Marker position={[pos.lat, pos.lng]} icon={L.divIcon({
+                className: '',
+                html: `<div class="motoboy-marker"><svg viewBox="0 0 24 36" width="26" height="40"><path d="M12 0C5.4 0 0 5.4 0 12c0 9 12 24 12 24s12-15 12-24C24 5.4 18.6 0 12 0z" fill="${statusColor[status]}"/><circle cx="12" cy="12" r="5" fill="#fff"/></svg><div class="motoboy-marker-pulse"></div></div>`,
+                iconSize: [26, 40],
+                iconAnchor: [13, 40],
+              })}>
+                <Popup>
+                  <div style={{ textAlign: 'center' }}>
+                    <strong>🛵 Motoboy</strong>
+                    <p style={{ margin: '4px 0 0', fontSize: '0.82rem', color: statusColor[status] }}>{statusText[status]}</p>
+                    <p style={{ margin: '2px 0 0', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                      {pos.lat.toFixed(6)}, {pos.lng.toFixed(6)}
+                    </p>
+                  </div>
+                </Popup>
+              </Marker>
+            )}
+          </MapContainer>
+        </div>
+      )}
+
+      {(pos || ultimaAtualizacao) && (
+        <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textAlign: 'center' }}>
+          Última atualização: {ultimaAtualizacao ? new Date(ultimaAtualizacao).toLocaleTimeString('pt-BR') : '—'}
+        </div>
+      )}
+    </div>
+  )
+}
+
 const PIZZARIA_ADDR = 'Rua Eloir Dide Maria, 283 - Tatuquara, Curitiba - PR'
 
 function MotoboyPage({ onVoltar }) {
@@ -2393,6 +2502,21 @@ function MotoboyPage({ onVoltar }) {
     })
     if (mudou) setChegadas(novas)
   }, [motoboyPos, etapa, ordemOtimizada, pedidos, selecionados])
+
+  // Envia posição do motoboy para o servidor a cada 15s
+  useEffect(() => {
+    if (!motoboyPos) return
+    const enviar = () => {
+      fetch(`${API}/motoboy/position`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lat: motoboyPos.lat, lng: motoboyPos.lng })
+      }).catch(() => {})
+    }
+    enviar()
+    const id = setInterval(enviar, 15000)
+    return () => clearInterval(id)
+  }, [motoboyPos])
 
   useEffect(() => {
     if (etapa === 'organizar' && ordemOtimizada.length === 0) {

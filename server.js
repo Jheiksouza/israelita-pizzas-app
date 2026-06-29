@@ -392,6 +392,20 @@ app.post('/login', (req, res) => {
   res.status(401).json({ autenticado: false, erro: 'Senha incorreta' })
 })
 
+// Rastreio do motoboy
+let ultimaPosMotoboy = null
+
+app.post('/motoboy/position', (req, res) => {
+  const { lat, lng } = req.body
+  if (lat == null || lng == null) return res.status(400).json({ erro: 'lat e lng obrigatórios' })
+  ultimaPosMotoboy = { lat: parseFloat(lat), lng: parseFloat(lng), timestamp: Date.now() }
+  res.json({ ok: true })
+})
+
+app.get('/motoboy/position', (req, res) => {
+  res.json(ultimaPosMotoboy || { lat: null, lng: null, timestamp: null })
+})
+
 // Servir frontend buildado (apenas local; no Vercel quem serve é o próprio Vercel)
 if (!process.env.VERCEL) {
   const distDir = path.resolve(__dirname, 'dist')
