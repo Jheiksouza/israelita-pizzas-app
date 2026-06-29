@@ -2417,7 +2417,8 @@ function MotoboyPage({ onVoltar }) {
   const [motoboyPos, setMotoboyPos] = useState(null)
   const [pizzariaCoords, setPizzariaCoords] = useState(null)
   const [chegadas, setChegadas] = useState({})
-  const [rastreioOk, setRastreioOk] = useState(null) // null = aguardando, true = enviado, false = erro
+  const [rastreioOk, setRastreioOk] = useState(null)
+  const [erroGps, setErroGps] = useState(null)
   const prevCountRef = useRef(0)
   const mountedRef = useRef(true)
   const primeiraCarga = useRef(true)
@@ -2452,9 +2453,9 @@ function MotoboyPage({ onVoltar }) {
   useEffect(() => {
     mountedRef.current = true
     watchIdRef.current = navigator.geolocation.watchPosition(
-      pos => { if (mountedRef.current) setMotoboyPos({ lat: pos.coords.latitude, lng: pos.coords.longitude }) },
-      () => {},
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 5000 }
+      pos => { if (mountedRef.current) { setMotoboyPos({ lat: pos.coords.latitude, lng: pos.coords.longitude }); setErroGps(null) } },
+      err => { console.error('[Motoboy] Erro GPS:', err.code, err.message); if (mountedRef.current) setErroGps(err.code) },
+      { enableHighAccuracy: true, timeout: 20000, maximumAge: 5000 }
     )
     return () => {
       if (watchIdRef.current) navigator.geolocation.clearWatch(watchIdRef.current)
@@ -2694,6 +2695,9 @@ function MotoboyPage({ onVoltar }) {
           <div className="motoboy-vazio-icone">🛵</div>
           <p className="motoboy-vazio-texto">Nenhuma entrega pendente</p>
           <p className="motoboy-vazio-sub">Aguardando novos pedidos...</p>
+          {erroGps === 1 && <p className="motoboy-gps-aviso">⚠️ Permissão de localização negada. Ative o GPS nas configurações do celular.</p>}
+          {erroGps === 2 && <p className="motoboy-gps-aviso">⚠️ GPS indisponível. Verifique se o GPS está ativado.</p>}
+          {erroGps === 3 && <p className="motoboy-gps-aviso">⏳ GPS timed out. Tente novamente.</p>}
         </div>
       )}
 
