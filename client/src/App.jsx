@@ -2452,13 +2452,19 @@ function MotoboyPage({ onVoltar }) {
 
   useEffect(() => {
     mountedRef.current = true
+    if (!navigator.geolocation) { setErroGps('indisponivel'); console.error('[Motoboy] Geolocation não suportado'); return }
     watchIdRef.current = navigator.geolocation.watchPosition(
       pos => { if (mountedRef.current) { setMotoboyPos({ lat: pos.coords.latitude, lng: pos.coords.longitude }); setErroGps(null) } },
       err => { console.error('[Motoboy] Erro GPS:', err.code, err.message); if (mountedRef.current) setErroGps(err.code) },
       { enableHighAccuracy: true, timeout: 20000, maximumAge: 5000 }
     )
+    // Timeout: se depois de 20s não tiver posição, mostra aviso
+    const timeout = setTimeout(() => {
+      if (mountedRef.current && !motoboyPos) setErroGps('timeout')
+    }, 20000)
     return () => {
       if (watchIdRef.current) navigator.geolocation.clearWatch(watchIdRef.current)
+      clearTimeout(timeout)
     }
   }, [])
 
@@ -2695,9 +2701,11 @@ function MotoboyPage({ onVoltar }) {
           <div className="motoboy-vazio-icone">🛵</div>
           <p className="motoboy-vazio-texto">Nenhuma entrega pendente</p>
           <p className="motoboy-vazio-sub">Aguardando novos pedidos...</p>
-          {erroGps === 1 && <p className="motoboy-gps-aviso">⚠️ Permissão de localização negada. Ative o GPS nas configurações do celular.</p>}
+          {erroGps === 1 && <p className="motoboy-gps-aviso">⚠️ Permissão de localização negada. Ative o GPS e recarregue a página.</p>}
           {erroGps === 2 && <p className="motoboy-gps-aviso">⚠️ GPS indisponível. Verifique se o GPS está ativado.</p>}
           {erroGps === 3 && <p className="motoboy-gps-aviso">⏳ GPS timed out. Tente novamente.</p>}
+          {erroGps === 'timeout' && <p className="motoboy-gps-aviso">⏳ GPS não respondeu. Verifique se a localização está ativada e recarregue.</p>}
+          {erroGps === 'indisponivel' && <p className="motoboy-gps-aviso">❌ Geolocalização não suportada neste navegador.</p>}
         </div>
       )}
 
