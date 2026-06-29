@@ -2307,8 +2307,10 @@ function MotoboyPage({ onVoltar }) {
   const prevCountRef = useRef(0)
   const mountedRef = useRef(true)
   const watchIdRef = useRef(null)
+  const primeiraCarga = useRef(true)
 
   useEffect(() => {
+    mountedRef.current = true
     watchIdRef.current = navigator.geolocation.watchPosition(
       pos => { if (mountedRef.current) setMotoboyPos({ lat: pos.coords.latitude, lng: pos.coords.longitude }) },
       () => {},
@@ -2320,14 +2322,17 @@ function MotoboyPage({ onVoltar }) {
   }, [])
 
   useEffect(() => {
+    mountedRef.current = true
     const carregar = () => {
       fetch(`${API}/orders`)
-        .then(r => r.json())
+        .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json() })
         .then(data => {
           if (!mountedRef.current) return
+          if (!Array.isArray(data)) { return }
           const liberados = data.filter(p => p.status === 'liberado')
-          if (liberados.length > prevCountRef.current && prevCountRef.current > 0) tocarSomMotoboy()
+          if (liberados.length > prevCountRef.current && !primeiraCarga.current) tocarSomMotoboy()
           prevCountRef.current = liberados.length
+          primeiraCarga.current = false
           setPedidos(liberados)
         })
         .catch(() => {})
