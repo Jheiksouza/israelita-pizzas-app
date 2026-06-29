@@ -5734,6 +5734,20 @@ body {
   transition: var(--transition);
 }
 .motoboy-btn-entregue:active { transform: scale(0.9); }
+.motoboy-btn-entregue.pulse {
+  background: #FFF3E0;
+  animation: motoboyBtnPulse 0.8s ease-in-out infinite alternate;
+  box-shadow: 0 0 0 3px var(--secondary);
+}
+@keyframes motoboyBtnPulse {
+  from { transform: scale(1); }
+  to { transform: scale(1.15); }
+}
+
+.motoboy-entrega-card.chegou {
+  background: #FFF8E1 !important;
+  border: 2px solid var(--secondary);
+}
 
 .motoboy-retorno {
   background: var(--accent-soft) !important;

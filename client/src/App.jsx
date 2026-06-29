@@ -2307,6 +2307,7 @@ function MotoboyPage({ onVoltar }) {
   const [otimizando, setOtimizando] = useState(false)
   const [motoboyPos, setMotoboyPos] = useState(null)
   const [pizzariaCoords, setPizzariaCoords] = useState(null)
+  const [chegadas, setChegadas] = useState({})
   const prevCountRef = useRef(0)
   const mountedRef = useRef(true)
   const primeiraCarga = useRef(true)
@@ -2372,6 +2373,24 @@ function MotoboyPage({ onVoltar }) {
     const id = setInterval(carregar, 10000)
     return () => { clearInterval(id); mountedRef.current = false }
   }, [])
+
+  // Detecta chegada nos destinos (dentro de 50m)
+  useEffect(() => {
+    if (!motoboyPos) return
+    const alvos = etapa === 'organizar' ? ordemOtimizada : pedidos.filter(p => selecionados.includes(p.id))
+    const novas = { ...chegadas }
+    let mudou = false
+    alvos.forEach(p => {
+      if (!p.entrega_lat || !p.entrega_lng || chegadas[p.id]) return
+      const d = haversineKm(motoboyPos.lat, motoboyPos.lng, p.entrega_lat, p.entrega_lng) * 1000
+      if (d < 50) {
+        novas[p.id] = true
+        mudou = true
+        try { navigator.vibrate?.([300, 200, 300]) } catch (_) {}
+      }
+    })
+    if (mudou) setChegadas(novas)
+  }, [motoboyPos, etapa, ordemOtimizada, pedidos, selecionados, chegadas])
 
   useEffect(() => {
     if (etapa === 'organizar' && ordemOtimizada.length === 0) {
@@ -2625,19 +2644,21 @@ function MotoboyPage({ onVoltar }) {
 
           <div className="motoboy-entregas">
             {ordemOtimizada.map((p, idx) => (
-              <div key={p.id} className="motoboy-entrega-card">
+              <div key={p.id} className={`motoboy-entrega-card${chegadas[p.id] ? ' chegou' : ''}`}>
                 <div className="motoboy-entrega-num">{idx + 1}</div>
                 <div className="motoboy-entrega-corpo">
                   <strong>{p.cliente?.nome}</strong>
                   <span>📍 {p.cliente?.endereco}</span>
                   <span>📞 {formatTel(p.cliente?.telefone)}</span>
-                  {p.distKm && <span className="motoboy-entrega-dist">📏 {p.distKm.toFixed(1)} km · ≈ {p.durMin} min</span>}
+                  {p.distKm && !chegadas[p.id] && <span className="motoboy-entrega-dist">📏 {p.distKm.toFixed(1)} km · ≈ {p.durMin} min</span>}
                   <div className="motoboy-entrega-itens">
                     {p.itens?.map(i => <span key={i.id}>{i.qtd}x {i.nome}</span>)}
                   </div>
                   <span className="motoboy-entrega-total">R$ {p.total?.toFixed(2)}</span>
                 </div>
-                <button className="motoboy-btn-entregue" onClick={() => marcarEntregue(p.id)}>✅</button>
+                <button className={`motoboy-btn-entregue${chegadas[p.id] ? ' pulse' : ''}`} onClick={() => marcarEntregue(p.id)}>
+                  {chegadas[p.id] ? '📍' : '✅'}
+                </button>
               </div>
             ))}
             {voltaPizzaria && (
