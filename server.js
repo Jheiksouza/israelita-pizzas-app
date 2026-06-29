@@ -339,14 +339,14 @@ app.get('/orders', async (req, res) => {
 app.post('/orders', async (req, res) => {
   if (!checkSupabase(res)) return
   try {
-    const { cliente, itens, total } = req.body
+    const { cliente, itens, total, entrega_lat: body_lat, entrega_lng: body_lng } = req.body
     if (!cliente || !itens) {
       return res.status(400).json({ erro: 'Dados incompletos: cliente e itens são obrigatórios' })
     }
 
     // Extrair lat/lng do cliente para colunas separadas (para queries geoespaciais futuras)
-    const entrega_lat = cliente.lat || cliente.endereco_lat || null
-    const entrega_lng = cliente.lng || cliente.endereco_lng || null
+    const entrega_lat = body_lat || cliente.lat || cliente.endereco_lat || null
+    const entrega_lng = body_lng || cliente.lng || cliente.endereco_lng || null
 
     const pedido = {
       data: new Date().toISOString(),

@@ -236,20 +236,23 @@ function App() {
   const limparCarrinho = () => setCarrinho([])
 
   const finalizarPedido = async () => {
-    const enderecoFinal = user?.nome && user?.telefone
-      ? formatEndereco(getSelectedAddress(user)) || user.endereco || ''
+    const addrSelected = user?.nome && user?.telefone ? getSelectedAddress(user) : null
+    const enderecoFinal = addrSelected
+      ? formatEndereco(addrSelected) || user.endereco || ''
       : ''
-    const dadosCliente = user?.nome && user?.telefone
-      ? { nome: user.nome, telefone: user.telefone, endereco: enderecoFinal }
+    const dadosCliente = addrSelected
+      ? { nome: user.nome, telefone: user.telefone, endereco: enderecoFinal, lat: addrSelected.lat, lng: addrSelected.lng }
       : cliente
     if (!dadosCliente.nome || !dadosCliente.telefone) return alert('Preencha nome e telefone')
     try {
       const headers = { 'Content-Type': 'application/json' }
       if (token) headers['Authorization'] = `Bearer ${token}`
+      const entrega_lat = dadosCliente.lat || dadosCliente.endereco_lat || null
+      const entrega_lng = dadosCliente.lng || dadosCliente.endereco_lng || null
       const res = await fetch(`${API}/orders`, {
         method: 'POST',
         headers,
-        body: JSON.stringify({ cliente: dadosCliente, itens: carrinho, total: totalCarrinho })
+        body: JSON.stringify({ cliente: dadosCliente, itens: carrinho, total: totalCarrinho, entrega_lat, entrega_lng })
       })
       if (!res.ok) return alert('Erro ao enviar pedido. Tente novamente.')
       const pedidoCriado = await res.json()
@@ -433,7 +436,7 @@ function App() {
       )}
       {mostrarEnderecoForm && (
         <EnderecoFormModal
-          onSave={(addr) => { setCliente(c => ({ ...c, endereco: addr })); setMostrarEnderecoForm(false) }}
+          onSave={(addr, lat, lng) => { setCliente(c => ({ ...c, endereco: addr, lat, lng })); setMostrarEnderecoForm(false) }}
           onClose={() => setMostrarEnderecoForm(false)}
         />
       )}
@@ -2694,8 +2697,11 @@ function MotoboyPage({ onVoltar }) {
   }
 
   const abrirNoMapsRota = () => {
-    const destinos = ordemOtimizada.filter(p => p.entrega_lat || p.cliente?.endereco)
-    const enc = a => a.cliente?.endereco || `${a.entrega_lat},${a.entrega_lng}`
+    const destinos = ordemOtimizada.filter(p => (p.entrega_lat && p.entrega_lng) || p.cliente?.endereco)
+    const enc = a => {
+      if (a.entrega_lat && a.entrega_lng) return `${a.entrega_lat},${a.entrega_lng}`
+      return a.cliente?.endereco
+    }
     const params = new URLSearchParams({ api: 1, travelmode: 'driving', dir_action: 'navigate' })
     params.set('destination', PIZZARIA_ADDR)
     if (destinos.length > 0) {
