@@ -39,7 +39,7 @@ window.__googleCallback = (response) => {
 }
 
 function App() {
-  const [pagina, setPagina] = useState('cardapio')
+  const [pagina, setPagina] = useState(() => localStorage.getItem('appPagina') || 'cardapio')
   const [carrinho, setCarrinho] = useState(() => {
     const saved = localStorage.getItem('carrinho_guest')
     return saved ? JSON.parse(saved) : []
@@ -65,6 +65,10 @@ function App() {
   const [editandoEndereco, setEditandoEndereco] = useState(false)
   const [mostrarEnderecoForm, setMostrarEnderecoForm] = useState(false)
   const pendentesRef = useRef(0)
+
+  useEffect(() => {
+    localStorage.setItem('appPagina', pagina)
+  }, [pagina])
   const alarmTimer = useRef(null)
   const alarmCtx = useRef(null)
   const carrinhoSyncTimer = useRef(null)
@@ -1174,7 +1178,11 @@ function Cardapio({ onAdicionar, onBanner, pizzaEditando, onPizzaEditDone }) {
 
 
 function AdminPanel({ autenticado, onLogin, onThemeChange, onFontChange, pendentesCount }) {
-  const [aba, setAba] = useState('cardapio')
+  const [aba, setAba] = useState(() => localStorage.getItem('appAdminAba') || 'cardapio')
+
+  useEffect(() => {
+    localStorage.setItem('appAdminAba', aba)
+  }, [aba])
 
   if (!autenticado) return <AdminLogin onLogin={onLogin} />
 
