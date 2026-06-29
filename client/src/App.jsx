@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { buscarCEP, formatCEP, formatEndereco } from './cepHelper'
-import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet'
+import { MapContainer, TileLayer, Marker, Popup, useMapEvents } from 'react-leaflet'
 import L from 'leaflet'
 
 const API = '/api'
