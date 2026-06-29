@@ -2456,10 +2456,10 @@ function MotoboyPage({ onVoltar }) {
   })
 
   const abrirNoMapsRota = () => {
-    const comCoords = pedidosOrdenados.filter(p => p.entrega_lat)
-    if (comCoords.length === 0) return
+    const destinos = pedidosOrdenados.filter(p => p.entrega_lat || p.cliente?.endereco)
+    if (destinos.length === 0) return
     const enc = a => encodeURIComponent(a.cliente?.endereco || `${a.entrega_lat},${a.entrega_lng}`)
-    const stops = comCoords.map(enc).join('/')
+    const stops = destinos.map(enc).join('/')
     window.location.href = `https://www.google.com/maps/dir/${stops}`
   }
 
