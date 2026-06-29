@@ -2296,18 +2296,47 @@ function MapClickHandler({ onClick }) {
   return null
 }
 
+const PIZZARIA_ADDR = 'Rua Eloir Dide Maria, 283 - Tatuquara, Curitiba - PR'
+
 function MotoboyPage({ onVoltar }) {
   const [pedidos, setPedidos] = useState([])
-  const [motoboyPos, setMotoboyPos] = useState(null)
-  const [showList, setShowList] = useState(false)
-  const [currentIndex, setCurrentIndex] = useState(0)
-  const [rotaCoords, setRotaCoords] = useState(null)
-  const [rotaLegs, setRotaLegs] = useState(null)
+  const [selecionados, setSelecionados] = useState([])
+  const [etapa, setEtapa] = useState('selecao')
+  const [ordemOtimizada, setOrdemOtimizada] = useState([])
+  const [voltaPizzaria, setVoltaPizzaria] = useState(null)
   const [otimizando, setOtimizando] = useState(false)
+  const [motoboyPos, setMotoboyPos] = useState(null)
+  const [pizzariaCoords, setPizzariaCoords] = useState(null)
   const prevCountRef = useRef(0)
   const mountedRef = useRef(true)
-  const watchIdRef = useRef(null)
   const primeiraCarga = useRef(true)
+  const watchIdRef = useRef(null)
+  const audioCtxRef = useRef(null)
+
+  useEffect(() => {
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission()
+    }
+    const initAudio = () => {
+      if (!audioCtxRef.current) {
+        audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)()
+      }
+      if (audioCtxRef.current.state === 'suspended') {
+        audioCtxRef.current.resume()
+      }
+    }
+    document.addEventListener('click', initAudio, { once: true })
+    document.addEventListener('touchstart', initAudio, { once: true })
+    // Geocode pizzaria address
+    fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(PIZZARIA_ADDR)}&limit=1`)
+      .then(r => r.json())
+      .then(data => {
+        if (data?.length && mountedRef.current) {
+          setPizzariaCoords({ lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) })
+        }
+      })
+      .catch(() => {})
+  }, [])
 
   useEffect(() => {
     mountedRef.current = true
@@ -2328,9 +2357,11 @@ function MotoboyPage({ onVoltar }) {
         .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json() })
         .then(data => {
           if (!mountedRef.current) return
-          if (!Array.isArray(data)) { return }
+          if (!Array.isArray(data)) return
           const liberados = data.filter(p => p.status === 'liberado')
-          if (liberados.length > prevCountRef.current && !primeiraCarga.current) tocarSomMotoboy()
+          if (liberados.length > prevCountRef.current && !primeiraCarga.current) {
+            tocarSomMotoboy()
+          }
           prevCountRef.current = liberados.length
           primeiraCarga.current = false
           setPedidos(liberados)
@@ -2342,45 +2373,24 @@ function MotoboyPage({ onVoltar }) {
     return () => { clearInterval(id); mountedRef.current = false }
   }, [])
 
-  // OSRM: otimiza a rota com múltiplas paradas
   useEffect(() => {
-    if (!motoboyPos) { setRotaCoords(null); setRotaLegs(null); return }
-    const comCoords = pedidos.filter(p => p.entrega_lat && p.entrega_lng)
-    if (comCoords.length < 2) { setRotaCoords(null); setRotaLegs(null); return }
-
-    setOtimizando(true)
-    const coordsStr = [
-      `${motoboyPos.lng},${motoboyPos.lat}`,
-      ...comCoords.map(p => `${p.entrega_lng},${p.entrega_lat}`)
-    ].join(';')
-
-    fetch(`https://router.project-osrm.org/trip/v1/driving/${coordsStr}?source=first&destination=last&overview=full&geometries=geojson`)
-      .then(r => r.json())
-      .then(data => {
-        if (!mountedRef.current) return
-        setOtimizando(false)
-        if (data.code !== 'Ok') return
-
-        const coords = data.trips[0].geometry.coordinates.map(c => [c[1], c[0]])
-        setRotaCoords(coords)
-        setRotaLegs(data.trips[0].legs.map(leg => ({
-          distKm: leg.distance / 1000,
-          durMin: Math.round(leg.duration / 60)
-        })))
-      })
-      .catch(() => { setOtimizando(false) })
-  }, [motoboyPos, pedidos])
-
-  useEffect(() => {
-    setCurrentIndex(0)
-  }, [pedidos.length])
+    if (etapa === 'organizar' && ordemOtimizada.length === 0) {
+      setEtapa('selecao')
+    }
+  }, [ordemOtimizada.length, etapa])
 
   const tocarSomMotoboy = () => {
+    try { navigator.vibrate?.([200, 100, 200, 100, 200]) } catch (_) {}
     try {
-      const ctx = new (window.AudioContext || window.webkitAudioContext)()
+      let ctx = audioCtxRef.current
+      if (!ctx) {
+        ctx = new (window.AudioContext || window.webkitAudioContext)()
+        audioCtxRef.current = ctx
+      }
+      if (ctx.state === 'suspended') ctx.resume()
       let toques = 0
       const tocar = () => {
-        if (toques >= 5 || !ctx || ctx.state === 'closed') return
+        if (toques >= 2 || !ctx || ctx.state === 'closed') return
         if (ctx.state === 'suspended') ctx.resume()
         const t = ctx.currentTime
         for (let i = 0; i < 3; i++) {
@@ -2394,18 +2404,10 @@ function MotoboyPage({ onVoltar }) {
           osc.start(t + i * 0.1); osc.stop(t + i * 0.1 + 0.3)
         }
         toques++
-        if (toques < 5) setTimeout(tocar, 1200)
+        if (toques < 2) setTimeout(tocar, 1200)
       }
       tocar()
     } catch (_) {}
-  }
-
-  const marcarEntregue = async (id) => {
-    await fetch(`${API}/orders/${id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status: 'entregue' })
-    })
   }
 
   const haversineKm = (lat1, lng1, lat2, lng2) => {
@@ -2418,204 +2420,248 @@ function MotoboyPage({ onVoltar }) {
     return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
   }
 
-  const pedidosOrdenados = [...pedidos].sort((a, b) => {
-    if (!motoboyPos) return 0
-    const da = a.entrega_lat ? haversineKm(motoboyPos.lat, motoboyPos.lng, a.entrega_lat, a.entrega_lng) : Infinity
-    const db = b.entrega_lat ? haversineKm(motoboyPos.lat, motoboyPos.lng, b.entrega_lat, b.entrega_lng) : Infinity
-    return da - db
-  })
+  const toggleSelecionado = (id) => {
+    setSelecionados(prev =>
+      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+    )
+  }
 
-  const destinoAtual = pedidosOrdenados[currentIndex]
-  const distAtual = destinoAtual?.entrega_lat && motoboyPos
-    ? haversineKm(motoboyPos.lat, motoboyPos.lng, destinoAtual.entrega_lat, destinoAtual.entrega_lng)
-    : null
-  const tempoAtual = distAtual !== null ? Math.round(distAtual / 0.4) : null
+  const organizar = async () => {
+    setOtimizando(true)
+    const selec = pedidos.filter(p => selecionados.includes(p.id))
 
-  const totalDistRota = rotaLegs ? rotaLegs.reduce((s, l) => s + l.distKm, 0) : null
-  const totalDurRota = rotaLegs ? rotaLegs.reduce((s, l) => s + l.durMin, 0) : null
+    if (motoboyPos && pizzariaCoords && selec.some(p => p.entrega_lat && p.entrega_lng)) {
+      const comCoords = selec.filter(p => p.entrega_lat && p.entrega_lng)
+      const semCoords = selec.filter(p => !p.entrega_lat || !p.entrega_lng)
 
-  const motoboyIcon = L.divIcon({
-    className: '',
-    html: '<div class="motoboy-marker"><svg viewBox="0 0 24 36" width="26" height="40"><path d="M12 0C5.4 0 0 5.4 0 12c0 9 12 24 12 24s12-15 12-24C24 5.4 18.6 0 12 0z" fill="#1565C0"/><circle cx="12" cy="12" r="5" fill="#fff"/></svg><div class="motoboy-marker-pulse"></div></div>',
-    iconSize: [26, 40],
-    iconAnchor: [13, 40],
-  })
+      if (comCoords.length >= 1) {
+        const coordsStr = [
+          `${motoboyPos.lng},${motoboyPos.lat}`,
+          ...comCoords.map(p => `${p.entrega_lng},${p.entrega_lat}`),
+          `${pizzariaCoords.lng},${pizzariaCoords.lat}`
+        ].join(';')
+        try {
+          const r = await fetch(`https://router.project-osrm.org/trip/v1/driving/${coordsStr}?source=first&destination=last&overview=false`)
+          if (r.ok) {
+            const data = await r.json()
+            if (data.code === 'Ok') {
+              const waypoints = data.trips[0].waypoints
+              const legs = data.trips[0].legs
+              const rotaOtimizada = waypoints.slice(1, -1).map((wp, i) => ({
+                ...comCoords[wp.waypoint_index - 1],
+                distKm: legs[i].distance / 1000,
+                durMin: Math.round(legs[i].duration / 60)
+              }))
+              const voltaDist = legs[legs.length - 1].distance / 1000
+              const voltaDur = Math.round(legs[legs.length - 1].duration / 60)
+              const semCoordsOrd = [...semCoords].sort((a, b) => new Date(a.data) - new Date(b.data))
+              setOrdemOtimizada([...rotaOtimizada, ...semCoordsOrd])
+              setVoltaPizzaria({ distKm: voltaDist, durMin: voltaDur })
+              setEtapa('organizar')
+              setOtimizando(false)
+              return
+            }
+          }
+        } catch (_) {}
+      }
 
-  const deliveryIcon = L.divIcon({
-    className: '',
-    html: '<div class="motoboy-marker"><svg viewBox="0 0 24 36" width="26" height="40"><path d="M12 0C5.4 0 0 5.4 0 12c0 9 12 24 12 24s12-15 12-24C24 5.4 18.6 0 12 0z" fill="#E53935"/><circle cx="12" cy="12" r="5" fill="#fff"/></svg></div>',
-    iconSize: [26, 40],
-    iconAnchor: [13, 40],
-  })
+      const ordenados = [...selec].sort((a, b) => {
+        const da = a.entrega_lat && motoboyPos ? haversineKm(motoboyPos.lat, motoboyPos.lng, a.entrega_lat, a.entrega_lng) : Infinity
+        const db = b.entrega_lat && motoboyPos ? haversineKm(motoboyPos.lat, motoboyPos.lng, b.entrega_lat, b.entrega_lng) : Infinity
+        if (da !== db) return da - db
+        return new Date(a.data) - new Date(b.data)
+      })
+      const ultimo = ordenados[ordenados.length - 1]
+      if (ultimo?.entrega_lat && pizzariaCoords) {
+        const d = haversineKm(ultimo.entrega_lat, ultimo.entrega_lng, pizzariaCoords.lat, pizzariaCoords.lng)
+        const t = Math.round(d / 0.4)
+        setVoltaPizzaria({ distKm: d, durMin: t })
+      }
+      setOrdemOtimizada(ordenados)
+      setEtapa('organizar')
+      setOtimizando(false)
+    } else if (pizzariaCoords) {
+      const ordenados = [...selec].sort((a, b) => new Date(a.data) - new Date(b.data))
+      const ultimo = ordenados[ordenados.length - 1]
+      if (ultimo?.entrega_lat && pizzariaCoords) {
+        const d = haversineKm(ultimo.entrega_lat, ultimo.entrega_lng, pizzariaCoords.lat, pizzariaCoords.lng)
+        const t = Math.round(d / 0.4)
+        setVoltaPizzaria({ distKm: d, durMin: t })
+      }
+      setOrdemOtimizada(ordenados)
+      setEtapa('organizar')
+      setOtimizando(false)
+    } else {
+      const ordenados = [...selec].sort((a, b) => new Date(a.data) - new Date(b.data))
+      setOrdemOtimizada(ordenados)
+      setEtapa('organizar')
+      setOtimizando(false)
+    }
+  }
 
-  const deliveryActiveIcon = L.divIcon({
-    className: '',
-    html: '<div class="motoboy-marker"><svg viewBox="0 0 24 36" width="32" height="48"><path d="M12 0C5.4 0 0 5.4 0 12c0 9 12 24 12 24s12-15 12-24C24 5.4 18.6 0 12 0z" fill="#FF8F00"/><circle cx="12" cy="12" r="6" fill="#fff"/></svg></div>',
-    iconSize: [32, 48],
-    iconAnchor: [16, 48],
-  })
+  const marcarEntregue = async (id) => {
+    await fetch(`${API}/orders/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'entregue' })
+    })
+    setSelecionados(prev => prev.filter(x => x !== id))
+    setOrdemOtimizada(prev => prev.filter(p => p.id !== id))
+  }
 
   const abrirNoMapsRota = () => {
-    const destinos = pedidosOrdenados.filter(p => p.entrega_lat || p.cliente?.endereco)
-    if (destinos.length === 0) return
+    const destinos = ordemOtimizada.filter(p => p.entrega_lat || p.cliente?.endereco)
     const enc = a => encodeURIComponent(a.cliente?.endereco || `${a.entrega_lat},${a.entrega_lng}`)
     const params = new URLSearchParams({ api: 1, travelmode: 'driving' })
-    if (destinos.length === 1) {
-      params.set('destination', enc(destinos[0]))
+    if (destinos.length === 0) {
+      params.set('destination', encodeURIComponent(PIZZARIA_ADDR))
+    } else if (destinos.length === 1) {
+      params.set('destination', encodeURIComponent(PIZZARIA_ADDR))
+      params.set('waypoints', enc(destinos[0]))
     } else {
-      const ultimo = destinos[destinos.length - 1]
-      params.set('destination', enc(ultimo))
-      params.set('waypoints', destinos.slice(0, -1).map(enc).join('|'))
+      params.set('destination', encodeURIComponent(PIZZARIA_ADDR))
+      params.set('waypoints', destinos.map(enc).join('|'))
     }
     window.location.href = `https://www.google.com/maps/dir/?${params}`
   }
 
-  const center = motoboyPos || { lat: -25.4290, lng: -49.2671 }
+  const formatTel = (t) => {
+    if (!t) return ''
+    const s = t.replace(/\D/g, '')
+    if (s.length === 11) return `(${s.slice(0,2)}) ${s.slice(2,7)}-${s.slice(7)}`
+    if (s.length === 10) return `(${s.slice(0,2)}) ${s.slice(2,6)}-${s.slice(6)}`
+    return t
+  }
+
+  const selecionadosData = pedidos.filter(p => selecionados.includes(p.id))
+  const disponiveis = pedidos.filter(p => !selecionados.includes(p.id))
 
   return (
     <div className="motoboy-page">
-      <button className="motoboy-back" onClick={onVoltar}>←</button>
-      {pedidos.length > 0 && (
-        <div className="motoboy-status">
-          <span className="motoboy-status-num">{currentIndex + 1}</span>
-          <span className="motoboy-status-sep">/</span>
-          <span>{pedidos.length}</span>
-          {otimizando && <span className="motoboy-status-otimizando">Otimizando...</span>}
-        </div>
-      )}
-
-      <MapContainer
-        center={[center.lat, center.lng]}
-        zoom={13}
-        scrollWheelZoom={true}
-        className="motoboy-map"
-      >
-        <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        />
-        {rotaCoords && (
-          <Polyline
-            positions={rotaCoords}
-            pathOptions={{ color: '#1565C0', weight: 4, opacity: 0.7 }}
-          />
-        )}
-        {motoboyPos && (
-          <Marker position={[motoboyPos.lat, motoboyPos.lng]} icon={motoboyIcon}>
-            <Popup><strong>📍 Minha posição</strong></Popup>
-          </Marker>
-        )}
-        {pedidosOrdenados.map((p, idx) => {
-          if (!p.entrega_lat || !p.entrega_lng) return null
-          return (
-            <Marker
-              key={p.id}
-              position={[p.entrega_lat, p.entrega_lng]}
-              icon={idx === currentIndex ? deliveryActiveIcon : deliveryIcon}
-            >
-              <Popup>
-                <div className="motoboy-popup">
-                  <strong>#{idx + 1} · Pedido #{p.id}</strong>
-                  <p>👤 {p.cliente?.nome}</p>
-                  <p>📍 {p.cliente?.endereco}</p>
-                  <p>📞 {p.cliente?.telefone}</p>
-                  {rotaLegs && rotaLegs[idx] && <p>📏 {rotaLegs[idx].distKm.toFixed(1)} km · ≈ {rotaLegs[idx].durMin} min</p>}
-                  {!rotaLegs && distAtual !== null && idx === currentIndex && <p>📏 {distAtual.toFixed(1)} km · ≈ {tempoAtual} min</p>}
-                  <div className="motoboy-popup-itens">{p.itens?.map(item => <span key={item.id}>{item.qtd}x {item.nome}</span>)}</div>
-                  <p className="motoboy-popup-total">R$ {p.total?.toFixed(2)}</p>
-                  <button className="btn-add" onClick={() => marcarEntregue(p.id)}>✅ Entregue</button>
-                </div>
-              </Popup>
-            </Marker>
-          )
-        })}
-      </MapContainer>
-
-      {destinoAtual && (
-        <div className="motoboy-card">
-          <div className="motoboy-card-header">
-            <strong>Próxima entrega</strong>
-            <span className="motoboy-card-counter">{currentIndex + 1} de {pedidos.length}</span>
-          </div>
-          <div className="motoboy-card-body">
-            <div className="motoboy-card-cliente">
-              <span className="motoboy-card-stops">
-                🛵 Parada {currentIndex + 1} → {currentIndex + 2 < pedidos.length ? `Parada ${currentIndex + 2}` : 'Final'}
-              </span>
-              <span className="motoboy-card-nome">{destinoAtual.cliente?.nome}</span>
-              <span className="motoboy-card-endereco">{destinoAtual.cliente?.endereco}</span>
-              {rotaLegs && rotaLegs[currentIndex] ? (
-                <span className="motoboy-card-dist">📏 {rotaLegs[currentIndex].distKm.toFixed(1)} km · ≈ {rotaLegs[currentIndex].durMin} min</span>
-              ) : distAtual !== null ? (
-                <span className="motoboy-card-dist">📏 {distAtual.toFixed(1)} km · ≈ {tempoAtual} min</span>
-              ) : null}
-              {totalDistRota !== null && currentIndex === 0 && (
-                <span className="motoboy-card-rota-total">🔄 Rota total: {totalDistRota.toFixed(1)} km · ≈ {totalDurRota} min</span>
-              )}
-            </div>
-            <div className="motoboy-card-valor">R$ {destinoAtual.total?.toFixed(2)}</div>
-          </div>
-          <div className="motoboy-card-actions">
-            <button className="motoboy-card-btn-maps" onClick={abrirNoMapsRota}>
-              🗺️ Navegar (todas as paradas)
-            </button>
-            <button className="motoboy-card-btn-entregue" onClick={() => marcarEntregue(destinoAtual.id)}>
-              ✅ Entregue
-            </button>
-          </div>
-          {pedidos.length > 1 && (
-            <div className="motoboy-card-nav">
-              <button
-                className="motoboy-card-nav-btn"
-                disabled={currentIndex <= 0}
-                onClick={() => setCurrentIndex(i => Math.max(0, i - 1))}
-              >◀ Anterior</button>
-              <button
-                className="motoboy-card-nav-btn"
-                disabled={currentIndex >= pedidos.length - 1}
-                onClick={() => setCurrentIndex(i => Math.min(pedidos.length - 1, i + 1))}
-              >Próximo ▶</button>
-            </div>
-          )}
-
-          {showList && (
-            <div className="motoboy-card-list">
-              {pedidosOrdenados.map((p, idx) => {
-                const d = p.entrega_lat && motoboyPos ? haversineKm(motoboyPos.lat, motoboyPos.lng, p.entrega_lat, p.entrega_lng) : null
-                return (
-                  <div
-                    key={p.id}
-                    className={`motoboy-card-list-item${idx === currentIndex ? ' active' : ''}`}
-                    onClick={() => { setCurrentIndex(idx); setShowList(false) }}
-                  >
-                    <span className="motoboy-card-list-num">{idx + 1}</span>
-                    <div className="motoboy-card-list-item-left">
-                      <span className="motoboy-card-list-order">#{p.id}</span>
-                      <div>
-                        <strong>{p.cliente?.nome}</strong>
-                        <span>{p.cliente?.endereco}</span>
-                      </div>
-                    </div>
-                    <div className="motoboy-card-list-item-right">
-                      {rotaLegs && rotaLegs[idx] ? <span>{rotaLegs[idx].distKm.toFixed(1)}km · {rotaLegs[idx].durMin}min</span> : d !== null ? <span>{d.toFixed(1)}km</span> : null}
-                      <span>R$ {p.total?.toFixed(2)}</span>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          )}
-          <button className="motoboy-card-toggle" onClick={() => setShowList(!showList)}>
-            {showList ? '▲ Fechar lista' : `▼ Ver rota completa (${pedidos.length})`}
-          </button>
-        </div>
-      )}
+      <div className="motoboy-topo">
+        <button className="motoboy-voltar" onClick={onVoltar}>←</button>
+        <h1 className="motoboy-titulo">🛵 Entregas</h1>
+        <span className="motoboy-qtd">{pedidos.length} pedido{pedidos.length !== 1 ? 's' : ''}</span>
+      </div>
 
       {pedidos.length === 0 && (
-        <div className="motoboy-empty">
-          <div className="motoboy-empty-icon">🛵</div>
-          <p>Nenhuma entrega pendente</p>
-          <p className="motoboy-empty-sub">Aguardando novos pedidos...</p>
+        <div className="motoboy-vazio">
+          <div className="motoboy-vazio-icone">🛵</div>
+          <p className="motoboy-vazio-texto">Nenhuma entrega pendente</p>
+          <p className="motoboy-vazio-sub">Aguardando novos pedidos...</p>
+        </div>
+      )}
+
+      {etapa === 'selecao' && pedidos.length > 0 && (
+        <div className="motoboy-selecao">
+          <div className="motoboy-instrucao">
+            Selecione os pedidos que vai levar e depois organize a caixa
+          </div>
+
+          {selecionadosData.map(p => (
+            <div key={p.id} className="motoboy-card motoboy-card-checked" onClick={() => toggleSelecionado(p.id)}>
+              <div className="motoboy-check"><div className="cb on">✓</div></div>
+              <div className="motoboy-card-corpo">
+                <div className="motoboy-card-linha">
+                  <strong className="motoboy-card-nome">{p.cliente?.nome}</strong>
+                  <span className="motoboy-card-valor">R$ {p.total?.toFixed(2)}</span>
+                </div>
+                <span className="motoboy-card-end">📍 {p.cliente?.endereco}</span>
+                <span className="motoboy-card-tel">📞 {formatTel(p.cliente?.telefone)}</span>
+                <div className="motoboy-card-itens">
+                  {p.itens?.map(item => (
+                    <span key={item.id} className="motoboy-card-item">{item.qtd}x {item.nome}</span>
+                  ))}
+                </div>
+              </div>
+            </div>
+          ))}
+
+          {disponiveis.map(p => (
+            <div key={p.id} className="motoboy-card" onClick={() => toggleSelecionado(p.id)}>
+              <div className="motoboy-check"><div className="cb"></div></div>
+              <div className="motoboy-card-corpo">
+                <div className="motoboy-card-linha">
+                  <strong className="motoboy-card-nome">{p.cliente?.nome}</strong>
+                  <span className="motoboy-card-valor">R$ {p.total?.toFixed(2)}</span>
+                </div>
+                <span className="motoboy-card-end">📍 {p.cliente?.endereco}</span>
+                <span className="motoboy-card-tel">📞 {formatTel(p.cliente?.telefone)}</span>
+                <div className="motoboy-card-itens">
+                  {p.itens?.map(item => (
+                    <span key={item.id} className="motoboy-card-item">{item.qtd}x {item.nome}</span>
+                  ))}
+                </div>
+              </div>
+            </div>
+          ))}
+
+          <div className="motoboy-rodape">
+            <button className="motoboy-btn-primario" disabled={selecionados.length === 0 || otimizando} onClick={organizar}>
+              {otimizando ? '🔄 Organizando...' : (selecionados.length > 0 ? `📦 Organizar mercadoria (${selecionados.length})` : '📦 Organizar mercadoria')}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {etapa === 'organizar' && ordemOtimizada.length > 0 && (
+        <div className="motoboy-rota">
+          <div className="motoboy-box">
+            <div className="motoboy-box-label">
+              <span>🏍️ Caixa da Moto</span>
+              <span className="motoboy-box-info">1º entrega no topo</span>
+            </div>
+            <div className="motoboy-box-pilha">
+              {ordemOtimizada.map((p, idx) => (
+                <div key={p.id} className={`motoboy-box-item ${idx === 0 ? 'first' : ''}`}>
+                  <div className="motoboy-box-ordem">{idx + 1}º</div>
+                  <div className="motoboy-box-conteudo">
+                    <strong>{p.cliente?.nome}</strong>
+                    <span>{p.cliente?.endereco}</span>
+                    <div className="motoboy-box-itens">
+                      {p.itens?.map(i => <span key={i.id}>{i.qtd}x {i.nome}</span>)}
+                    </div>
+                    {p.distKm && <span className="motoboy-box-dist">📏 {p.distKm.toFixed(1)} km · ≈ {p.durMin} min</span>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="motoboy-entregas">
+            {ordemOtimizada.map((p, idx) => (
+              <div key={p.id} className="motoboy-entrega-card">
+                <div className="motoboy-entrega-num">{idx + 1}</div>
+                <div className="motoboy-entrega-corpo">
+                  <strong>{p.cliente?.nome}</strong>
+                  <span>📍 {p.cliente?.endereco}</span>
+                  <span>📞 {formatTel(p.cliente?.telefone)}</span>
+                  {p.distKm && <span className="motoboy-entrega-dist">📏 {p.distKm.toFixed(1)} km · ≈ {p.durMin} min</span>}
+                  <div className="motoboy-entrega-itens">
+                    {p.itens?.map(i => <span key={i.id}>{i.qtd}x {i.nome}</span>)}
+                  </div>
+                  <span className="motoboy-entrega-total">R$ {p.total?.toFixed(2)}</span>
+                </div>
+                <button className="motoboy-btn-entregue" onClick={() => marcarEntregue(p.id)}>✅</button>
+              </div>
+            ))}
+            {voltaPizzaria && (
+              <div className="motoboy-entrega-card motoboy-retorno">
+                <div className="motoboy-entrega-num motoboy-retorno-num">🏠</div>
+                <div className="motoboy-entrega-corpo">
+                  <strong>🔄 Retorno à Pizzaria</strong>
+                  <span>📍 {PIZZARIA_ADDR}</span>
+                  <span className="motoboy-entrega-dist">📏 {voltaPizzaria.distKm.toFixed(1)} km · ≈ {voltaPizzaria.durMin} min</span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="motoboy-rodape">
+            <button className="motoboy-btn-primario" onClick={abrirNoMapsRota}>
+              🗺️ Abrir navegação
+            </button>
+          </div>
         </div>
       )}
     </div>
