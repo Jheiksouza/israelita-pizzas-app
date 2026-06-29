@@ -2022,6 +2022,9 @@ function MapaEntregaModal({
   const [lng, setLng] = useState(null)
   const [buscando, setBuscando] = useState(false)
   const [pronto, setPronto] = useState(false)
+  const [buscaEndereco, setBuscaEndereco] = useState('')
+  const [buscandoEndereco, setBuscandoEndereco] = useState(false)
+  const [erroBusca, setErroBusca] = useState('')
   const mapRef = useRef(null)
   const mountedRef = useRef(false)
 
@@ -2033,6 +2036,8 @@ function MapaEntregaModal({
     setLat(null)
     setLng(null)
     setBuscando(true)
+    setBuscaEndereco('')
+    setErroBusca('')
 
     if (!enderecoInicial) {
       console.log('[MapaEntregaModal] Sem enderecoInicial, fallback SP')
@@ -2045,7 +2050,6 @@ function MapaEntregaModal({
 
     const geocode = async () => {
       try {
-        // Remove parênteses e conteúdo (referência) para não confundir geocoder
         const enderecoLimpo = enderecoInicial.replace(/\s*\([^)]*\)\s*/g, ' ').replace(/\s+/g, ' ').trim()
         console.log('[MapaEntregaModal] Endereço limpo para geocoding:', enderecoLimpo)
         const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(enderecoLimpo)}&limit=1`
@@ -2098,27 +2102,83 @@ function MapaEntregaModal({
     onClose()
   }
 
+  const handleSearch = async () => {
+    if (!buscaEndereco.trim()) return
+    setBuscandoEndereco(true)
+    setErroBusca('')
+    try {
+      const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(buscaEndereco)}&limit=1`
+      const res = await fetch(url, { headers: { 'User-Agent': 'IsraelitaPizzasApp/1.0' } })
+      const data = await res.json()
+      if (!mountedRef.current) return
+      if (data[0]) {
+        const newLat = parseFloat(data[0].lat)
+        const newLng = parseFloat(data[0].lon)
+        setLat(newLat)
+        setLng(newLng)
+        if (mapRef.current) {
+          mapRef.current.flyTo([newLat, newLng], 17)
+        }
+      } else {
+        setErroBusca('Endereço não encontrado. Tente ser mais específico.')
+      }
+    } catch (e) {
+      console.error('[MapaEntregaModal] Erro na busca:', e)
+      setErroBusca('Erro ao buscar endereço. Tente novamente.')
+    } finally {
+      if (mountedRef.current) {
+        setBuscandoEndereco(false)
+      }
+    }
+  }
+
+  const handleSearchKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      handleSearch()
+    }
+  }
+
+  const pinIcon = L.divIcon({
+    className: '',
+    html: `<div class="mapa-marker-blue"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 36" width="32" height="44"><path d="M12 0C5.4 0 0 5.4 0 12c0 9 12 24 12 24s12-15 12-24C24 5.4 18.6 0 12 0z" fill="#2196F3"/><circle cx="12" cy="12" r="5" fill="#fff"/></svg></div>`,
+    iconSize: [32, 44],
+    iconAnchor: [16, 44],
+  })
+
   if (!isOpen) return null
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal modal-mapa" onClick={e => e.stopPropagation()} style={{ width: '90vw', maxWidth: '600px', maxHeight: '85vh' }}>
-        <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-          <h3 style={{ margin: 0 }}>📍 Marcar Local Exato de Entrega</h3>
+      <div className="modal modal-mapa" onClick={e => e.stopPropagation()}>
+        <div className="modal-header">
+          <h3>📍 Marcar Local Exato de Entrega</h3>
           <button className="modal-close" onClick={onClose}>✕</button>
         </div>
         {buscando ? (
-          <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--text-muted)' }}>
-            <div style={{ fontSize: '2rem', marginBottom: 12 }}>🔍</div>
+          <div className="mapa-loading">
+            <div className="mapa-loading-icon">🔍</div>
             <p>Localizando o endereço no mapa...</p>
-            <p style={{ fontSize: '0.85rem' }}>{enderecoInicial}</p>
+            <p className="mapa-loading-endereco">{enderecoInicial}</p>
           </div>
         ) : !pronto ? null : (
           <>
-            <p className="mapa-instrucao" style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: 12 }}>
+            <div className="mapa-search">
+              <input
+                type="text"
+                placeholder="Buscar rua, bairro ou ponto de referência..."
+                value={buscaEndereco}
+                onChange={e => { setBuscaEndereco(e.target.value); setErroBusca('') }}
+                onKeyDown={handleSearchKeyDown}
+              />
+              <button onClick={handleSearch} disabled={buscandoEndereco}>
+                {buscandoEndereco ? 'Buscando...' : 'Buscar'}
+              </button>
+            </div>
+            {erroBusca && <p className="mapa-search-erro">{erroBusca}</p>}
+            <p className="mapa-instrucao">
               O mapa abriu no local aproximado do endereço. <strong>Clique no mapa</strong> para ajustar o ponto exato da entrega.
             </p>
-            <div className="mapa-container" style={{ height: '350px', borderRadius: '8px', overflow: 'hidden' }}>
+            <div className="mapa-container">
               <MapContainer
                 ref={mapRef}
                 center={[lat, lng]}
@@ -2130,15 +2190,16 @@ function MapaEntregaModal({
                   attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                   url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                 />
-                <Marker position={[lat, lng]} icon={L.divIcon({ className: 'custom-marker', html: '📍', iconSize: [32, 32], iconAnchor: [16, 32] })}>
+                <Marker position={[lat, lng]} icon={pinIcon}>
                 </Marker>
                 <MapClickHandler onClick={handleMapClick} />
               </MapContainer>
             </div>
-            <div className="mapa-coords" style={{ marginTop: 8, fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+            <p className="mapa-dica">💡 Dica: use a busca acima para encontrar uma rua próxima caso não localize a sua</p>
+            <div className="mapa-coords">
               Lat: {lat.toFixed(6)}, Lng: {lng.toFixed(6)}
             </div>
-            <div className="form-actions" style={{ marginTop: 16, display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+            <div className="form-actions">
               <button className="btn-del" onClick={onClose}>Cancelar</button>
               <button className="btn-add" onClick={handleConfirm}>
                 ✅ Confirmar Local Exato
