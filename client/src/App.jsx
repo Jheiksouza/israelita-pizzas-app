@@ -2459,8 +2459,13 @@ function MotoboyPage({ onVoltar }) {
     const destinos = pedidosOrdenados.filter(p => p.entrega_lat || p.cliente?.endereco)
     if (destinos.length === 0) return
     const enc = a => encodeURIComponent(a.cliente?.endereco || `${a.entrega_lat},${a.entrega_lng}`)
-    const stops = destinos.map(enc).join('/')
-    window.location.href = `https://www.google.com/maps/dir/${stops}`
+    if (destinos.length === 1) {
+      window.location.href = `https://www.google.com/maps/dir/?api=1&destination=${enc(destinos[0])}`
+    } else {
+      const ultimo = destinos[destinos.length - 1]
+      const paradas = destinos.slice(0, -1).map(enc).join('|')
+      window.location.href = `https://www.google.com/maps/dir/?api=1&destination=${enc(ultimo)}&waypoints=${paradas}`
+    }
   }
 
   const center = motoboyPos || { lat: -25.4290, lng: -49.2671 }
