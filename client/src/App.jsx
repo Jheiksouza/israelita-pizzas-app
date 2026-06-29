@@ -2306,22 +2306,26 @@ function RastreioPage() {
   useEffect(() => {
     let mounted = true
     const buscar = () => {
+      console.log('[Rastreio] Buscando posição...')
       fetch(`${API}/motoboy/position`)
-        .then(r => r.json())
+        .then(r => { console.log('[Rastreio] Response status:', r.status); return r.json() })
         .then(data => {
+          console.log('[Rastreio] Dados recebidos:', data)
           if (!mounted) return
           if (data?.lat && data?.lng) {
             setPos({ lat: data.lat, lng: data.lng })
             const diff = Date.now() - (data.timestamp || 0)
+            console.log('[Rastreio] Diferença desde último timestamp (ms):', diff)
             setStatus(diff < 45000 ? 'conectado' : 'perdendo_sinal')
             setUltimaAtualizacao(data.timestamp)
           } else {
+            console.log('[Rastreio] Sem posição válida')
             setPos(null)
             setStatus('desconectado')
             setUltimaAtualizacao(null)
           }
         })
-        .catch(() => { if (mounted) { setStatus('desconectado') } })
+        .catch(e => { console.error('[Rastreio] Erro fetch:', e); if (mounted) { setStatus('desconectado') } })
     }
     buscar()
     const id = setInterval(buscar, 5000)
