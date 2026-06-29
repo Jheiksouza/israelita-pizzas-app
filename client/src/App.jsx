@@ -2829,57 +2829,52 @@ function MotoboyPage({ onVoltar }) {
         <div className="motoboy-rota">
           <div className="motoboy-box">
             <div className="motoboy-box-label">
-              <span>🏍️ Caixa da Moto</span>
-              <span className="motoboy-box-info">1º entrega no topo</span>
+              <span>📦 Organizar a Caixa</span>
+              <span className="motoboy-box-info">Empilhe as mercadorias nesta ordem — a 1ª entrega fica no topo da caixa</span>
             </div>
             <div className="motoboy-box-pilha">
               {ordemOtimizada.map((p, idx) => (
-                <div key={p.id} className={`motoboy-box-item ${idx === 0 ? 'first' : ''}`}>
-                  <div className="motoboy-box-ordem">{idx + 1}º</div>
-                  <div className="motoboy-box-conteudo">
-                    <strong>{p.cliente?.nome}</strong>
-                    <span>{p.cliente?.endereco}</span>
-                    <div className="motoboy-box-itens">
-                      {p.itens?.map(i => <span key={i.id}>{i.qtd}x {i.nome}</span>)}
-                    </div>
-                    {p.distKm && <span className="motoboy-box-dist">📏 {p.distKm.toFixed(1)} km · ≈ {p.durMin} min</span>}
+                <div key={p.id} className={`motoboy-box-item ${idx === 0 ? 'first' : ''} ${chegadas[p.id] ? 'chegou' : ''}`}
+                     style={{ animationDelay: `${idx * 0.12}s` }}>
+                  <div className={`motoboy-box-ordem ${chegadas[p.id] ? 'checked' : ''}`}>
+                    {chegadas[p.id] ? '✓' : idx + 1}
                   </div>
+                  <div className="motoboy-box-conteudo">
+                    <div className="motoboy-box-cabecalho">
+                      <strong className="motoboy-box-nome">{p.cliente?.nome}</strong>
+                      <span className="motoboy-box-valor">R$ {p.total?.toFixed(2)}</span>
+                    </div>
+                    <div className="motoboy-box-detalhes">
+                      <span>📍 {p.cliente?.endereco}</span>
+                      <span>📞 {formatTel(p.cliente?.telefone)}</span>
+                    </div>
+                    <div className="motoboy-box-info-row">
+                      {p.distKm && <span>📏 {p.distKm.toFixed(1)} km · ≈ {p.durMin} min</span>}
+                      <span className="motoboy-box-hora">🕐 {new Date(p.data).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
+                    </div>
+                    <div className="motoboy-box-itens">
+                      {p.itens?.map(i => <span key={i.id} className="motoboy-box-item-tag">{i.qtd}x {i.nome}</span>)}
+                    </div>
+                  </div>
+                  <button className={`motoboy-box-btn-entregue${chegadas[p.id] ? ' pulse' : ''}`}
+                          onClick={() => marcarEntregue(p.id)}
+                          title={chegadas[p.id] ? 'Chegou! Clique para marcar entregue' : 'Marcar como entregue'}>
+                    {chegadas[p.id] ? '📍' : '✅'}
+                  </button>
                 </div>
               ))}
+              {voltaPizzaria && (
+                <div className="motoboy-box-volta">
+                  <div className="motoboy-box-ordem motoboy-volta-ordem">🏠</div>
+                  <div className="motoboy-box-conteudo">
+                    <strong>🔄 Retorno à Pizzaria</strong>
+                    <span>📍 {PIZZARIA_ADDR}</span>
+                    <span className="motoboy-box-dist">📏 {voltaPizzaria.distKm.toFixed(1)} km · ≈ {voltaPizzaria.durMin} min</span>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
-
-          <div className="motoboy-entregas">
-            {ordemOtimizada.map((p, idx) => (
-              <div key={p.id} className={`motoboy-entrega-card${chegadas[p.id] ? ' chegou' : ''}`}>
-                <div className="motoboy-entrega-num">{idx + 1}</div>
-                <div className="motoboy-entrega-corpo">
-                  <strong>{p.cliente?.nome}</strong>
-                  <span>📍 {p.cliente?.endereco}</span>
-                  <span>📞 {formatTel(p.cliente?.telefone)}</span>
-                  {p.distKm && !chegadas[p.id] && <span className="motoboy-entrega-dist">📏 {p.distKm.toFixed(1)} km · ≈ {p.durMin} min</span>}
-                  <div className="motoboy-entrega-itens">
-                    {p.itens?.map(i => <span key={i.id}>{i.qtd}x {i.nome}</span>)}
-                  </div>
-                  <span className="motoboy-entrega-total">R$ {p.total?.toFixed(2)}</span>
-                </div>
-                <button className={`motoboy-btn-entregue${chegadas[p.id] ? ' pulse' : ''}`} onClick={() => marcarEntregue(p.id)}>
-                  {chegadas[p.id] ? '📍' : '✅'}
-                </button>
-              </div>
-            ))}
-            {voltaPizzaria && (
-              <div className="motoboy-entrega-card motoboy-retorno">
-                <div className="motoboy-entrega-num motoboy-retorno-num">🏠</div>
-                <div className="motoboy-entrega-corpo">
-                  <strong>🔄 Retorno à Pizzaria</strong>
-                  <span>📍 {PIZZARIA_ADDR}</span>
-                  <span className="motoboy-entrega-dist">📏 {voltaPizzaria.distKm.toFixed(1)} km · ≈ {voltaPizzaria.durMin} min</span>
-                </div>
-              </div>
-            )}
-          </div>
-
           <div className="motoboy-rodape">
             <button className="motoboy-btn-primario" onClick={abrirNoMapsRota}>
               🗺️ Abrir navegação
