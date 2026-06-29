@@ -2306,26 +2306,22 @@ function RastreioPage() {
   useEffect(() => {
     let mounted = true
     const buscar = () => {
-      console.log('[Rastreio] Buscando posição...')
       fetch(`${API}/motoboy/position`)
-        .then(r => { console.log('[Rastreio] Response status:', r.status); return r.json() })
+        .then(r => r.json())
         .then(data => {
-          console.log('[Rastreio] Dados recebidos:', data)
           if (!mounted) return
           if (data?.lat && data?.lng) {
             setPos({ lat: data.lat, lng: data.lng })
             const diff = Date.now() - (data.timestamp || 0)
-            console.log('[Rastreio] Diferença desde último timestamp (ms):', diff)
             setStatus(diff < 45000 ? 'conectado' : 'perdendo_sinal')
             setUltimaAtualizacao(data.timestamp)
           } else {
-            console.log('[Rastreio] Sem posição válida')
             setPos(null)
             setStatus('desconectado')
             setUltimaAtualizacao(null)
           }
         })
-        .catch(e => { console.error('[Rastreio] Erro fetch:', e); if (mounted) { setStatus('desconectado') } })
+        .catch(() => { if (mounted) { setStatus('desconectado') } })
     }
     buscar()
     const id = setInterval(buscar, 5000)
@@ -2421,6 +2417,7 @@ function MotoboyPage({ onVoltar }) {
   const [motoboyPos, setMotoboyPos] = useState(null)
   const [pizzariaCoords, setPizzariaCoords] = useState(null)
   const [chegadas, setChegadas] = useState({})
+  const [rastreioOk, setRastreioOk] = useState(null) // null = aguardando, true = enviado, false = erro
   const prevCountRef = useRef(0)
   const mountedRef = useRef(true)
   const primeiraCarga = useRef(true)
@@ -2509,14 +2506,13 @@ function MotoboyPage({ onVoltar }) {
 
   // Envia posição do motoboy para o servidor a cada 15s
   useEffect(() => {
-    if (!motoboyPos) { console.log('[Motoboy] Sem posição para enviar'); return }
+    if (!motoboyPos) return
     const enviar = () => {
-      console.log('[Motoboy] Enviando posição:', motoboyPos)
       fetch(`${API}/motoboy/position`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ lat: motoboyPos.lat, lng: motoboyPos.lng })
-      }).then(r => console.log('[Motoboy] Posição enviada:', r.status)).catch(e => console.error('[Motoboy] Erro ao enviar posição:', e))
+      }).then(r => { if (r.ok) setRastreioOk(true); else setRastreioOk(false) }).catch(() => setRastreioOk(false))
     }
     enviar()
     const id = setInterval(enviar, 15000)
@@ -2686,7 +2682,11 @@ function MotoboyPage({ onVoltar }) {
       <div className="motoboy-topo">
         <button className="motoboy-voltar" onClick={onVoltar}>←</button>
         <h1 className="motoboy-titulo">🛵 Entregas</h1>
-        <span className="motoboy-qtd">{pedidos.length} pedido{pedidos.length !== 1 ? 's' : ''}</span>
+        <div className="motoboy-topo-right">
+          <span className={`motoboy-rastreio-dot ${rastreioOk === null ? 'waiting' : rastreioOk ? 'on' : 'off'}`}
+            title={rastreioOk === null ? 'Aguardando GPS...' : rastreioOk ? 'Rastreio ativo' : 'Erro no rastreio'} />
+          <span className="motoboy-qtd">{pedidos.length} pedido{pedidos.length !== 1 ? 's' : ''}</span>
+        </div>
       </div>
 
       {pedidos.length === 0 && (

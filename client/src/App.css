@@ -5394,6 +5394,20 @@ body {
   border-radius: 50px;
   font-weight: 500;
 }
+.motoboy-topo-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.motoboy-rastreio-dot {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  transition: background 0.3s;
+}
+.motoboy-rastreio-dot.waiting { background: #9E9E9E; }
+.motoboy-rastreio-dot.on { background: #43A047; box-shadow: 0 0 6px #43A047; animation: motoboyBtnPulse 1.5s infinite alternate; }
+.motoboy-rastreio-dot.off { background: #E53935; }
 
 /* Empty state */
 .motoboy-vazio {
