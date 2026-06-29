@@ -2512,7 +2512,7 @@ function MotoboyPage({ onVoltar }) {
   const abrirNoMapsRota = () => {
     const destinos = ordemOtimizada.filter(p => p.entrega_lat || p.cliente?.endereco)
     const enc = a => a.cliente?.endereco || `${a.entrega_lat},${a.entrega_lng}`
-    const params = new URLSearchParams({ api: 1, travelmode: 'driving' })
+    const params = new URLSearchParams({ api: 1, travelmode: 'driving', dir_action: 'navigate' })
     params.set('destination', PIZZARIA_ADDR)
     if (destinos.length > 0) {
       params.set('waypoints', destinos.map(enc).join('|'))
