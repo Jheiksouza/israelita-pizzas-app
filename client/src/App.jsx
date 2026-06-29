@@ -2511,15 +2511,10 @@ function MotoboyPage({ onVoltar }) {
 
   const abrirNoMapsRota = () => {
     const destinos = ordemOtimizada.filter(p => p.entrega_lat || p.cliente?.endereco)
-    const enc = a => encodeURIComponent(a.cliente?.endereco || `${a.entrega_lat},${a.entrega_lng}`)
+    const enc = a => a.cliente?.endereco || `${a.entrega_lat},${a.entrega_lng}`
     const params = new URLSearchParams({ api: 1, travelmode: 'driving' })
-    if (destinos.length === 0) {
-      params.set('destination', encodeURIComponent(PIZZARIA_ADDR))
-    } else if (destinos.length === 1) {
-      params.set('destination', encodeURIComponent(PIZZARIA_ADDR))
-      params.set('waypoints', enc(destinos[0]))
-    } else {
-      params.set('destination', encodeURIComponent(PIZZARIA_ADDR))
+    params.set('destination', PIZZARIA_ADDR)
+    if (destinos.length > 0) {
       params.set('waypoints', destinos.map(enc).join('|'))
     }
     window.location.href = `https://www.google.com/maps/dir/?${params}`
