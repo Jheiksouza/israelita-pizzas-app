@@ -392,7 +392,7 @@ app.post('/login', (req, res) => {
   res.status(401).json({ autenticado: false, erro: 'Senha incorreta' })
 })
 
-// Rastreio do motoboy
+// Rastreio do motoboy (em memória)
 let ultimaPosMotoboy = null
 
 app.post('/motoboy/position', (req, res) => {
