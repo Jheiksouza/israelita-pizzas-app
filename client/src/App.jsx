@@ -2045,7 +2045,10 @@ function MapaEntregaModal({
 
     const geocode = async () => {
       try {
-        const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(enderecoInicial)}&limit=1`
+        // Remove parênteses e conteúdo (referência) para não confundir geocoder
+        const enderecoLimpo = enderecoInicial.replace(/\s*\([^)]*\)\s*/g, ' ').replace(/\s+/g, ' ').trim()
+        console.log('[MapaEntregaModal] Endereço limpo para geocoding:', enderecoLimpo)
+        const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(enderecoLimpo)}&limit=1`
         console.log('[MapaEntregaModal] Geocoding URL:', url)
         const res = await fetch(url, { headers: { 'User-Agent': 'IsraelitaPizzasApp/1.0' } })
         const data = await res.json()
