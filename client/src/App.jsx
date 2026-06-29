@@ -2023,34 +2023,74 @@ function MapaEntregaModal({
   latInicial,
   lngInicial,
 }) {
-  const [lat, setLat] = useState(latInicial || -23.5505)
-  const [lng, setLng] = useState(lngInicial || -46.6333)
+  const [lat, setLat] = useState(null)
+  const [lng, setLng] = useState(null)
   const [buscando, setBuscando] = useState(false)
+  const [pronto, setPronto] = useState(false)
   const mapRef = useRef(null)
+  const mountedRef = useRef(false)
 
   useEffect(() => {
-    if (!enderecoInicial || (latInicial && lngInicial)) return
+    if (!isOpen) return
+    mountedRef.current = true
+    setPronto(false)
+    setLat(null)
+    setLng(null)
+    setBuscando(true)
+
+    if (latInicial && lngInicial) {
+      setLat(latInicial)
+      setLng(lngInicial)
+      setBuscando(false)
+      setPronto(true)
+      return
+    }
+
+    if (!enderecoInicial) {
+      setLat(-23.5505)
+      setLng(-46.6333)
+      setBuscando(false)
+      setPronto(true)
+      return
+    }
+
     const geocode = async () => {
-      setBuscando(true)
       try {
         const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(enderecoInicial)}&limit=1`
         const res = await fetch(url, { headers: { 'User-Agent': 'IsraelitaPizzasApp/1.0' } })
         const data = await res.json()
+        if (!mountedRef.current) return
         if (data[0]) {
           const newLat = parseFloat(data[0].lat)
           const newLng = parseFloat(data[0].lon)
           setLat(newLat)
           setLng(newLng)
-          mapRef.current?.flyTo([newLat, newLng], 16)
+        } else {
+          setLat(-23.5505)
+          setLng(-46.6333)
         }
       } catch (e) {
         console.error('Erro geocoding:', e)
+        if (!mountedRef.current) return
+        setLat(-23.5505)
+        setLng(-46.6333)
       } finally {
-        setBuscando(false)
+        if (mountedRef.current) {
+          setBuscando(false)
+          setPronto(true)
+        }
       }
     }
     geocode()
-  }, [enderecoInicial, latInicial, lngInicial])
+
+    return () => { mountedRef.current = false }
+  }, [isOpen])
+
+  useEffect(() => {
+    if (pronto && mapRef.current) {
+      mapRef.current.flyTo([lat, lng], 16)
+    }
+  }, [pronto])
 
   const handleMapClick = (newLat, newLng) => {
     setLat(newLat)
@@ -2071,35 +2111,45 @@ function MapaEntregaModal({
           <h3 style={{ margin: 0 }}>📍 Marcar Local Exato de Entrega</h3>
           <button className="modal-close" onClick={onClose}>✕</button>
         </div>
-        <p className="mapa-instrucao" style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: 12 }}>
-          O mapa abriu no endereço informado. <strong>Clique no mapa</strong> para ajustar o ponto exato da entrega (portão, portaria, bloco, etc.).
-        </p>
-        <div className="mapa-container" style={{ height: '350px', borderRadius: '8px', overflow: 'hidden' }}>
-          <MapContainer
-            ref={mapRef}
-            center={[lat, lng]}
-            zoom={16}
-            scrollWheelZoom={true}
-            style={{ width: '100%', height: '100%' }}
-          >
-            <TileLayer
-              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-            />
-            <Marker position={[lat, lng]} icon={L.divIcon({ className: 'custom-marker', html: '📍', iconSize: [32, 32], iconAnchor: [16, 32] })}>
-            </Marker>
-            <MapClickHandler onClick={handleMapClick} />
-          </MapContainer>
-        </div>
-        <div className="mapa-coords" style={{ marginTop: 8, fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-          Lat: {lat.toFixed(6)}, Lng: {lng.toFixed(6)}
-        </div>
-        <div className="form-actions" style={{ marginTop: 16, display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-          <button className="btn-del" onClick={onClose}>Cancelar</button>
-          <button className="btn-add" onClick={handleConfirm} disabled={buscando}>
-            {buscando ? 'Carregando...' : '✅ Confirmar Local Exato'}
-          </button>
-        </div>
+        {buscando ? (
+          <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--text-muted)' }}>
+            <div style={{ fontSize: '2rem', marginBottom: 12, animation: 'spin 1s linear infinite' }}>🔍</div>
+            <p>Localizando o endereço no mapa...</p>
+            <p style={{ fontSize: '0.85rem' }}>{enderecoInicial}</p>
+          </div>
+        ) : !pronto ? null : (
+          <>
+            <p className="mapa-instrucao" style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: 12 }}>
+              O mapa abriu no endereço informado. <strong>Clique no mapa</strong> para ajustar o ponto exato da entrega (portão, portaria, bloco, etc.).
+            </p>
+            <div className="mapa-container" style={{ height: '350px', borderRadius: '8px', overflow: 'hidden' }}>
+              <MapContainer
+                ref={mapRef}
+                center={[lat, lng]}
+                zoom={16}
+                scrollWheelZoom={true}
+                style={{ width: '100%', height: '100%' }}
+              >
+                <TileLayer
+                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                />
+                <Marker position={[lat, lng]} icon={L.divIcon({ className: 'custom-marker', html: '📍', iconSize: [32, 32], iconAnchor: [16, 32] })}>
+                </Marker>
+                <MapClickHandler onClick={handleMapClick} />
+              </MapContainer>
+            </div>
+            <div className="mapa-coords" style={{ marginTop: 8, fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+              Lat: {lat.toFixed(6)}, Lng: {lng.toFixed(6)}
+            </div>
+            <div className="form-actions" style={{ marginTop: 16, display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button className="btn-del" onClick={onClose}>Cancelar</button>
+              <button className="btn-add" onClick={handleConfirm}>
+                ✅ Confirmar Local Exato
+              </button>
+            </div>
+          </>
+        )}
       </div>
     </div>
   )
