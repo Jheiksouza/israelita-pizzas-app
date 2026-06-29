@@ -2509,13 +2509,14 @@ function MotoboyPage({ onVoltar }) {
 
   // Envia posição do motoboy para o servidor a cada 15s
   useEffect(() => {
-    if (!motoboyPos) return
+    if (!motoboyPos) { console.log('[Motoboy] Sem posição para enviar'); return }
     const enviar = () => {
+      console.log('[Motoboy] Enviando posição:', motoboyPos)
       fetch(`${API}/motoboy/position`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ lat: motoboyPos.lat, lng: motoboyPos.lng })
-      }).catch(() => {})
+      }).then(r => console.log('[Motoboy] Posição enviada:', r.status)).catch(e => console.error('[Motoboy] Erro ao enviar posição:', e))
     }
     enviar()
     const id = setInterval(enviar, 15000)
