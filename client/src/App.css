@@ -5784,3 +5784,119 @@ body {
   background: var(--secondary) !important;
 }
 
+/* === Grupos de Rota (Motoboy - Seleção) === */
+.motoboy-grupo {
+  margin-bottom: 20px;
+}
+.motoboy-grupo:last-child {
+  margin-bottom: 0;
+}
+.motoboy-grupo-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 14px;
+  margin-bottom: 8px;
+  border-radius: var(--radius-sm) var(--radius-sm) var(--radius-xs) var(--radius-xs);
+  background: var(--bg-surface);
+  border-left: 4px solid var(--border);
+}
+.motoboy-grupo-header {
+  border-left-color: var(--border);
+}
+.motoboy-grupo.norte .motoboy-grupo-header {
+  border-left-color: #42A5F5;
+}
+.motoboy-grupo.leste .motoboy-grupo-header {
+  border-left-color: #FFA726;
+}
+.motoboy-grupo.sul .motoboy-grupo-header {
+  border-left-color: #66BB6A;
+}
+.motoboy-grupo.oeste .motoboy-grupo-header {
+  border-left-color: #AB47BC;
+}
+.theme-classic .motoboy-grupo.norte .motoboy-grupo-header {
+  border-left-color: #64B5F6;
+}
+.theme-classic .motoboy-grupo.leste .motoboy-grupo-header {
+  border-left-color: #FFB74D;
+}
+.theme-classic .motoboy-grupo.sul .motoboy-grupo-header {
+  border-left-color: #81C784;
+}
+.theme-classic .motoboy-grupo.oeste .motoboy-grupo-header {
+  border-left-color: #CE93D8;
+}
+.motoboy-grupo-nome {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+.motoboy-grupo-qtd {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  background: var(--bg);
+  padding: 2px 10px;
+  border-radius: 50px;
+}
+
+/* Priority badge */
+.motoboy-prio-badge {
+  flex-shrink: 0;
+  width: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: var(--text-muted);
+}
+
+/* Info row on selection cards */
+.motoboy-card-info-rota {
+  display: flex;
+  gap: 12px;
+  margin-top: 2px;
+  flex-wrap: wrap;
+}
+.motoboy-card-dist,
+.motoboy-card-hora {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+/* Adjust card for group display */
+.motoboy-card {
+  border-left: 4px solid transparent;
+  padding-left: 12px;
+}
+.motoboy-card.motoboy-card-checked {
+  border-left-width: 4px;
+}
+.motoboy-grupo.norte .motoboy-card {
+  border-left-color: #90CAF9;
+}
+.motoboy-grupo.norte .motoboy-card.motoboy-card-checked {
+  border-left-color: #42A5F5;
+}
+.motoboy-grupo.leste .motoboy-card {
+  border-left-color: #FFCC80;
+}
+.motoboy-grupo.leste .motoboy-card.motoboy-card-checked {
+  border-left-color: #FFA726;
+}
+.motoboy-grupo.sul .motoboy-card {
+  border-left-color: #A5D6A7;
+}
+.motoboy-grupo.sul .motoboy-card.motoboy-card-checked {
+  border-left-color: #66BB6A;
+}
+.motoboy-grupo.oeste .motoboy-card {
+  border-left-color: #CE93D8;
+}
+.motoboy-grupo.oeste .motoboy-card.motoboy-card-checked {
+  border-left-color: #AB47BC;
+}
+

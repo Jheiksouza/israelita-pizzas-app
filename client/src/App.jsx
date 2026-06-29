@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useMemo } from 'react'
 import { buscarCEP, formatCEP, formatEndereco } from './cepHelper'
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMapEvents } from 'react-leaflet'
 import L from 'leaflet'
@@ -2581,6 +2581,29 @@ function MotoboyPage({ onVoltar }) {
     return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
   }
 
+  const getBearing = (lat1, lng1, lat2, lng2) => {
+    const dLng = (lng2 - lng1) * Math.PI / 180
+    const y = Math.sin(dLng) * Math.cos(lat2 * Math.PI / 180)
+    const x = Math.cos(lat1 * Math.PI / 180) * Math.sin(lat2 * Math.PI / 180) -
+              Math.sin(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.cos(dLng)
+    return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360
+  }
+
+  const getDirectionId = (bearing) => {
+    if (bearing >= 315 || bearing < 45) return 'norte'
+    if (bearing >= 45 && bearing < 135) return 'leste'
+    if (bearing >= 135 && bearing < 225) return 'sul'
+    return 'oeste'
+  }
+
+  const ROTA_GRUPOS = {
+    norte: { nome: 'Norte', icon: '⬆️' },
+    leste: { nome: 'Leste', icon: '➡️' },
+    sul: { nome: 'Sul', icon: '⬇️' },
+    oeste: { nome: 'Oeste', icon: '⬅️' },
+    semLocal: { nome: 'Indefinido', icon: '📍' },
+  }
+
   const toggleSelecionado = (id) => {
     setSelecionados(prev =>
       prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
@@ -2689,8 +2712,42 @@ function MotoboyPage({ onVoltar }) {
     return t
   }
 
-  const selecionadosData = pedidos.filter(p => selecionados.includes(p.id))
-  const disponiveis = pedidos.filter(p => !selecionados.includes(p.id))
+  const pedidosAgrupados = useMemo(() => {
+    if (!pizzariaCoords) return []
+    const mapa = {}
+    pedidos.forEach(p => {
+      let id = 'semLocal'
+      if (p.entrega_lat && p.entrega_lng) {
+        const bearing = getBearing(pizzariaCoords.lat, pizzariaCoords.lng, p.entrega_lat, p.entrega_lng)
+        id = getDirectionId(bearing)
+      }
+      if (!mapa[id]) mapa[id] = []
+      let dist = Infinity
+      if (p.entrega_lat && p.entrega_lng) {
+        if (motoboyPos) dist = haversineKm(motoboyPos.lat, motoboyPos.lng, p.entrega_lat, p.entrega_lng)
+        else dist = haversineKm(pizzariaCoords.lat, pizzariaCoords.lng, p.entrega_lat, p.entrega_lng)
+      }
+      mapa[id].push({ ...p, _dist: dist })
+    })
+    Object.values(mapa).forEach(g => {
+      g.sort((a, b) => {
+        if (a._dist !== b._dist) return a._dist - b._dist
+        return new Date(a.data) - new Date(b.data)
+      })
+    })
+    const arr = Object.entries(mapa).map(([id, itens]) => ({
+      id, itens,
+      minDist: Math.min(...itens.map(i => i._dist))
+    }))
+    arr.sort((a, b) => {
+      if (a.id === 'semLocal') return 1
+      if (b.id === 'semLocal') return -1
+      return a.minDist - b.minDist
+    })
+    let prio = 0
+    arr.forEach(g => g.itens.forEach(i => { i._prio = ++prio }))
+    return arr
+  }, [pedidos, pizzariaCoords, motoboyPos])
 
   return (
     <div className="motoboy-page">
@@ -2723,41 +2780,40 @@ function MotoboyPage({ onVoltar }) {
             Selecione os pedidos que vai levar e depois organize a caixa
           </div>
 
-          {selecionadosData.map(p => (
-            <div key={p.id} className="motoboy-card motoboy-card-checked" onClick={() => toggleSelecionado(p.id)}>
-              <div className="motoboy-check"><div className="cb on">✓</div></div>
-              <div className="motoboy-card-corpo">
-                <div className="motoboy-card-linha">
-                  <strong className="motoboy-card-nome">{p.cliente?.nome}</strong>
-                  <span className="motoboy-card-valor">R$ {p.total?.toFixed(2)}</span>
-                </div>
-                <span className="motoboy-card-end">📍 {p.cliente?.endereco}</span>
-                <span className="motoboy-card-tel">📞 {formatTel(p.cliente?.telefone)}</span>
-                <div className="motoboy-card-itens">
-                  {p.itens?.map(item => (
-                    <span key={item.id} className="motoboy-card-item">{item.qtd}x {item.nome}</span>
-                  ))}
-                </div>
+          {pedidosAgrupados.map(grupo => (
+            <div key={grupo.id} className={`motoboy-grupo ${grupo.id}`}>
+              <div className="motoboy-grupo-header">
+                <span className="motoboy-grupo-nome">
+                  {ROTA_GRUPOS[grupo.id]?.icon || ''} {ROTA_GRUPOS[grupo.id]?.nome || 'Indefinido'}
+                </span>
+                <span className="motoboy-grupo-qtd">{grupo.itens.length} entrega{grupo.itens.length !== 1 ? 's' : ''}</span>
               </div>
-            </div>
-          ))}
-
-          {disponiveis.map(p => (
-            <div key={p.id} className="motoboy-card" onClick={() => toggleSelecionado(p.id)}>
-              <div className="motoboy-check"><div className="cb"></div></div>
-              <div className="motoboy-card-corpo">
-                <div className="motoboy-card-linha">
-                  <strong className="motoboy-card-nome">{p.cliente?.nome}</strong>
-                  <span className="motoboy-card-valor">R$ {p.total?.toFixed(2)}</span>
-                </div>
-                <span className="motoboy-card-end">📍 {p.cliente?.endereco}</span>
-                <span className="motoboy-card-tel">📞 {formatTel(p.cliente?.telefone)}</span>
-                <div className="motoboy-card-itens">
-                  {p.itens?.map(item => (
-                    <span key={item.id} className="motoboy-card-item">{item.qtd}x {item.nome}</span>
-                  ))}
-                </div>
-              </div>
+              {grupo.itens.map(p => {
+                const selecionado = selecionados.includes(p.id)
+                return (
+                  <div key={p.id} className={`motoboy-card${selecionado ? ' motoboy-card-checked' : ''}`} onClick={() => toggleSelecionado(p.id)}>
+                    <div className="motoboy-prio-badge">#{p._prio}</div>
+                    <div className="motoboy-check"><div className={`cb${selecionado ? ' on' : ''}`}>{selecionado ? '✓' : ''}</div></div>
+                    <div className="motoboy-card-corpo">
+                      <div className="motoboy-card-linha">
+                        <strong className="motoboy-card-nome">{p.cliente?.nome}</strong>
+                        <span className="motoboy-card-valor">R$ {p.total?.toFixed(2)}</span>
+                      </div>
+                      <span className="motoboy-card-end">📍 {p.cliente?.endereco}</span>
+                      <span className="motoboy-card-tel">📞 {formatTel(p.cliente?.telefone)}</span>
+                      <div className="motoboy-card-info-rota">
+                        {p._dist < Infinity && <span className="motoboy-card-dist">📏 {p._dist.toFixed(1)} km</span>}
+                        <span className="motoboy-card-hora">🕐 {new Date(p.data).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
+                      </div>
+                      <div className="motoboy-card-itens">
+                        {p.itens?.map(item => (
+                          <span key={item.id} className="motoboy-card-item">{item.qtd}x {item.nome}</span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
             </div>
           ))}
 
