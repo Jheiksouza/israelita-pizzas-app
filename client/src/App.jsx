@@ -2613,18 +2613,21 @@ function MotoboyPage({ onVoltar }) {
     )
   }
 
+  const getLat = (p) => p.entrega_lat ?? p.cliente?.lat ?? p.cliente?.endereco_lat ?? null
+  const getLng = (p) => p.entrega_lng ?? p.cliente?.lng ?? p.cliente?.endereco_lng ?? null
+
   const organizar = async () => {
     setOtimizando(true)
     const selec = pedidos.filter(p => selecionados.includes(p.id))
 
-    if (motoboyPos && pizzariaCoords && selec.some(p => p.entrega_lat && p.entrega_lng)) {
-      const comCoords = selec.filter(p => p.entrega_lat && p.entrega_lng)
-      const semCoords = selec.filter(p => !p.entrega_lat || !p.entrega_lng)
+    if (motoboyPos && pizzariaCoords && selec.some(p => getLat(p) && getLng(p))) {
+      const comCoords = selec.filter(p => getLat(p) && getLng(p))
+      const semCoords = selec.filter(p => !getLat(p) || !getLng(p))
 
       if (comCoords.length >= 1) {
         const coordsStr = [
           `${motoboyPos.lng},${motoboyPos.lat}`,
-          ...comCoords.map(p => `${p.entrega_lng},${p.entrega_lat}`),
+          ...comCoords.map(p => `${getLng(p)},${getLat(p)}`),
           `${pizzariaCoords.lng},${pizzariaCoords.lat}`
         ].join(';')
         try {
@@ -2653,14 +2656,17 @@ function MotoboyPage({ onVoltar }) {
       }
 
       const ordenados = [...selec].sort((a, b) => {
-        const da = a.entrega_lat && motoboyPos ? haversineKm(motoboyPos.lat, motoboyPos.lng, a.entrega_lat, a.entrega_lng) : Infinity
-        const db = b.entrega_lat && motoboyPos ? haversineKm(motoboyPos.lat, motoboyPos.lng, b.entrega_lat, b.entrega_lng) : Infinity
+        const aLat = getLat(a); const aLng = getLng(a)
+        const bLat = getLat(b); const bLng = getLng(b)
+        const da = aLat && motoboyPos ? haversineKm(motoboyPos.lat, motoboyPos.lng, aLat, aLng) : Infinity
+        const db = bLat && motoboyPos ? haversineKm(motoboyPos.lat, motoboyPos.lng, bLat, bLng) : Infinity
         if (da !== db) return da - db
         return new Date(a.data) - new Date(b.data)
       })
       const ultimo = ordenados[ordenados.length - 1]
-      if (ultimo?.entrega_lat && pizzariaCoords) {
-        const d = haversineKm(ultimo.entrega_lat, ultimo.entrega_lng, pizzariaCoords.lat, pizzariaCoords.lng)
+      const ultLat = getLat(ultimo); const ultLng = getLng(ultimo)
+      if (ultLat && pizzariaCoords) {
+        const d = haversineKm(ultLat, ultLng, pizzariaCoords.lat, pizzariaCoords.lng)
         const t = Math.round(d / 0.4)
         setVoltaPizzaria({ distKm: d, durMin: t })
       }
@@ -2670,8 +2676,9 @@ function MotoboyPage({ onVoltar }) {
     } else if (pizzariaCoords) {
       const ordenados = [...selec].sort((a, b) => new Date(a.data) - new Date(b.data))
       const ultimo = ordenados[ordenados.length - 1]
-      if (ultimo?.entrega_lat && pizzariaCoords) {
-        const d = haversineKm(ultimo.entrega_lat, ultimo.entrega_lng, pizzariaCoords.lat, pizzariaCoords.lng)
+      const ultLat = getLat(ultimo); const ultLng = getLng(ultimo)
+      if (ultLat && pizzariaCoords) {
+        const d = haversineKm(ultLat, ultLng, pizzariaCoords.lat, pizzariaCoords.lng)
         const t = Math.round(d / 0.4)
         setVoltaPizzaria({ distKm: d, durMin: t })
       }
@@ -2697,9 +2704,13 @@ function MotoboyPage({ onVoltar }) {
   }
 
   const abrirNoMapsRota = () => {
-    const destinos = ordemOtimizada.filter(p => (p.entrega_lat && p.entrega_lng) || p.cliente?.endereco)
+    const extrairLat = a => a.entrega_lat ?? a.cliente?.lat ?? a.cliente?.endereco_lat ?? null
+    const extrairLng = a => a.entrega_lng ?? a.cliente?.lng ?? a.cliente?.endereco_lng ?? null
+    const destinos = ordemOtimizada.filter(p => (extrairLat(p) && extrairLng(p)) || p.cliente?.endereco)
     const enc = a => {
-      if (a.entrega_lat && a.entrega_lng) return `${a.entrega_lat},${a.entrega_lng}`
+      const lat = extrairLat(a)
+      const lng = extrairLng(a)
+      if (lat && lng) return `${lat},${lng}`
       return a.cliente?.endereco
     }
     const params = new URLSearchParams({ api: 1, travelmode: 'driving', dir_action: 'navigate' })
@@ -2722,16 +2733,17 @@ function MotoboyPage({ onVoltar }) {
     if (!pizzariaCoords) return []
     const mapa = {}
     pedidos.forEach(p => {
+      const pLat = getLat(p); const pLng = getLng(p)
       let id = 'semLocal'
-      if (p.entrega_lat && p.entrega_lng) {
-        const bearing = getBearing(pizzariaCoords.lat, pizzariaCoords.lng, p.entrega_lat, p.entrega_lng)
+      if (pLat && pLng) {
+        const bearing = getBearing(pizzariaCoords.lat, pizzariaCoords.lng, pLat, pLng)
         id = getDirectionId(bearing)
       }
       if (!mapa[id]) mapa[id] = []
       let dist = Infinity
-      if (p.entrega_lat && p.entrega_lng) {
-        if (motoboyPos) dist = haversineKm(motoboyPos.lat, motoboyPos.lng, p.entrega_lat, p.entrega_lng)
-        else dist = haversineKm(pizzariaCoords.lat, pizzariaCoords.lng, p.entrega_lat, p.entrega_lng)
+      if (pLat && pLng) {
+        if (motoboyPos) dist = haversineKm(motoboyPos.lat, motoboyPos.lng, pLat, pLng)
+        else dist = haversineKm(pizzariaCoords.lat, pizzariaCoords.lng, pLat, pLng)
       }
       mapa[id].push({ ...p, _dist: dist })
     })
