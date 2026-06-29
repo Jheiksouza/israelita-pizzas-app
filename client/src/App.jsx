@@ -2375,22 +2375,24 @@ function MotoboyPage({ onVoltar }) {
   }, [])
 
   // Detecta chegada nos destinos (dentro de 50m)
+  const chegouRef = useRef({})
   useEffect(() => {
     if (!motoboyPos) return
     const alvos = etapa === 'organizar' ? ordemOtimizada : pedidos.filter(p => selecionados.includes(p.id))
     const novas = { ...chegadas }
     let mudou = false
     alvos.forEach(p => {
-      if (!p.entrega_lat || !p.entrega_lng || chegadas[p.id]) return
+      if (!p.entrega_lat || !p.entrega_lng || chegouRef.current[p.id]) return
       const d = haversineKm(motoboyPos.lat, motoboyPos.lng, p.entrega_lat, p.entrega_lng) * 1000
       if (d < 50) {
         novas[p.id] = true
+        chegouRef.current[p.id] = true
         mudou = true
         try { navigator.vibrate?.([300, 200, 300]) } catch (_) {}
       }
     })
     if (mudou) setChegadas(novas)
-  }, [motoboyPos, etapa, ordemOtimizada, pedidos, selecionados, chegadas])
+  }, [motoboyPos, etapa, ordemOtimizada, pedidos, selecionados])
 
   useEffect(() => {
     if (etapa === 'organizar' && ordemOtimizada.length === 0) {
@@ -2536,7 +2538,7 @@ function MotoboyPage({ onVoltar }) {
     if (destinos.length > 0) {
       params.set('waypoints', destinos.map(enc).join('|'))
     }
-    window.location.href = `https://www.google.com/maps/dir/?${params}`
+    window.open(`https://www.google.com/maps/dir/?${params}`, '_blank')
   }
 
   const formatTel = (t) => {
