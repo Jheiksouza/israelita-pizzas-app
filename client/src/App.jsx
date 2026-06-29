@@ -329,36 +329,43 @@ function App() {
         <div className="classic-orb orb-right"></div>
       </div>
       {bannerApp.texto && <div className="banner-max-sabores" role="alert">{bannerApp.texto}</div>}
-      <header className="header">
-        <div className="header-content">
-          <div className="logo" onClick={() => setPagina('cardapio')}>
-            <span className="logo-icon">🍕</span>
-            <div className="logo-text">
-              <span className="logo-title">Israelita</span>
-              <span className="logo-sub">Pizza · forno a lenha</span>
-            </div>
-          </div>
-          <nav className="nav">
-            <button className={`nav-btn ${pagina === 'cardapio' ? 'active' : ''}`} onClick={() => setPagina('cardapio')}>Cardápio</button>
-            <button className={`nav-btn ${qtdCarrinho > 0 ? 'active' : ''}`} onClick={() => setCartOpen(true)}>
-              Carrinho {qtdCarrinho > 0 && <span key={qtdCarrinho} className="badge">{qtdCarrinho}</span>}
-            </button>
-            <button className={`nav-btn ${pagina === 'meus-pedidos' ? 'active' : ''}`} onClick={() => setPagina('meus-pedidos')}>Meus Pedidos</button>
-            {user ? (
-              <div className="user-nav">
-                <span className="user-nav-name">{user.nome}</span>
-                <button className="nav-btn" onClick={handleLogout}>Sair</button>
+      {pagina !== 'motoboy' && (
+        <header className="header">
+          <div className="header-content">
+            <div className="logo" onClick={() => setPagina('cardapio')}>
+              <span className="logo-icon">🍕</span>
+              <div className="logo-text">
+                <span className="logo-title">Israelita</span>
+                <span className="logo-sub">Pizza · forno a lenha</span>
               </div>
-            ) : (
-              <button className={`nav-btn ${mostrarAuth ? 'active' : ''}`} onClick={() => setMostrarAuth(true)}>Entrar / Cadastrar</button>
-            )}
-            <button className={`nav-btn ${pagina === 'admin' ? 'active' : ''}`} onClick={() => setPagina('admin')}>
-              {adminAutenticado ? 'Admin' : 'Entrar'}
-              {adminAutenticado && pendentesCount > 0 && <span key={pendentesCount} className="badge badge-alerta">{pendentesCount}</span>}
-            </button>
-          </nav>
-        </div>
-      </header>
+            </div>
+            <nav className="nav">
+              <button className={`nav-btn ${pagina === 'cardapio' ? 'active' : ''}`} onClick={() => setPagina('cardapio')}>Cardápio</button>
+              <button className={`nav-btn ${qtdCarrinho > 0 ? 'active' : ''}`} onClick={() => setCartOpen(true)}>
+                Carrinho {qtdCarrinho > 0 && <span key={qtdCarrinho} className="badge">{qtdCarrinho}</span>}
+              </button>
+              <button className={`nav-btn ${pagina === 'meus-pedidos' ? 'active' : ''}`} onClick={() => setPagina('meus-pedidos')}>Meus Pedidos</button>
+              {user ? (
+                <div className="user-nav">
+                  <span className="user-nav-name">{user.nome}</span>
+                  <button className="nav-btn" onClick={handleLogout}>Sair</button>
+                </div>
+              ) : (
+                <button className={`nav-btn ${mostrarAuth ? 'active' : ''}`} onClick={() => setMostrarAuth(true)}>Entrar / Cadastrar</button>
+              )}
+              <button className={`nav-btn ${pagina === 'admin' ? 'active' : ''}`} onClick={() => setPagina('admin')}>
+                {adminAutenticado ? 'Admin' : 'Entrar'}
+                {adminAutenticado && pendentesCount > 0 && <span key={pendentesCount} className="badge badge-alerta">{pendentesCount}</span>}
+              </button>
+              {adminAutenticado && (
+                <button className={`nav-btn nav-btn-motoboy ${pagina === 'motoboy' ? 'active' : ''}`} onClick={() => setPagina('motoboy')}>
+                  🏍️ Motoboy
+                </button>
+              )}
+            </nav>
+          </div>
+        </header>
+      )}
 
       <main className="main">
         {pagina === 'cardapio' && <Cardapio onAdicionar={adicionarAoCarrinho} onBanner={(msg) => { setBannerApp({ texto: msg, key: Date.now() }); tocarNotificacao() }} pizzaEditando={pizzaEditando} onPizzaEditDone={() => setPizzaEditando(null)} />}
@@ -375,6 +382,7 @@ function App() {
           />
         )}
         {pagina === 'meus-pedidos' && <MeusPedidos token={token} onVoltar={() => setPagina('cardapio')} />}
+        {pagina === 'motoboy' && <MotoboyPage onVoltar={() => setPagina('admin')} />}
       </main>
 
       {mostrarAuth && (
@@ -426,33 +434,43 @@ function App() {
         />
       )}
       
-      <nav className="bottom-nav">
-        <button className={`bottom-nav-btn ${pagina === 'cardapio' ? 'active' : ''}`} onClick={() => setPagina('cardapio')}>
-          <span className="bottom-nav-icon">🍕</span>
-          <span className="bottom-nav-label">Cardápio</span>
-        </button>
-        <button className={`bottom-nav-btn ${qtdCarrinho > 0 ? 'active' : ''}`} onClick={() => setCartOpen(true)}>
-          <span className="bottom-nav-icon">🛒</span>
-          <span className="bottom-nav-label">Carrinho</span>
-          {qtdCarrinho > 0 && <span key={qtdCarrinho} className="bottom-nav-badge">{qtdCarrinho}</span>}
-        </button>
-        <button className={`bottom-nav-btn ${pagina === 'meus-pedidos' ? 'active' : ''}`} onClick={() => setPagina('meus-pedidos')}>
-          <span className="bottom-nav-icon">📋</span>
-          <span className="bottom-nav-label">Pedidos</span>
-        </button>
-        <button className={`bottom-nav-btn ${pagina === 'admin' ? 'active' : ''}`} onClick={() => setPagina('admin')}>
-          <span className="bottom-nav-icon">⚙️</span>
-          <span className="bottom-nav-label">Admin</span>
-          {adminAutenticado && pendentesCount > 0 && <span key={pendentesCount} className="bottom-nav-badge">{pendentesCount}</span>}
-        </button>
-      </nav>
-      <footer className="classic-footer">
-        <div className="footer-inner">
-          <p className="footer-brand">Israelita Pizza</p>
-          <p className="footer-info">Forno a lenha · Entrega 35min · Aberto até 23h</p>
-          <p className="footer-copy">© 2026</p>
-        </div>
-      </footer>
+      {pagina !== 'motoboy' && (
+        <nav className="bottom-nav">
+          <button className={`bottom-nav-btn ${pagina === 'cardapio' ? 'active' : ''}`} onClick={() => setPagina('cardapio')}>
+            <span className="bottom-nav-icon">🍕</span>
+            <span className="bottom-nav-label">Cardápio</span>
+          </button>
+          <button className={`bottom-nav-btn ${qtdCarrinho > 0 ? 'active' : ''}`} onClick={() => setCartOpen(true)}>
+            <span className="bottom-nav-icon">🛒</span>
+            <span className="bottom-nav-label">Carrinho</span>
+            {qtdCarrinho > 0 && <span key={qtdCarrinho} className="bottom-nav-badge">{qtdCarrinho}</span>}
+          </button>
+          <button className={`bottom-nav-btn ${pagina === 'meus-pedidos' ? 'active' : ''}`} onClick={() => setPagina('meus-pedidos')}>
+            <span className="bottom-nav-icon">📋</span>
+            <span className="bottom-nav-label">Pedidos</span>
+          </button>
+          <button className={`bottom-nav-btn ${pagina === 'admin' ? 'active' : ''}`} onClick={() => setPagina('admin')}>
+            <span className="bottom-nav-icon">⚙️</span>
+            <span className="bottom-nav-label">Admin</span>
+            {adminAutenticado && pendentesCount > 0 && <span key={pendentesCount} className="bottom-nav-badge">{pendentesCount}</span>}
+          </button>
+          {adminAutenticado && (
+            <button className={`bottom-nav-btn ${pagina === 'motoboy' ? 'active' : ''}`} onClick={() => setPagina('motoboy')}>
+              <span className="bottom-nav-icon">🏍️</span>
+              <span className="bottom-nav-label">Motoboy</span>
+            </button>
+          )}
+        </nav>
+      )}
+      {pagina !== 'motoboy' && (
+        <footer className="classic-footer">
+          <div className="footer-inner">
+            <p className="footer-brand">Israelita Pizza</p>
+            <p className="footer-info">Forno a lenha · Entrega 35min · Aberto até 23h</p>
+            <p className="footer-copy">© 2026</p>
+          </div>
+        </footer>
+      )}
 
       {cartOpen && (
         <div className="cart-drawer-overlay">
@@ -661,12 +679,50 @@ function MeusPedidos({ token, onVoltar }) {
   const [loading, setLoading] = useState(true)
   const [buscaId, setBuscaId] = useState('')
   const [pedidoBuscado, setPedidoBuscado] = useState(null)
+  const [notificacaoLiberado, setNotificacaoLiberado] = useState(null)
+  const prevStatusRef = useRef({})
 
   useEffect(() => {
     if (!token) { setLoading(false); return }
     fetch(`${API}/orders/mine`, { headers: { 'Authorization': `Bearer ${token}` } })
-      .then(r => r.json()).then(data => { setPedidos(data); setLoading(false) }).catch(() => setLoading(false))
+      .then(r => r.json()).then(data => {
+        setPedidos(data)
+        setLoading(false)
+        data.forEach(p => {
+          const prevStatus = prevStatusRef.current[p.id]
+          if (prevStatus && prevStatus !== 'liberado' && p.status === 'liberado') {
+            tocarSomLiberado()
+            setNotificacaoLiberado(p)
+          }
+          prevStatusRef.current[p.id] = p.status
+        })
+      }).catch(() => setLoading(false))
   }, [token])
+
+  const tocarSomLiberado = () => {
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)()
+      let toques = 0
+      const tocar = () => {
+        if (toques >= 5 || !ctx || ctx.state === 'closed') return
+        if (ctx.state === 'suspended') ctx.resume()
+        const t = ctx.currentTime
+        for (let i = 0; i < 3; i++) {
+          const osc = ctx.createOscillator()
+          const gain = ctx.createGain()
+          osc.type = 'sine'
+          osc.frequency.value = 660 + i * 110
+          gain.gain.setValueAtTime(0.2, t + i * 0.1)
+          gain.gain.exponentialRampToValueAtTime(0.01, t + i * 0.1 + 0.3)
+          osc.connect(gain); gain.connect(ctx.destination)
+          osc.start(t + i * 0.1); osc.stop(t + i * 0.1 + 0.3)
+        }
+        toques++
+        if (toques < 5) setTimeout(tocar, 1200)
+      }
+      tocar()
+    } catch (_) {}
+  }
 
   const buscarPorId = async () => {
     if (!buscaId) return
@@ -678,12 +734,25 @@ function MeusPedidos({ token, onVoltar }) {
     } catch (_) { alert('Erro ao buscar pedido') }
   }
 
-  const statusLabel = { pendente: 'Pendente', aceito: 'Aceito', entregue: 'Entregue', recusado: 'Recusado' }
-  const statusClass = { pendente: 'status-pendente', aceito: 'status-aceito', entregue: 'status-entregue', recusado: 'status-recusado' }
+  const statusLabel = { pendente: 'Pendente', aceito: 'Aceito', liberado: 'Liberado p/ Entrega', entregue: 'Entregue', recusado: 'Recusado' }
+  const statusClass = { pendente: 'status-pendente', aceito: 'status-aceito', liberado: 'status-liberado', entregue: 'status-entregue', recusado: 'status-recusado' }
 
   return (
     <div className="carrinho-page">
       <h2>Meus Pedidos</h2>
+
+      {notificacaoLiberado && (
+        <div className="liberado-notificacao">
+          <div className="liberado-notificacao-conteudo">
+            <span className="liberado-notificacao-icone">🛵</span>
+            <div>
+              <strong>Pedido #{notificacaoLiberado.id} saiu para entrega!</strong>
+              <p>{notificacaoLiberado.cliente?.endereco}</p>
+            </div>
+            <button className="liberado-notificacao-fechar" onClick={() => setNotificacaoLiberado(null)}>✕</button>
+          </div>
+        </div>
+      )}
 
       {!token && (
         <div className="guest-tracking">
@@ -1505,8 +1574,8 @@ function AdminOrders({ pendentesCount }) {
     return `${min}:${seg.toString().padStart(2, '0')}`
   }
 
-  const statusLabel = { pendente: 'Pendente', aceito: 'Aceito', entregue: 'Entregue', recusado: 'Recusado' }
-  const statusClass = { pendente: 'status-pendente', aceito: 'status-aceito', entregue: 'status-entregue', recusado: 'status-recusado' }
+  const statusLabel = { pendente: 'Pendente', aceito: 'Aceito', liberado: 'Liberado p/ Entrega', entregue: 'Entregue', recusado: 'Recusado' }
+  const statusClass = { pendente: 'status-pendente', aceito: 'status-aceito', liberado: 'status-liberado', entregue: 'status-entregue', recusado: 'status-recusado' }
 
   return (
     <>
@@ -1553,6 +1622,12 @@ function AdminOrders({ pendentesCount }) {
                 </div>
               )}
               {pedido.status === 'aceito' && (
+                <div className="pedido-actions">
+                  <button className="btn-liberar" onClick={() => atualizarStatus(pedido.id, 'liberado')}>Liberar para Entrega</button>
+                  <button className="btn-recusar" onClick={() => atualizarStatus(pedido.id, 'recusado')}>Recusar</button>
+                </div>
+              )}
+              {pedido.status === 'liberado' && (
                 <div className="pedido-actions">
                   <button className="btn-aceitar" onClick={() => atualizarStatus(pedido.id, 'entregue')}>Marcar como Entregue</button>
                   <button className="btn-recusar" onClick={() => atualizarStatus(pedido.id, 'recusado')}>Recusar</button>
@@ -2219,6 +2294,169 @@ function MapClickHandler({ onClick }) {
     }
   })
   return null
+}
+
+function MotoboyPage({ onVoltar }) {
+  const [pedidos, setPedidos] = useState([])
+  const [motoboyPos, setMotoboyPos] = useState(null)
+  const [showList, setShowList] = useState(false)
+  const prevCountRef = useRef(0)
+  const mountedRef = useRef(true)
+
+  useEffect(() => {
+    navigator.geolocation.getCurrentPosition(
+      pos => { if (mountedRef.current) setMotoboyPos({ lat: pos.coords.latitude, lng: pos.coords.longitude }) },
+      () => {}
+    )
+  }, [])
+
+  useEffect(() => {
+    const carregar = () => {
+      fetch(`${API}/orders`)
+        .then(r => r.json())
+        .then(data => {
+          if (!mountedRef.current) return
+          const liberados = data.filter(p => p.status === 'liberado')
+          if (liberados.length > prevCountRef.current) tocarSomMotoboy()
+          prevCountRef.current = liberados.length
+          setPedidos(liberados)
+        })
+        .catch(() => {})
+    }
+    carregar()
+    const id = setInterval(carregar, 10000)
+    return () => { clearInterval(id); mountedRef.current = false }
+  }, [])
+
+  const tocarSomMotoboy = () => {
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)()
+      let toques = 0
+      const tocar = () => {
+        if (toques >= 5 || !ctx || ctx.state === 'closed') return
+        if (ctx.state === 'suspended') ctx.resume()
+        const t = ctx.currentTime
+        for (let i = 0; i < 3; i++) {
+          const osc = ctx.createOscillator()
+          const gain = ctx.createGain()
+          osc.type = 'sine'
+          osc.frequency.value = 660 + i * 110
+          gain.gain.setValueAtTime(0.2, t + i * 0.1)
+          gain.gain.exponentialRampToValueAtTime(0.01, t + i * 0.1 + 0.3)
+          osc.connect(gain); gain.connect(ctx.destination)
+          osc.start(t + i * 0.1); osc.stop(t + i * 0.1 + 0.3)
+        }
+        toques++
+        if (toques < 5) setTimeout(tocar, 1200)
+      }
+      tocar()
+    } catch (_) {}
+  }
+
+  const marcarEntregue = async (id) => {
+    await fetch(`${API}/orders/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'entregue' })
+    })
+  }
+
+  const haversineKm = (lat1, lng1, lat2, lng2) => {
+    const R = 6371
+    const dLat = (lat2 - lat1) * Math.PI / 180
+    const dLng = (lng2 - lng1) * Math.PI / 180
+    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+              Math.sin(dLng/2) * Math.sin(dLng/2)
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+  }
+
+  const motoboyIcon = L.divIcon({
+    className: '',
+    html: '<div class="motoboy-marker"><svg viewBox="0 0 24 36" width="26" height="40"><path d="M12 0C5.4 0 0 5.4 0 12c0 9 12 24 12 24s12-15 12-24C24 5.4 18.6 0 12 0z" fill="#1565C0"/><circle cx="12" cy="12" r="5" fill="#fff"/></svg><div class="motoboy-marker-pulse"></div></div>',
+    iconSize: [26, 40],
+    iconAnchor: [13, 40],
+  })
+
+  const deliveryIcon = L.divIcon({
+    className: '',
+    html: '<div class="motoboy-marker"><svg viewBox="0 0 24 36" width="26" height="40"><path d="M12 0C5.4 0 0 5.4 0 12c0 9 12 24 12 24s12-15 12-24C24 5.4 18.6 0 12 0z" fill="#E53935"/><circle cx="12" cy="12" r="5" fill="#fff"/></svg></div>',
+    iconSize: [26, 40],
+    iconAnchor: [13, 40],
+  })
+
+  const center = motoboyPos || { lat: -25.4290, lng: -49.2671 }
+
+  return (
+    <div className="motoboy-page">
+      <button className="motoboy-back" onClick={onVoltar}>←</button>
+      {pedidos.length > 0 && (
+        <div className="motoboy-status">{pedidos.length} entrega(s) pendente(s)</div>
+      )}
+      <MapContainer
+        center={[center.lat, center.lng]}
+        zoom={13}
+        scrollWheelZoom={true}
+        style={{ width: '100%', height: '100%' }}
+      >
+        <TileLayer
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        />
+        {motoboyPos && (
+          <Marker position={[motoboyPos.lat, motoboyPos.lng]} icon={motoboyIcon}>
+            <Popup><strong>📍 Minha posição</strong></Popup>
+          </Marker>
+        )}
+        {pedidos.map(p => {
+          if (!p.entrega_lat || !p.entrega_lng) return null
+          const dist = motoboyPos ? haversineKm(motoboyPos.lat, motoboyPos.lng, p.entrega_lat, p.entrega_lng) : null
+          const tempoMin = dist !== null ? Math.round(dist / 0.4) : null
+          return (
+            <Marker key={p.id} position={[p.entrega_lat, p.entrega_lng]} icon={deliveryIcon}>
+              <Popup>
+                <div className="motoboy-popup">
+                  <strong>Pedido #{p.id}</strong>
+                  <p>👤 {p.cliente?.nome}</p>
+                  <p>📍 {p.cliente?.endereco}</p>
+                  <p>📞 {p.cliente?.telefone}</p>
+                  {dist !== null && <p>📏 {dist.toFixed(1)} km · ≈ {tempoMin} min</p>}
+                  <div className="motoboy-popup-itens">{p.itens?.map(item => <span key={item.id}>{item.qtd}x {item.nome}</span>)}</div>
+                  <p className="motoboy-popup-total">R$ {p.total?.toFixed(2)}</p>
+                  <button className="btn-add" onClick={() => marcarEntregue(p.id)}>✅ Entregue</button>
+                </div>
+              </Popup>
+            </Marker>
+          )
+        })}
+      </MapContainer>
+      {pedidos.length > 0 && (
+        <div className="motoboy-panel">
+          <button className="motoboy-panel-toggle" onClick={() => setShowList(!showList)}>
+            📋 {pedidos.length} pedido(s) {showList ? '▼' : '▲'}
+          </button>
+          {showList && (
+            <div className="motoboy-panel-list">
+              {pedidos.map(p => {
+                const dist = motoboyPos ? haversineKm(motoboyPos.lat, motoboyPos.lng, p.entrega_lat, p.entrega_lng) : null
+                return (
+                  <div key={p.id} className="motoboy-panel-item">
+                    <div className="motoboy-panel-item-header">
+                      <strong>Pedido #{p.id}</strong>
+                      <span>R$ {p.total?.toFixed(2)}</span>
+                    </div>
+                    <p>{p.cliente?.nome}</p>
+                    <p className="motoboy-panel-item-endereco">{p.cliente?.endereco}</p>
+                    {dist !== null && <p>📏 {dist.toFixed(1)} km · ≈ {Math.round(dist / 0.4)} min</p>}
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
 }
 
 export default App
