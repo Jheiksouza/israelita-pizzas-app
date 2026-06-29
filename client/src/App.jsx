@@ -1750,6 +1750,8 @@ function AddressModal({ user, token, onClose, onSave }) {
   const [formErro, setFormErro] = useState('')
   const [mostrarMapa, setMostrarMapa] = useState(false)
   const [enderecoParaMapa, setEnderecoParaMapa] = useState('')
+  const [latParaMapa, setLatParaMapa] = useState(null)
+  const [lngParaMapa, setLngParaMapa] = useState(null)
   const cepTimer = useRef(null)
 
   const handleCepChange = (value) => {
@@ -1806,8 +1808,10 @@ function AddressModal({ user, token, onClose, onSave }) {
     } catch {}
   }
 
-  const handleAbrirMapa = (enderecoCompleto) => {
+  const handleAbrirMapa = (enderecoCompleto, lat, lng) => {
     setEnderecoParaMapa(enderecoCompleto)
+    setLatParaMapa(lat)
+    setLngParaMapa(lng)
     setMostrarMapa(true)
   }
 
@@ -1875,7 +1879,7 @@ function AddressModal({ user, token, onClose, onSave }) {
             <input type="radio" name="endereco-modal" checked={selecionado === addr.id} onChange={() => {}} />
             <span className="endereco-text">{formatEndereco(addr)}</span>
             <button className="endereco-edit" onClick={e => { e.stopPropagation(); handleEdit(addr) }}>✏️</button>
-            <button className="endereco-mapa" onClick={e => { e.stopPropagation(); handleAbrirMapa(formatEndereco(addr)) }}>📍</button>
+            <button className="endereco-mapa" onClick={e => { e.stopPropagation(); handleAbrirMapa(formatEndereco(addr), addr.lat, addr.lng) }}>📍</button>
             {enderecos.length > 1 && <button className="endereco-remove" onClick={e => { e.stopPropagation(); handleDelete(addr.id) }}>✕</button>}
           </div>
         ))}
@@ -1899,7 +1903,7 @@ function AddressModal({ user, token, onClose, onSave }) {
               <input className="endereco-input endereco-input-cidade" placeholder="Cidade" value={form.cidade} onChange={e => setForm(f => ({ ...f, cidade: e.target.value }))} />
               <input className="endereco-input endereco-input-estado" placeholder="UF" maxLength={2} value={form.estado} onChange={e => setForm(f => ({ ...f, estado: e.target.value }))} />
             </div>
-            <button className="endereco-mapa-btn" type="button" onClick={() => handleAbrirMapa(formatEndereco(form))}>📍 Marcar local exato no mapa</button>
+            <button className="endereco-mapa-btn" type="button" onClick={() => handleAbrirMapa(formatEndereco(form), form.lat, form.lng)}>📍 Marcar local exato no mapa</button>
             <div className="endereco-form-actions">
               <button className="btn-add" onClick={handleAdd}>{editandoId ? 'Salvar' : 'Adicionar'}</button>
               <button className="btn-del" onClick={cancelForm}>Cancelar</button>
@@ -1912,6 +1916,8 @@ function AddressModal({ user, token, onClose, onSave }) {
           onClose={() => setMostrarMapa(false)}
           onConfirm={handleMapaConfirm}
           enderecoInicial={enderecoParaMapa}
+          latInicial={latParaMapa}
+          lngInicial={lngParaMapa}
         />
       </div>
     </div>
@@ -1931,6 +1937,8 @@ function EnderecoFormModal({ onSave, onClose, enderecoInicial }) {
   const [formErro, setFormErro] = useState('')
   const [mostrarMapa, setMostrarMapa] = useState(false)
   const [enderecoParaMapa, setEnderecoParaMapa] = useState('')
+  const [latParaMapa, setLatParaMapa] = useState(null)
+  const [lngParaMapa, setLngParaMapa] = useState(null)
   const cepTimer = useRef(null)
 
   const handleCepChange = (value) => {
@@ -1948,8 +1956,10 @@ function EnderecoFormModal({ onSave, onClose, enderecoInicial }) {
     }
   }
 
-  const handleAbrirMapa = (enderecoCompleto) => {
+  const handleAbrirMapa = (enderecoCompleto, lat, lng) => {
     setEnderecoParaMapa(enderecoCompleto)
+    setLatParaMapa(lat)
+    setLngParaMapa(lng)
     setMostrarMapa(true)
   }
 
@@ -1987,7 +1997,7 @@ function EnderecoFormModal({ onSave, onClose, enderecoInicial }) {
             <input className="endereco-input endereco-input-cidade" placeholder="Cidade" value={form.cidade} onChange={e => setForm(f => ({ ...f, cidade: e.target.value }))} />
             <input className="endereco-input endereco-input-estado" placeholder="UF" maxLength={2} value={form.estado} onChange={e => setForm(f => ({ ...f, estado: e.target.value }))} />
           </div>
-          <button className="endereco-mapa-btn" type="button" onClick={() => handleAbrirMapa(formatEndereco(form))}>📍 Marcar local exato no mapa</button>
+          <button className="endereco-mapa-btn" type="button" onClick={() => handleAbrirMapa(formatEndereco(form), form.lat, form.lng)}>📍 Marcar local exato no mapa</button>
           <div className="endereco-form-actions">
             <button className="btn-add" onClick={handleSave}>Salvar endereço</button>
           </div>
@@ -1997,6 +2007,8 @@ function EnderecoFormModal({ onSave, onClose, enderecoInicial }) {
           onClose={() => setMostrarMapa(false)}
           onConfirm={handleMapaConfirm}
           enderecoInicial={enderecoParaMapa}
+          latInicial={latParaMapa}
+          lngInicial={lngParaMapa}
         />
       </div>
     </div>
