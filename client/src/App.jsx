@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { buscarCEP, formatCEP, formatEndereco } from './cepHelper'
-import { MapContainer, TileLayer, Marker, Popup, useMapEvents } from 'react-leaflet'
+import { MapContainer, TileLayer, Marker, Popup, Polyline, useMapEvents } from 'react-leaflet'
 import L from 'leaflet'
 
 const API = '/api'
@@ -2301,15 +2301,22 @@ function MotoboyPage({ onVoltar }) {
   const [motoboyPos, setMotoboyPos] = useState(null)
   const [showList, setShowList] = useState(false)
   const [currentIndex, setCurrentIndex] = useState(0)
+  const [rotaCoords, setRotaCoords] = useState(null)
+  const [rotaLegs, setRotaLegs] = useState(null)
+  const [otimizando, setOtimizando] = useState(false)
   const prevCountRef = useRef(0)
   const mountedRef = useRef(true)
-  const mapRef = useRef(null)
+  const watchIdRef = useRef(null)
 
   useEffect(() => {
-    navigator.geolocation.getCurrentPosition(
+    watchIdRef.current = navigator.geolocation.watchPosition(
       pos => { if (mountedRef.current) setMotoboyPos({ lat: pos.coords.latitude, lng: pos.coords.longitude }) },
-      () => {}
+      () => {},
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 5000 }
     )
+    return () => {
+      if (watchIdRef.current) navigator.geolocation.clearWatch(watchIdRef.current)
+    }
   }, [])
 
   useEffect(() => {
@@ -2329,6 +2336,35 @@ function MotoboyPage({ onVoltar }) {
     const id = setInterval(carregar, 10000)
     return () => { clearInterval(id); mountedRef.current = false }
   }, [])
+
+  // OSRM: otimiza a rota com múltiplas paradas
+  useEffect(() => {
+    if (!motoboyPos) { setRotaCoords(null); setRotaLegs(null); return }
+    const comCoords = pedidos.filter(p => p.entrega_lat && p.entrega_lng)
+    if (comCoords.length < 2) { setRotaCoords(null); setRotaLegs(null); return }
+
+    setOtimizando(true)
+    const coordsStr = [
+      `${motoboyPos.lng},${motoboyPos.lat}`,
+      ...comCoords.map(p => `${p.entrega_lng},${p.entrega_lat}`)
+    ].join(';')
+
+    fetch(`https://router.project-osrm.org/trip/v1/driving/${coordsStr}?source=first&destination=last&overview=full&geometries=geojson`)
+      .then(r => r.json())
+      .then(data => {
+        if (!mountedRef.current) return
+        setOtimizando(false)
+        if (data.code !== 'Ok') return
+
+        const coords = data.trips[0].geometry.coordinates.map(c => [c[1], c[0]])
+        setRotaCoords(coords)
+        setRotaLegs(data.trips[0].legs.map(leg => ({
+          distKm: leg.distance / 1000,
+          durMin: Math.round(leg.duration / 60)
+        })))
+      })
+      .catch(() => { setOtimizando(false) })
+  }, [motoboyPos, pedidos])
 
   useEffect(() => {
     setCurrentIndex(0)
@@ -2390,6 +2426,9 @@ function MotoboyPage({ onVoltar }) {
     : null
   const tempoAtual = distAtual !== null ? Math.round(distAtual / 0.4) : null
 
+  const totalDistRota = rotaLegs ? rotaLegs.reduce((s, l) => s + l.distKm, 0) : null
+  const totalDurRota = rotaLegs ? rotaLegs.reduce((s, l) => s + l.durMin, 0) : null
+
   const motoboyIcon = L.divIcon({
     className: '',
     html: '<div class="motoboy-marker"><svg viewBox="0 0 24 36" width="26" height="40"><path d="M12 0C5.4 0 0 5.4 0 12c0 9 12 24 12 24s12-15 12-24C24 5.4 18.6 0 12 0z" fill="#1565C0"/><circle cx="12" cy="12" r="5" fill="#fff"/></svg><div class="motoboy-marker-pulse"></div></div>',
@@ -2411,10 +2450,17 @@ function MotoboyPage({ onVoltar }) {
     iconAnchor: [16, 48],
   })
 
-  const abrirNoMaps = (endereco) => {
-    const encoded = encodeURIComponent(endereco)
-    const url = `https://www.google.com/maps/dir/?api=1&destination=${encoded}`
-    window.open(url, '_blank')
+  const abrirNoMapsRota = () => {
+    const comCoords = pedidosOrdenados.filter(p => p.entrega_lat)
+    if (comCoords.length === 0) return
+    if (comCoords.length === 1) {
+      window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(comCoords[0].cliente?.endereco || '')}`, '_blank')
+      return
+    }
+    const addr = a => encodeURIComponent(a.cliente?.endereco || `${a.entrega_lat},${a.entrega_lng}`)
+    const dest = addr(comCoords[comCoords.length - 1])
+    const waypoints = comCoords.slice(0, -1).map(addr).join('|')
+    window.open(`https://www.google.com/maps/dir/?api=1&destination=${dest}&waypoints=${waypoints}`, '_blank')
   }
 
   const center = motoboyPos || { lat: -25.4290, lng: -49.2671 }
@@ -2427,11 +2473,11 @@ function MotoboyPage({ onVoltar }) {
           <span className="motoboy-status-num">{currentIndex + 1}</span>
           <span className="motoboy-status-sep">/</span>
           <span>{pedidos.length}</span>
+          {otimizando && <span className="motoboy-status-otimizando">Otimizando...</span>}
         </div>
       )}
 
       <MapContainer
-        ref={mapRef}
         center={[center.lat, center.lng]}
         zoom={13}
         scrollWheelZoom={true}
@@ -2441,6 +2487,12 @@ function MotoboyPage({ onVoltar }) {
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
+        {rotaCoords && (
+          <Polyline
+            positions={rotaCoords}
+            pathOptions={{ color: '#1565C0', weight: 4, opacity: 0.7 }}
+          />
+        )}
         {motoboyPos && (
           <Marker position={[motoboyPos.lat, motoboyPos.lng]} icon={motoboyIcon}>
             <Popup><strong>📍 Minha posição</strong></Popup>
@@ -2456,11 +2508,12 @@ function MotoboyPage({ onVoltar }) {
             >
               <Popup>
                 <div className="motoboy-popup">
-                  <strong>Pedido #{p.id}</strong>
+                  <strong>#{idx + 1} · Pedido #{p.id}</strong>
                   <p>👤 {p.cliente?.nome}</p>
                   <p>📍 {p.cliente?.endereco}</p>
                   <p>📞 {p.cliente?.telefone}</p>
-                  {distAtual !== null && idx === currentIndex && <p>📏 {distAtual.toFixed(1)} km · ≈ {tempoAtual} min</p>}
+                  {rotaLegs && rotaLegs[idx] && <p>📏 {rotaLegs[idx].distKm.toFixed(1)} km · ≈ {rotaLegs[idx].durMin} min</p>}
+                  {!rotaLegs && distAtual !== null && idx === currentIndex && <p>📏 {distAtual.toFixed(1)} km · ≈ {tempoAtual} min</p>}
                   <div className="motoboy-popup-itens">{p.itens?.map(item => <span key={item.id}>{item.qtd}x {item.nome}</span>)}</div>
                   <p className="motoboy-popup-total">R$ {p.total?.toFixed(2)}</p>
                   <button className="btn-add" onClick={() => marcarEntregue(p.id)}>✅ Entregue</button>
@@ -2479,17 +2532,25 @@ function MotoboyPage({ onVoltar }) {
           </div>
           <div className="motoboy-card-body">
             <div className="motoboy-card-cliente">
+              <span className="motoboy-card-stops">
+                🛵 Parada {currentIndex + 1} → {currentIndex + 2 < pedidos.length ? `Parada ${currentIndex + 2}` : 'Final'}
+              </span>
               <span className="motoboy-card-nome">{destinoAtual.cliente?.nome}</span>
               <span className="motoboy-card-endereco">{destinoAtual.cliente?.endereco}</span>
-              {distAtual !== null && (
+              {rotaLegs && rotaLegs[currentIndex] ? (
+                <span className="motoboy-card-dist">📏 {rotaLegs[currentIndex].distKm.toFixed(1)} km · ≈ {rotaLegs[currentIndex].durMin} min</span>
+              ) : distAtual !== null ? (
                 <span className="motoboy-card-dist">📏 {distAtual.toFixed(1)} km · ≈ {tempoAtual} min</span>
+              ) : null}
+              {totalDistRota !== null && currentIndex === 0 && (
+                <span className="motoboy-card-rota-total">🔄 Rota total: {totalDistRota.toFixed(1)} km · ≈ {totalDurRota} min</span>
               )}
             </div>
             <div className="motoboy-card-valor">R$ {destinoAtual.total?.toFixed(2)}</div>
           </div>
           <div className="motoboy-card-actions">
-            <button className="motoboy-card-btn-maps" onClick={() => abrirNoMaps(destinoAtual.cliente?.endereco)}>
-              🗺️ Abrir no Maps
+            <button className="motoboy-card-btn-maps" onClick={abrirNoMapsRota}>
+              🗺️ Navegar (todas as paradas)
             </button>
             <button className="motoboy-card-btn-entregue" onClick={() => marcarEntregue(destinoAtual.id)}>
               ✅ Entregue
@@ -2520,6 +2581,7 @@ function MotoboyPage({ onVoltar }) {
                     className={`motoboy-card-list-item${idx === currentIndex ? ' active' : ''}`}
                     onClick={() => { setCurrentIndex(idx); setShowList(false) }}
                   >
+                    <span className="motoboy-card-list-num">{idx + 1}</span>
                     <div className="motoboy-card-list-item-left">
                       <span className="motoboy-card-list-order">#{p.id}</span>
                       <div>
@@ -2528,7 +2590,7 @@ function MotoboyPage({ onVoltar }) {
                       </div>
                     </div>
                     <div className="motoboy-card-list-item-right">
-                      {d !== null && <span>{d.toFixed(1)}km</span>}
+                      {rotaLegs && rotaLegs[idx] ? <span>{rotaLegs[idx].distKm.toFixed(1)}km · {rotaLegs[idx].durMin}min</span> : d !== null ? <span>{d.toFixed(1)}km</span> : null}
                       <span>R$ {p.total?.toFixed(2)}</span>
                     </div>
                   </div>
@@ -2537,7 +2599,7 @@ function MotoboyPage({ onVoltar }) {
             </div>
           )}
           <button className="motoboy-card-toggle" onClick={() => setShowList(!showList)}>
-            {showList ? '▲ Fechar lista' : `▼ Ver todas (${pedidos.length})`}
+            {showList ? '▲ Fechar lista' : `▼ Ver rota completa (${pedidos.length})`}
           </button>
         </div>
       )}
