@@ -1738,9 +1738,11 @@ function AdminLogin({ onLogin }) {
 
 function AddressModal({ user, token, onClose, onSave }) {
   const [enderecos, setEnderecos] = useState(() => {
-    if (user?.enderecos?.length) return user.enderecos
-    if (user?.endereco) return [{ id: 'addr1', rua: user.endereco }]
-    return []
+    const enderecosList = user?.enderecos?.length ? user.enderecos
+      : user?.endereco ? [{ id: 'addr1', rua: user.endereco }]
+      : []
+    console.log('[AddressModal] Endereços carregados:', JSON.stringify(enderecosList))
+    return enderecosList
   })
   const [selecionado, setSelecionado] = useState(user?.enderecoSelecionado || enderecos[0]?.id || '')
   const [form, setForm] = useState({ cep: '', rua: '', numero: '', referencia: '', bairro: '', cidade: '', estado: '' })
@@ -1807,11 +1809,13 @@ function AddressModal({ user, token, onClose, onSave }) {
   }
 
   const handleAbrirMapa = (enderecoCompleto) => {
+    console.log('[Mapa] handleAbrirMapa chamado com endereco:', enderecoCompleto)
     setEnderecoParaMapa(enderecoCompleto)
     setMostrarMapa(true)
   }
 
   const handleMapaConfirm = ({ lat, lng }) => {
+    console.log('[Mapa] Confirmado:', { lat, lng })
     // Atualiza o endereço atual (form ou item da lista) com lat/lng
     if (editandoId) {
       setEnderecos(prev => prev.map(a => a.id === editandoId ? { ...a, lat, lng } : a))
@@ -1857,6 +1861,7 @@ function AddressModal({ user, token, onClose, onSave }) {
     setForm({ cep, rua, numero, referencia, bairro, cidade, estado })
     setEditandoId(addr.id)
     setMostrarForm(true)
+    console.log('[AddressModal] handleEdit - dados extraídos do endereço:', { cep, rua, numero, referencia, bairro, cidade, estado, id: addr.id, lat: addr.lat, lng: addr.lng })
   }
 
   const cancelForm = () => {
@@ -1950,11 +1955,13 @@ function EnderecoFormModal({ onSave, onClose, enderecoInicial }) {
   }
 
   const handleAbrirMapa = (enderecoCompleto) => {
+    console.log('[EnderecoFormModal] handleAbrirMapa chamado com endereco:', enderecoCompleto)
     setEnderecoParaMapa(enderecoCompleto)
     setMostrarMapa(true)
   }
 
   const handleMapaConfirm = ({ lat, lng }) => {
+    console.log('[EnderecoFormModal] Mapa confirmado:', { lat, lng })
     setForm(f => ({ ...f, lat, lng }))
   }
 
@@ -2020,6 +2027,7 @@ function MapaEntregaModal({
 
   useEffect(() => {
     if (!isOpen) return
+    console.log('[MapaEntregaModal] Abrindo modal. enderecoInicial:', enderecoInicial)
     mountedRef.current = true
     setPronto(false)
     setLat(null)
@@ -2027,6 +2035,7 @@ function MapaEntregaModal({
     setBuscando(true)
 
     if (!enderecoInicial) {
+      console.log('[MapaEntregaModal] Sem enderecoInicial, fallback SP')
       setLat(-23.5505)
       setLng(-46.6333)
       setBuscando(false)
@@ -2037,18 +2046,24 @@ function MapaEntregaModal({
     const geocode = async () => {
       try {
         const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(enderecoInicial)}&limit=1`
+        console.log('[MapaEntregaModal] Geocoding URL:', url)
         const res = await fetch(url, { headers: { 'User-Agent': 'IsraelitaPizzasApp/1.0' } })
         const data = await res.json()
+        console.log('[MapaEntregaModal] Geocoding resposta:', data)
         if (!mountedRef.current) return
         if (data[0]) {
-          setLat(parseFloat(data[0].lat))
-          setLng(parseFloat(data[0].lon))
+          const newLat = parseFloat(data[0].lat)
+          const newLng = parseFloat(data[0].lon)
+          console.log('[MapaEntregaModal] Coordenadas obtidas:', { lat: newLat, lng: newLng })
+          setLat(newLat)
+          setLng(newLng)
         } else {
+          console.log('[MapaEntregaModal] Nenhum resultado, fallback SP')
           setLat(-23.5505)
           setLng(-46.6333)
         }
       } catch (e) {
-        console.error('Erro geocoding:', e)
+        console.error('[MapaEntregaModal] Erro geocoding:', e)
         if (!mountedRef.current) return
         setLat(-23.5505)
         setLng(-46.6333)
