@@ -2300,8 +2300,10 @@ function MotoboyPage({ onVoltar }) {
   const [pedidos, setPedidos] = useState([])
   const [motoboyPos, setMotoboyPos] = useState(null)
   const [showList, setShowList] = useState(false)
+  const [currentIndex, setCurrentIndex] = useState(0)
   const prevCountRef = useRef(0)
   const mountedRef = useRef(true)
+  const mapRef = useRef(null)
 
   useEffect(() => {
     navigator.geolocation.getCurrentPosition(
@@ -2317,7 +2319,7 @@ function MotoboyPage({ onVoltar }) {
         .then(data => {
           if (!mountedRef.current) return
           const liberados = data.filter(p => p.status === 'liberado')
-          if (liberados.length > prevCountRef.current) tocarSomMotoboy()
+          if (liberados.length > prevCountRef.current && prevCountRef.current > 0) tocarSomMotoboy()
           prevCountRef.current = liberados.length
           setPedidos(liberados)
         })
@@ -2327,6 +2329,10 @@ function MotoboyPage({ onVoltar }) {
     const id = setInterval(carregar, 10000)
     return () => { clearInterval(id); mountedRef.current = false }
   }, [])
+
+  useEffect(() => {
+    setCurrentIndex(0)
+  }, [pedidos.length])
 
   const tocarSomMotoboy = () => {
     try {
@@ -2371,6 +2377,19 @@ function MotoboyPage({ onVoltar }) {
     return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
   }
 
+  const pedidosOrdenados = [...pedidos].sort((a, b) => {
+    if (!motoboyPos) return 0
+    const da = a.entrega_lat ? haversineKm(motoboyPos.lat, motoboyPos.lng, a.entrega_lat, a.entrega_lng) : Infinity
+    const db = b.entrega_lat ? haversineKm(motoboyPos.lat, motoboyPos.lng, b.entrega_lat, b.entrega_lng) : Infinity
+    return da - db
+  })
+
+  const destinoAtual = pedidosOrdenados[currentIndex]
+  const distAtual = destinoAtual?.entrega_lat && motoboyPos
+    ? haversineKm(motoboyPos.lat, motoboyPos.lng, destinoAtual.entrega_lat, destinoAtual.entrega_lng)
+    : null
+  const tempoAtual = distAtual !== null ? Math.round(distAtual / 0.4) : null
+
   const motoboyIcon = L.divIcon({
     className: '',
     html: '<div class="motoboy-marker"><svg viewBox="0 0 24 36" width="26" height="40"><path d="M12 0C5.4 0 0 5.4 0 12c0 9 12 24 12 24s12-15 12-24C24 5.4 18.6 0 12 0z" fill="#1565C0"/><circle cx="12" cy="12" r="5" fill="#fff"/></svg><div class="motoboy-marker-pulse"></div></div>',
@@ -2385,19 +2404,38 @@ function MotoboyPage({ onVoltar }) {
     iconAnchor: [13, 40],
   })
 
+  const deliveryActiveIcon = L.divIcon({
+    className: '',
+    html: '<div class="motoboy-marker"><svg viewBox="0 0 24 36" width="32" height="48"><path d="M12 0C5.4 0 0 5.4 0 12c0 9 12 24 12 24s12-15 12-24C24 5.4 18.6 0 12 0z" fill="#FF8F00"/><circle cx="12" cy="12" r="6" fill="#fff"/></svg></div>',
+    iconSize: [32, 48],
+    iconAnchor: [16, 48],
+  })
+
+  const abrirNoMaps = (endereco) => {
+    const encoded = encodeURIComponent(endereco)
+    const url = `https://www.google.com/maps/dir/?api=1&destination=${encoded}`
+    window.open(url, '_blank')
+  }
+
   const center = motoboyPos || { lat: -25.4290, lng: -49.2671 }
 
   return (
     <div className="motoboy-page">
       <button className="motoboy-back" onClick={onVoltar}>←</button>
       {pedidos.length > 0 && (
-        <div className="motoboy-status">{pedidos.length} entrega(s) pendente(s)</div>
+        <div className="motoboy-status">
+          <span className="motoboy-status-num">{currentIndex + 1}</span>
+          <span className="motoboy-status-sep">/</span>
+          <span>{pedidos.length}</span>
+        </div>
       )}
+
       <MapContainer
+        ref={mapRef}
         center={[center.lat, center.lng]}
         zoom={13}
         scrollWheelZoom={true}
-        style={{ width: '100%', height: '100%' }}
+        className="motoboy-map"
       >
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
@@ -2408,19 +2446,21 @@ function MotoboyPage({ onVoltar }) {
             <Popup><strong>📍 Minha posição</strong></Popup>
           </Marker>
         )}
-        {pedidos.map(p => {
+        {pedidosOrdenados.map((p, idx) => {
           if (!p.entrega_lat || !p.entrega_lng) return null
-          const dist = motoboyPos ? haversineKm(motoboyPos.lat, motoboyPos.lng, p.entrega_lat, p.entrega_lng) : null
-          const tempoMin = dist !== null ? Math.round(dist / 0.4) : null
           return (
-            <Marker key={p.id} position={[p.entrega_lat, p.entrega_lng]} icon={deliveryIcon}>
+            <Marker
+              key={p.id}
+              position={[p.entrega_lat, p.entrega_lng]}
+              icon={idx === currentIndex ? deliveryActiveIcon : deliveryIcon}
+            >
               <Popup>
                 <div className="motoboy-popup">
                   <strong>Pedido #{p.id}</strong>
                   <p>👤 {p.cliente?.nome}</p>
                   <p>📍 {p.cliente?.endereco}</p>
                   <p>📞 {p.cliente?.telefone}</p>
-                  {dist !== null && <p>📏 {dist.toFixed(1)} km · ≈ {tempoMin} min</p>}
+                  {distAtual !== null && idx === currentIndex && <p>📏 {distAtual.toFixed(1)} km · ≈ {tempoAtual} min</p>}
                   <div className="motoboy-popup-itens">{p.itens?.map(item => <span key={item.id}>{item.qtd}x {item.nome}</span>)}</div>
                   <p className="motoboy-popup-total">R$ {p.total?.toFixed(2)}</p>
                   <button className="btn-add" onClick={() => marcarEntregue(p.id)}>✅ Entregue</button>
@@ -2430,29 +2470,83 @@ function MotoboyPage({ onVoltar }) {
           )
         })}
       </MapContainer>
-      {pedidos.length > 0 && (
-        <div className="motoboy-panel">
-          <button className="motoboy-panel-toggle" onClick={() => setShowList(!showList)}>
-            📋 {pedidos.length} pedido(s) {showList ? '▼' : '▲'}
-          </button>
+
+      {destinoAtual && (
+        <div className="motoboy-card">
+          <div className="motoboy-card-header">
+            <strong>Próxima entrega</strong>
+            <span className="motoboy-card-counter">{currentIndex + 1} de {pedidos.length}</span>
+          </div>
+          <div className="motoboy-card-body">
+            <div className="motoboy-card-cliente">
+              <span className="motoboy-card-nome">{destinoAtual.cliente?.nome}</span>
+              <span className="motoboy-card-endereco">{destinoAtual.cliente?.endereco}</span>
+              {distAtual !== null && (
+                <span className="motoboy-card-dist">📏 {distAtual.toFixed(1)} km · ≈ {tempoAtual} min</span>
+              )}
+            </div>
+            <div className="motoboy-card-valor">R$ {destinoAtual.total?.toFixed(2)}</div>
+          </div>
+          <div className="motoboy-card-actions">
+            <button className="motoboy-card-btn-maps" onClick={() => abrirNoMaps(destinoAtual.cliente?.endereco)}>
+              🗺️ Abrir no Maps
+            </button>
+            <button className="motoboy-card-btn-entregue" onClick={() => marcarEntregue(destinoAtual.id)}>
+              ✅ Entregue
+            </button>
+          </div>
+          {pedidos.length > 1 && (
+            <div className="motoboy-card-nav">
+              <button
+                className="motoboy-card-nav-btn"
+                disabled={currentIndex <= 0}
+                onClick={() => setCurrentIndex(i => Math.max(0, i - 1))}
+              >◀ Anterior</button>
+              <button
+                className="motoboy-card-nav-btn"
+                disabled={currentIndex >= pedidos.length - 1}
+                onClick={() => setCurrentIndex(i => Math.min(pedidos.length - 1, i + 1))}
+              >Próximo ▶</button>
+            </div>
+          )}
+
           {showList && (
-            <div className="motoboy-panel-list">
-              {pedidos.map(p => {
-                const dist = motoboyPos ? haversineKm(motoboyPos.lat, motoboyPos.lng, p.entrega_lat, p.entrega_lng) : null
+            <div className="motoboy-card-list">
+              {pedidosOrdenados.map((p, idx) => {
+                const d = p.entrega_lat && motoboyPos ? haversineKm(motoboyPos.lat, motoboyPos.lng, p.entrega_lat, p.entrega_lng) : null
                 return (
-                  <div key={p.id} className="motoboy-panel-item">
-                    <div className="motoboy-panel-item-header">
-                      <strong>Pedido #{p.id}</strong>
+                  <div
+                    key={p.id}
+                    className={`motoboy-card-list-item${idx === currentIndex ? ' active' : ''}`}
+                    onClick={() => { setCurrentIndex(idx); setShowList(false) }}
+                  >
+                    <div className="motoboy-card-list-item-left">
+                      <span className="motoboy-card-list-order">#{p.id}</span>
+                      <div>
+                        <strong>{p.cliente?.nome}</strong>
+                        <span>{p.cliente?.endereco}</span>
+                      </div>
+                    </div>
+                    <div className="motoboy-card-list-item-right">
+                      {d !== null && <span>{d.toFixed(1)}km</span>}
                       <span>R$ {p.total?.toFixed(2)}</span>
                     </div>
-                    <p>{p.cliente?.nome}</p>
-                    <p className="motoboy-panel-item-endereco">{p.cliente?.endereco}</p>
-                    {dist !== null && <p>📏 {dist.toFixed(1)} km · ≈ {Math.round(dist / 0.4)} min</p>}
                   </div>
                 )
               })}
             </div>
           )}
+          <button className="motoboy-card-toggle" onClick={() => setShowList(!showList)}>
+            {showList ? '▲ Fechar lista' : `▼ Ver todas (${pedidos.length})`}
+          </button>
+        </div>
+      )}
+
+      {pedidos.length === 0 && (
+        <div className="motoboy-empty">
+          <div className="motoboy-empty-icon">🛵</div>
+          <p>Nenhuma entrega pendente</p>
+          <p className="motoboy-empty-sub">Aguardando novos pedidos...</p>
         </div>
       )}
     </div>

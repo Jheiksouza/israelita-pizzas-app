@@ -5354,18 +5354,24 @@ body {
   right: 0;
   bottom: 0;
   z-index: 99999;
-  background: #000;
+  display: flex;
+  flex-direction: column;
+}
+.motoboy-map {
+  flex: 1;
+  min-height: 0;
+  z-index: 0;
 }
 .motoboy-back {
   position: absolute;
   top: 12px;
   left: 12px;
-  z-index: 100000;
+  z-index: 100001;
   width: 40px;
   height: 40px;
   border-radius: 50%;
   border: none;
-  background: rgba(255,255,255,0.9);
+  background: rgba(255,255,255,0.92);
   box-shadow: 0 2px 8px rgba(0,0,0,0.25);
   font-size: 1.3rem;
   cursor: pointer;
@@ -5383,16 +5389,27 @@ body {
   top: 14px;
   left: 50%;
   transform: translateX(-50%);
-  z-index: 100000;
+  z-index: 100001;
   background: rgba(255,255,255,0.95);
-  padding: 6px 18px;
+  padding: 5px 16px;
   border-radius: 50px;
   font-family: var(--font-heading);
   font-size: 0.85rem;
   font-weight: 600;
-  color: #7B1FA2;
+  color: #333;
   box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  display: flex;
+  align-items: center;
+  gap: 4px;
   pointer-events: none;
+}
+.motoboy-status-num {
+  color: #E53935;
+  font-size: 1rem;
+}
+.motoboy-status-sep {
+  color: #999;
+  font-size: 0.8rem;
 }
 .motoboy-marker {
   display: flex;
@@ -5446,59 +5463,238 @@ body {
   font-size: 1rem;
   margin: 4px 0 !important;
 }
-.motoboy-panel {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  z-index: 100000;
-  max-height: 45vh;
-}
-.motoboy-panel-toggle {
-  width: 100%;
-  padding: 14px 20px;
-  border: none;
-  background: rgba(255,255,255,0.97);
-  backdrop-filter: blur(10px);
-  font-family: var(--font-heading);
-  font-size: 0.95rem;
-  font-weight: 600;
-  cursor: pointer;
-  text-align: left;
-  transition: var(--transition);
-  border-top: 1.5px solid var(--border);
-}
-.motoboy-panel-toggle:hover {
+
+/* Card inferior do destino atual */
+.motoboy-card {
   background: #fff;
+  border-radius: 16px 16px 0 0;
+  box-shadow: 0 -4px 20px rgba(0,0,0,0.15);
+  z-index: 100001;
+  max-height: 55vh;
+  display: flex;
+  flex-direction: column;
 }
-.motoboy-panel-list {
-  max-height: calc(45vh - 52px);
-  overflow-y: auto;
-  background: rgba(255,255,255,0.97);
-  backdrop-filter: blur(10px);
-}
-.motoboy-panel-item {
-  padding: 14px 20px;
-  border-top: 1px solid var(--border-light);
-  font-size: 0.85rem;
-  cursor: pointer;
-  transition: var(--transition);
-}
-.motoboy-panel-item:hover {
-  background: var(--bg-surface);
-}
-.motoboy-panel-item-header {
+.motoboy-card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 4px;
+  padding: 12px 18px 0;
+  font-size: 0.85rem;
 }
-.motoboy-panel-item p {
-  margin: 1px 0;
+.motoboy-card-header strong {
+  color: #333;
+  font-size: 0.9rem;
 }
-.motoboy-panel-item-endereco {
+.motoboy-card-counter {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+.motoboy-card-body {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 8px 18px;
+  gap: 12px;
+}
+.motoboy-card-cliente {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.motoboy-card-nome {
+  font-weight: 700;
+  font-size: 1.05rem;
+  color: #1d1d1d;
+}
+.motoboy-card-endereco {
+  font-size: 0.85rem;
+  color: #555;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.motoboy-card-dist {
   font-size: 0.8rem;
   color: var(--text-muted);
+  margin-top: 2px;
+}
+.motoboy-card-valor {
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: #2E7D32;
+  white-space: nowrap;
+}
+.motoboy-card-actions {
+  display: flex;
+  gap: 8px;
+  padding: 0 18px 10px;
+}
+.motoboy-card-btn-maps {
+  flex: 1;
+  padding: 12px;
+  border: none;
+  border-radius: var(--radius-md);
+  background: #1a73e8;
+  color: #fff;
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: var(--transition);
+}
+.motoboy-card-btn-maps:hover {
+  background: #1557b0;
+  transform: translateY(-1px);
+}
+.motoboy-card-btn-entregue {
+  flex: 1;
+  padding: 12px;
+  border: none;
+  border-radius: var(--radius-md);
+  background: #43A047;
+  color: #fff;
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: var(--transition);
+}
+.motoboy-card-btn-entregue:hover {
+  background: #2E7D32;
+  transform: translateY(-1px);
+}
+.motoboy-card-nav {
+  display: flex;
+  gap: 8px;
+  padding: 0 18px 8px;
+}
+.motoboy-card-nav-btn {
+  flex: 1;
+  padding: 8px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: var(--transition);
+}
+.motoboy-card-nav-btn:hover:not(:disabled) {
+  background: var(--bg-surface);
+}
+.motoboy-card-nav-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.motoboy-card-list {
+  border-top: 1px solid var(--border-light);
+  max-height: 30vh;
+  overflow-y: auto;
+}
+.motoboy-card-list-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--border-light);
+  cursor: pointer;
+  transition: var(--transition);
+  gap: 8px;
+}
+.motoboy-card-list-item:hover {
+  background: var(--bg-surface);
+}
+.motoboy-card-list-item.active {
+  background: #FFF8E1;
+  border-left: 3px solid #FF8F00;
+}
+.motoboy-card-list-item-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+}
+.motoboy-card-list-order {
+  background: var(--primary-soft);
+  color: var(--primary);
+  padding: 2px 8px;
+  border-radius: 50px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.motoboy-card-list-item-left div {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.motoboy-card-list-item-left strong {
+  font-size: 0.85rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.motoboy-card-list-item-left span {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.motoboy-card-list-item-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+.motoboy-card-list-item-right span:first-child {
+  color: var(--text-muted);
+}
+.motoboy-card-toggle {
+  width: 100%;
+  padding: 12px;
+  border: none;
+  border-top: 1px solid var(--border-light);
+  background: var(--bg);
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: var(--transition);
+}
+.motoboy-card-toggle:hover {
+  background: var(--bg-surface);
+}
+
+/* Estado vazio */
+.motoboy-empty {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 100001;
+  text-align: center;
+  color: #fff;
+  text-shadow: 0 2px 8px rgba(0,0,0,0.5);
+  pointer-events: none;
+}
+.motoboy-empty-icon {
+  font-size: 3rem;
+  margin-bottom: 12px;
+}
+.motoboy-empty p {
+  font-size: 1.2rem;
+  font-weight: 600;
+  margin: 0;
+}
+.motoboy-empty-sub {
+  font-size: 0.9rem !important;
+  opacity: 0.8;
+  margin-top: 4px !important;
+  font-weight: 400 !important;
 }
 
 
