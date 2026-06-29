@@ -1908,6 +1908,7 @@ function AddressModal({ user, token, onClose, onSave }) {
         )}
         {!mostrarForm && <button className="btn-add" style={{marginTop:16}} onClick={onClose}>Concluído</button>}
         <MapaEntregaModal
+          key={'mapa-addr-' + mostrarMapa}
           isOpen={mostrarMapa}
           onClose={() => setMostrarMapa(false)}
           onConfirm={handleMapaConfirm}
@@ -1993,6 +1994,7 @@ function EnderecoFormModal({ onSave, onClose, enderecoInicial }) {
           </div>
         </div>
         <MapaEntregaModal
+          key={'mapa-end-' + mostrarMapa}
           isOpen={mostrarMapa}
           onClose={() => setMostrarMapa(false)}
           onConfirm={handleMapaConfirm}
