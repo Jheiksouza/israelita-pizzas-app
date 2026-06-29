@@ -249,6 +249,7 @@ function App() {
       if (token) headers['Authorization'] = `Bearer ${token}`
       const entrega_lat = dadosCliente.lat || dadosCliente.endereco_lat || null
       const entrega_lng = dadosCliente.lng || dadosCliente.endereco_lng || null
+      console.log('[DEBUG finalizarPedido] dadosCliente:', JSON.stringify(dadosCliente), 'entrega_lat:', entrega_lat, 'entrega_lng:', entrega_lng)
       const res = await fetch(`${API}/orders`, {
         method: 'POST',
         headers,
@@ -2488,6 +2489,7 @@ function MotoboyPage({ onVoltar }) {
           if (!mountedRef.current) return
           if (!Array.isArray(data)) return
           const liberados = data.filter(p => p.status === 'liberado')
+          liberados.forEach(p => console.log('[DEBUG API] pedido', p.id, 'entrega_lat:', p.entrega_lat, 'entrega_lng:', p.entrega_lng, 'cliente.lat:', p.cliente?.lat, 'cliente.lng:', p.cliente?.lng))
           if (liberados.length > prevCountRef.current && !primeiraCarga.current) {
             tocarSomMotoboy()
           }
@@ -2619,6 +2621,7 @@ function MotoboyPage({ onVoltar }) {
   const organizar = async () => {
     setOtimizando(true)
     const selec = pedidos.filter(p => selecionados.includes(p.id))
+    selec.forEach(p => console.log('[DEBUG organizar] pedido', p.id, 'getLat:', getLat(p), 'getLng:', getLng(p), 'entrega_lat:', p.entrega_lat, 'cliente.lat:', p.cliente?.lat))
 
     if (motoboyPos && pizzariaCoords && selec.some(p => getLat(p) && getLng(p))) {
       const comCoords = selec.filter(p => getLat(p) && getLng(p))
@@ -2706,6 +2709,7 @@ function MotoboyPage({ onVoltar }) {
   const abrirNoMapsRota = () => {
     const extrairLat = a => a.entrega_lat ?? a.cliente?.lat ?? a.cliente?.endereco_lat ?? null
     const extrairLng = a => a.entrega_lng ?? a.cliente?.lng ?? a.cliente?.endereco_lng ?? null
+    ordemOtimizada.forEach(p => console.log('[DEBUG abrirNoMapsRota] pedido', p.id, 'extrairLat:', extrairLat(p), 'extrairLng:', extrairLng(p), 'endereco:', p.cliente?.endereco))
     const destinos = ordemOtimizada.filter(p => (extrairLat(p) && extrairLng(p)) || p.cliente?.endereco)
     const enc = a => {
       const lat = extrairLat(a)
@@ -2716,9 +2720,13 @@ function MotoboyPage({ onVoltar }) {
     const params = new URLSearchParams({ api: 1, travelmode: 'driving', dir_action: 'navigate' })
     params.set('destination', PIZZARIA_ADDR)
     if (destinos.length > 0) {
-      params.set('waypoints', destinos.map(enc).join('|'))
+      const encoded = destinos.map(enc).join('|')
+      console.log('[DEBUG abrirNoMapsRota] waypoints (decoded):', encoded)
+      params.set('waypoints', encoded)
     }
-    window.open(`https://www.google.com/maps/dir/?${params}`, '_blank')
+    const url = `https://www.google.com/maps/dir/?${params}`
+    console.log('[DEBUG abrirNoMapsRota] URL final:', url)
+    window.open(url, '_blank')
   }
 
   const formatTel = (t) => {
