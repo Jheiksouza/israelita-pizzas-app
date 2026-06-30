@@ -1720,7 +1720,13 @@ function AdminPizzariaConfig() {
   const [salvando, setSalvando] = useState(false)
   const [msg, setMsg] = useState('')
   const [buscandoCep, setBuscandoCep] = useState(false)
+  const [mostrarMapaPizzaria, setMostrarMapaPizzaria] = useState(false)
   const cepTimer = useRef(null)
+
+  const handleMapaConfirmPizzaria = ({ lat, lng }) => {
+    setForm(f => ({ ...f, lat, lng }))
+    setMostrarMapaPizzaria(false)
+  }
 
   const handleCepChange = (value) => {
     const fmt = formatCEP(value)
@@ -1844,11 +1850,26 @@ function AdminPizzariaConfig() {
             <input placeholder="UF" maxLength={2} value={form.estado} onChange={e => handleChange('estado', e.target.value)} />
           </div>
         </div>
+        <div className="pizzaria-form-row">
+          <label>Localização</label>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+            <input placeholder="Latitude" value={form.lat || ''} onChange={e => handleChange('lat', e.target.value)} style={{width:160}} />
+            <input placeholder="Longitude" value={form.lng || ''} onChange={e => handleChange('lng', e.target.value)} style={{width:160}} />
+            <button className="endereco-mapa-btn" type="button" onClick={() => setMostrarMapaPizzaria(true)}>📍 Marcar no mapa</button>
+          </div>
+        </div>
         {msg && <p className={`pizzaria-msg ${msg.includes('sucesso') ? 'pizzaria-msg-ok' : ''}`}>{msg}</p>}
         <button className="btn-add" onClick={handleSalvar} disabled={salvando}>
           {salvando ? 'Salvando...' : 'Salvar'}
         </button>
       </div>
+      <MapaEntregaModal
+        isOpen={mostrarMapaPizzaria}
+        onClose={() => setMostrarMapaPizzaria(false)}
+        onConfirm={handleMapaConfirmPizzaria}
+        enderecoInicial={form?.rua ? `${form.rua}, ${form.numero} - ${form.bairro}, ${form.cidade} - ${form.estado}` : ''}
+        initialCoords={form?.lat && form?.lng ? { lat: parseFloat(form.lat), lng: parseFloat(form.lng) } : null}
+      />
     </div>
   )
 }
@@ -2225,7 +2246,11 @@ function MapaEntregaModal({
 
     const geocode = async () => {
       try {
-        const enderecoLimpo = enderecoInicial.replace(/\s*\([^)]*\)\s*/g, ' ').replace(/\s+/g, ' ').trim()
+        // Remove CEP e parenteses do endereço para melhorar a busca no Nominatim
+        const enderecoLimpo = enderecoInicial
+          .replace(/\s*\([^)]*\)\s*/g, ' ')
+          .replace(/- CEP:\s*[\d-]+/gi, '')
+          .replace(/\s+/g, ' ').trim()
         console.log('[MapaEntregaModal] Endereço limpo para geocoding:', enderecoLimpo)
         const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(enderecoLimpo)}&limit=1`
         console.log('[MapaEntregaModal] Geocoding URL:', url)
@@ -2265,7 +2290,7 @@ function MapaEntregaModal({
     if (pronto && mapRef.current) {
       mapRef.current.flyTo([lat, lng], 16)
     }
-  }, [pronto])
+  }, [pronto, lat, lng])
 
   const handleMapClick = (newLat, newLng) => {
     setLat(newLat)
@@ -2367,7 +2392,8 @@ function MapaEntregaModal({
                 />
                 <Marker position={[lat, lng]} icon={pinIcon}>
                 </Marker>
-                <MapClickHandler onClick={handleMapClick} />
+                                <MapClickHandler onClick={handleMapClick} />
+                <MapController lat={lat} lng={lng} />
               </MapContainer>
             </div>
             <p className="mapa-dica">💡 Dica: use a busca acima para encontrar uma rua próxima caso não localize a sua</p>
@@ -2378,6 +2404,8 @@ function MapaEntregaModal({
               <button className="btn-del" onClick={onClose}>Cancelar</button>
               <button className="btn-add" onClick={handleConfirm}>
                 ✅ Confirmar Local Exato
+
+
               </button>
             </div>
           </>
@@ -2385,6 +2413,14 @@ function MapaEntregaModal({
       </div>
     </div>
   )
+}
+
+function MapController({ lat, lng }) {
+  const map = useMap()
+  useEffect(() => {
+    map.flyTo([lat, lng], 16)
+  }, [lat, lng])
+  return null
 }
 
 function MapClickHandler({ onClick }) {
