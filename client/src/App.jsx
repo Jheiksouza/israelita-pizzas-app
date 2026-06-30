@@ -2731,7 +2731,7 @@ function MotoboyPage({ onVoltar }) {
     })
   }, [motoboyPos, etapa, ordemOtimizada, pedidos, selecionados])
 
-  // Detecta chegada nos destinos (dentro de 50m)
+  // Detecta chegada nos destinos (dentro de 100m)
   const chegouRef = useRef({})
   useEffect(() => {
     if (!motoboyPos) return
@@ -2741,11 +2741,20 @@ function MotoboyPage({ onVoltar }) {
     alvos.forEach(p => {
       if (!p.entrega_lat || !p.entrega_lng || chegouRef.current[p.id]) return
       const d = haversineKm(motoboyPos.lat, motoboyPos.lng, p.entrega_lat, p.entrega_lng) * 1000
-      if (d < 50) {
+      if (d < 100) {
         novas[p.id] = true
         chegouRef.current[p.id] = true
         mudou = true
         try { navigator.vibrate?.([300, 200, 300]) } catch (_) {}
+        try {
+          if ('Notification' in window && Notification.permission === 'granted') {
+            new Notification('📍 Chegou no destino #' + p.id, {
+              body: 'Cliente: ' + (p.cliente?.nome || '') + ' - ' + (p.cliente?.endereco || ''),
+              vibrate: [300, 200, 300],
+              tag: 'chegou-' + p.id
+            })
+          }
+        } catch (_) {}
       }
     })
     if (mudou) setChegadas(novas)
