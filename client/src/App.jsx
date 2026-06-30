@@ -2899,8 +2899,7 @@ function MotoboyPage({ onVoltar }) {
     const destinos = ordemOtimizada.filter(p => (extrairLat(p) && extrairLng(p)) || p.cliente?.endereco)
     if (destinos.length === 0) {
       if (!pizzariaCoords) return
-      const url = `https://www.google.com/maps/dir/?api=1&destination=${pizzariaCoords.lat},${pizzariaCoords.lng}&travelmode=driving&dir_action=navigate`
-      window.open(url, '_blank')
+      window.location.href = `https://www.google.com/maps/dir/?api=1&destination=${pizzariaCoords.lat},${pizzariaCoords.lng}&travelmode=driving&dir_action=navigate`
       return
     }
     const enc = a => {
@@ -2920,9 +2919,7 @@ function MotoboyPage({ onVoltar }) {
     // Todas as entregas como waypoints intermediários
     params.set('waypoints', pontos.join('|'))
     console.log('[DEBUG abrirNoMapsRota] destination (pizzaria):', params.get('destination'), 'waypoints:', pontos.join('|'))
-    const url = `https://www.google.com/maps/dir/?${params}`
-    console.log('[DEBUG abrirNoMapsRota] URL final:', url)
-    window.open(url, '_blank')
+    window.location.href = `https://www.google.com/maps/dir/?${params}`
   }
 
   const formatTel = (t) => {
