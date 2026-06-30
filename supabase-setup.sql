@@ -83,3 +83,28 @@ CREATE POLICY "anon select users" ON users FOR SELECT USING (true);
 CREATE POLICY "anon all menu" ON menu FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "anon all orders" ON orders FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "anon all carts" ON carts FOR ALL USING (true) WITH CHECK (true);
+
+-- Tabela de configuração da pizzaria
+CREATE TABLE IF NOT EXISTS app_config (
+  id SERIAL PRIMARY KEY,
+  chave TEXT UNIQUE NOT NULL,
+  valor JSONB NOT NULL DEFAULT '{}',
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
+INSERT INTO app_config (chave, valor) VALUES ('pizzaria', '{
+  "cnpj": "",
+  "nome_fantasia": "Israelita Pizzas",
+  "razao_social": "",
+  "telefone": "(41) 99999-9999",
+  "cep": "82840-080",
+  "rua": "Rua Eloir Dide Maria",
+  "numero": "283",
+  "complemento": "",
+  "bairro": "Tatuquara",
+  "cidade": "Curitiba",
+  "estado": "PR",
+  "lat": -25.590233,
+  "lng": -49.321738
+}')
+ON CONFLICT (chave) DO NOTHING;

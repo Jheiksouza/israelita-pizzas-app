@@ -383,6 +383,40 @@ app.patch('/orders/:id', async (req, res) => {
   }
 })
 
+// Configuração da pizzaria
+app.get('/admin/config/pizzaria', async (req, res) => {
+  if (!checkSupabase(res)) return
+  try {
+    const { data } = await supabase.from('app_config').select('valor').eq('chave', 'pizzaria').maybeSingle()
+    res.json(data?.valor || {
+      cnpj: '', nome_fantasia: 'Israelita Pizzas', razao_social: '', telefone: '',
+      cep: '82840-080', rua: 'Rua Eloir Dide Maria', numero: '283',
+      complemento: '', bairro: 'Tatuquara', cidade: 'Curitiba', estado: 'PR',
+      lat: -25.590233, lng: -49.321738
+    })
+  } catch (err) {
+    console.error('Erro ao ler config:', err)
+    res.status(500).json({ erro: err.message })
+  }
+})
+
+app.put('/admin/config/pizzaria', async (req, res) => {
+  if (!checkSupabase(res)) return
+  const { senha, ...valor } = req.body
+  if (senha !== 'admin123') return res.status(401).json({ erro: 'Não autorizado' })
+  try {
+    const { data, error } = await supabase.from('app_config').upsert(
+      { chave: 'pizzaria', valor, updated_at: new Date().toISOString() },
+      { onConflict: 'chave' }
+    ).select()
+    if (error) throw error
+    res.json({ ok: true, config: data?.[0]?.valor })
+  } catch (err) {
+    console.error('Erro ao salvar config:', err)
+    res.status(500).json({ erro: err.message })
+  }
+})
+
 // Login
 app.post('/login', (req, res) => {
   const { senha } = req.body

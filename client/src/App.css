@@ -5917,3 +5917,66 @@ body {
   border-left-color: #AB47BC;
 }
 
+/* Configuração da Pizzaria (admin) */
+.pizzaria-config {
+  padding: 0;
+}
+.pizzaria-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px;
+}
+.pizzaria-form-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.pizzaria-form-row label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+.pizzaria-form-row input,
+.pizzaria-form-row select {
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  border: 1.5px solid var(--border);
+  background: var(--bg);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  outline: none;
+  transition: var(--transition);
+}
+.pizzaria-form-row input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-soft);
+}
+.pizzaria-form-row-duplo {
+  display: grid;
+  grid-template-columns: 1fr 80px;
+  gap: 12px;
+  align-items: end;
+}
+.pizzaria-form-row-triplo {
+  display: grid;
+  grid-template-columns: 1fr 1fr 70px;
+  gap: 12px;
+  align-items: end;
+}
+.pizzaria-form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.pizzaria-msg {
+  text-align: center;
+  font-size: 0.85rem;
+  color: #E53935;
+  margin: 0;
+}
+.pizzaria-msg-ok {
+  color: #43A047;
+}
+

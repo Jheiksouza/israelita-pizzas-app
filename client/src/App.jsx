@@ -1200,11 +1200,13 @@ function AdminPanel({ autenticado, onLogin, onThemeChange, onFontChange, pendent
         </button>
         <button className={`tab-btn ${aba === 'financeiro' ? 'active' : ''}`} onClick={() => setAba('financeiro')}>Financeiro</button>
         <button className={`tab-btn ${aba === 'rastreio' ? 'active' : ''}`} onClick={() => setAba('rastreio')}>📍 Rastreio</button>
+        <button className={`tab-btn ${aba === 'pizzaria' ? 'active' : ''}`} onClick={() => setAba('pizzaria')}>🏪 Pizzaria</button>
       </div>
       {aba === 'cardapio' && <AdminMenu onThemeChange={onThemeChange} onFontChange={onFontChange} />}
       {aba === 'pedidos' && <AdminOrders pendentesCount={pendentesCount} />}
       {aba === 'financeiro' && <AdminFinanceiro />}
       {aba === 'rastreio' && <RastreioPage />}
+      {aba === 'pizzaria' && <AdminPizzariaConfig />}
     </div>
   )
 }
@@ -1700,6 +1702,110 @@ function AdminFinanceiro() {
         </div>
       </div>
     </>
+  )
+}
+
+function AdminPizzariaConfig() {
+  const [form, setForm] = useState(null)
+  const [salvando, setSalvando] = useState(false)
+  const [msg, setMsg] = useState('')
+
+  useEffect(() => {
+    fetch(`${API}/admin/config/pizzaria`)
+      .then(r => r.json())
+      .then(data => setForm(data))
+      .catch(() => {})
+  }, [])
+
+  const handleChange = (key, value) => {
+    setForm(f => ({ ...f, [key]: value }))
+  }
+
+  const handleSalvar = async () => {
+    setSalvando(true)
+    setMsg('')
+    try {
+      const res = await fetch(`${API}/admin/config/pizzaria`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...form, senha: 'admin123' })
+      })
+      const data = await res.json()
+      if (res.ok) {
+        setMsg('Salvo com sucesso!')
+        setTimeout(() => setMsg(''), 3000)
+      } else {
+        setMsg('Erro: ' + (data.erro || 'Falha ao salvar'))
+      }
+    } catch {
+      setMsg('Erro de conexão')
+    } finally {
+      setSalvando(false)
+    }
+  }
+
+  if (!form) return <div className="empty-state"><p>Carregando...</p></div>
+
+  return (
+    <div className="pizzaria-config">
+      <div className="admin-header">
+        <h2>Dados da Pizzaria</h2>
+      </div>
+      <div className="pizzaria-form">
+        <div className="pizzaria-form-row">
+          <label>CNPJ</label>
+          <input placeholder="00.000.000/0000-00" value={form.cnpj} onChange={e => handleChange('cnpj', e.target.value)} />
+        </div>
+        <div className="pizzaria-form-row">
+          <label>Nome Fantasia</label>
+          <input placeholder="Israelita Pizzas" value={form.nome_fantasia} onChange={e => handleChange('nome_fantasia', e.target.value)} />
+        </div>
+        <div className="pizzaria-form-row">
+          <label>Razão Social</label>
+          <input placeholder="Razão Social" value={form.razao_social} onChange={e => handleChange('razao_social', e.target.value)} />
+        </div>
+        <div className="pizzaria-form-row">
+          <label>Telefone</label>
+          <input placeholder="(41) 99999-9999" value={form.telefone} onChange={e => handleChange('telefone', e.target.value)} />
+        </div>
+        <div className="pizzaria-form-row">
+          <label>CEP</label>
+          <input placeholder="82840-080" value={form.cep} onChange={e => handleChange('cep', e.target.value)} />
+        </div>
+        <div className="pizzaria-form-row pizzaria-form-row-duplo">
+          <div className="pizzaria-form-field">
+            <label>Rua</label>
+            <input placeholder="Rua" value={form.rua} onChange={e => handleChange('rua', e.target.value)} />
+          </div>
+          <div className="pizzaria-form-field pizzaria-form-field-num">
+            <label>Nº</label>
+            <input placeholder="Nº" value={form.numero} onChange={e => handleChange('numero', e.target.value)} />
+          </div>
+        </div>
+        <div className="pizzaria-form-row">
+          <label>Complemento</label>
+          <input placeholder="Complemento" value={form.complemento} onChange={e => handleChange('complemento', e.target.value)} />
+        </div>
+        <div className="pizzaria-form-row pizzaria-form-row-triplo">
+          <div className="pizzaria-form-field">
+            <label>Bairro</label>
+            <input placeholder="Bairro" value={form.bairro} onChange={e => handleChange('bairro', e.target.value)} />
+          </div>
+          <div className="pizzaria-form-field">
+            <label>Cidade</label>
+            <input placeholder="Cidade" value={form.cidade} onChange={e => handleChange('cidade', e.target.value)} />
+          </div>
+          <div className="pizzaria-form-field pizzaria-form-field-uf">
+            <label>UF</label>
+            <input placeholder="UF" maxLength={2} value={form.estado} onChange={e => handleChange('estado', e.target.value)} />
+          </div>
+        </div>
+        {msg && <p className={`pizzaria-msg ${msg.includes('sucesso') ? 'pizzaria-msg-ok' : ''}`}>{msg}</p>}
+        <button className="btn-add" onClick={handleSalvar} disabled={salvando}>
+          {salvando ? 'Salvando...' : 'Salvar'}
+        </button>
+      </div>
+    </div>
   )
 }
 
@@ -2475,6 +2581,7 @@ function MotoboyPage({ onVoltar }) {
   const [otimizando, setOtimizando] = useState(false)
   const [motoboyPos, setMotoboyPos] = useState(null)
   const [pizzariaCoords, setPizzariaCoords] = useState(null)
+  const [pizzariaConfig, setPizzariaConfig] = useState(null)
   const [chegadas, setChegadas] = useState({})
   const [rastreioOk, setRastreioOk] = useState(null)
   const [erroGps, setErroGps] = useState(null)
@@ -2498,12 +2605,24 @@ function MotoboyPage({ onVoltar }) {
     }
     document.addEventListener('click', initAudio, { once: true })
     document.addEventListener('touchstart', initAudio, { once: true })
-    // Geocode pizzaria address
-    fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(PIZZARIA_ADDR)}&limit=1`)
+    // Carregar configuração da pizzaria do servidor
+    fetch(`${API}/admin/config/pizzaria`)
       .then(r => r.json())
       .then(data => {
-        if (data?.length && mountedRef.current) {
-          setPizzariaCoords({ lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) })
+        if (!mountedRef.current) return
+        setPizzariaConfig(data)
+        if (data.lat && data.lng) {
+          setPizzariaCoords({ lat: data.lat, lng: data.lng })
+        } else if (data.rua) {
+          const addrStr = `${data.rua}, ${data.numero} - ${data.bairro}, ${data.cidade} - ${data.estado}`
+          fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(addrStr)}&limit=1`)
+            .then(r => r.json())
+            .then(geo => {
+              if (geo?.length && mountedRef.current) {
+                setPizzariaCoords({ lat: parseFloat(geo[0].lat), lng: parseFloat(geo[0].lon) })
+              }
+            })
+            .catch(() => {})
         }
       })
       .catch(() => {})
@@ -2758,7 +2877,12 @@ function MotoboyPage({ onVoltar }) {
     const extrairLng = a => a.entrega_lng ?? a.cliente?.lng ?? a.cliente?.endereco_lng ?? null
     ordemOtimizada.forEach(p => console.log('[DEBUG abrirNoMapsRota] pedido', p.id, 'extrairLat:', extrairLat(p), 'extrairLng:', extrairLng(p), 'endereco:', p.cliente?.endereco))
     const destinos = ordemOtimizada.filter(p => (extrairLat(p) && extrairLng(p)) || p.cliente?.endereco)
-    if (destinos.length === 0) return
+    if (destinos.length === 0) {
+      if (!pizzariaCoords) return
+      const url = `https://www.google.com/maps/dir/?api=1&destination=${pizzariaCoords.lat},${pizzariaCoords.lng}&travelmode=driving&dir_action=navigate`
+      window.open(url, '_blank')
+      return
+    }
     const enc = a => {
       const lat = extrairLat(a)
       const lng = extrairLng(a)
@@ -2767,11 +2891,15 @@ function MotoboyPage({ onVoltar }) {
     }
     const pontos = destinos.map(enc)
     const params = new URLSearchParams({ api: 1, travelmode: 'driving', dir_action: 'navigate' })
-    params.set('destination', pontos[pontos.length - 1])
-    if (pontos.length > 1) {
-      params.set('waypoints', pontos.slice(0, -1).join('|'))
+    // Destino final = pizzaria (motoboy volta pra base)
+    if (pizzariaCoords?.lat && pizzariaCoords?.lng) {
+      params.set('destination', `${pizzariaCoords.lat},${pizzariaCoords.lng}`)
+    } else {
+      params.set('destination', pontos[pontos.length - 1])
     }
-    console.log('[DEBUG abrirNoMapsRota] destination:', pontos[pontos.length - 1], 'waypoints:', pontos.length > 1 ? pontos.slice(0, -1).join('|') : '(nenhum)')
+    // Todas as entregas como waypoints intermediários
+    params.set('waypoints', pontos.join('|'))
+    console.log('[DEBUG abrirNoMapsRota] destination (pizzaria):', params.get('destination'), 'waypoints:', pontos.join('|'))
     const url = `https://www.google.com/maps/dir/?${params}`
     console.log('[DEBUG abrirNoMapsRota] URL final:', url)
     window.open(url, '_blank')
@@ -2942,7 +3070,7 @@ function MotoboyPage({ onVoltar }) {
                   <div className="motoboy-box-ordem motoboy-volta-ordem">🏠</div>
                   <div className="motoboy-box-conteudo">
                     <strong>🔄 Retorno à Pizzaria</strong>
-                    <span>📍 {PIZZARIA_ADDR}</span>
+                    <span>📍 {pizzariaConfig ? `${pizzariaConfig.rua}, ${pizzariaConfig.numero} - ${pizzariaConfig.bairro}, ${pizzariaConfig.cidade} - ${pizzariaConfig.estado}` : PIZZARIA_ADDR}</span>
                     <span className="motoboy-box-dist">📏 {voltaPizzaria.distKm.toFixed(1)} km · ≈ {voltaPizzaria.durMin} min</span>
                   </div>
                 </div>
