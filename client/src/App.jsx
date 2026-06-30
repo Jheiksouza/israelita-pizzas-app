@@ -2237,7 +2237,7 @@ function MapaEntregaModal({
   if (!isOpen) return null
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <div className="modal-overlay">
       <div className="modal modal-mapa" onClick={e => e.stopPropagation()}>
         <div className="modal-header">
           <h3>📍 Marcar Local Exato de Entrega</h3>
