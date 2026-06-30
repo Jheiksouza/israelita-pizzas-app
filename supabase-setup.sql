@@ -84,6 +84,8 @@ CREATE POLICY "anon all menu" ON menu FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "anon all orders" ON orders FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "anon all carts" ON carts FOR ALL USING (true) WITH CHECK (true);
 
+CREATE POLICY "anon all app_config" ON app_config FOR ALL USING (true) WITH CHECK (true);
+
 -- Tabela de configuração da pizzaria
 CREATE TABLE IF NOT EXISTS app_config (
   id SERIAL PRIMARY KEY,
