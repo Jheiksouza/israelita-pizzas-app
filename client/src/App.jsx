@@ -1907,12 +1907,11 @@ function AddressModal({ user, token, onClose, onSave }) {
 
   const handleMapaConfirm = ({ lat, lng }) => {
     console.log('[Mapa] Confirmado:', { lat, lng })
-    // Atualiza o endereço atual (form ou item da lista) com lat/lng
+    // Atualiza o endereço atual (form + item da lista) com lat/lng
     if (editandoId) {
       setEnderecos(prev => prev.map(a => a.id === editandoId ? { ...a, lat, lng } : a))
-    } else {
-      setForm(f => ({ ...f, lat, lng }))
     }
+    setForm(f => ({ ...f, lat, lng }))
   }
 
   const handleDelete = async (id) => {
@@ -1941,11 +1940,43 @@ function AddressModal({ user, token, onClose, onSave }) {
 
     // Se tem apenas rua preenchida e parece ser endereço completo, tenta extrair partes
     if (rua && !numero && !bairro && !cidade && !estado) {
-      // Tenta extrair número do final da rua (ex: "Rua das Flores, 123")
-      const numMatch = rua.match(/^(.+?),\s*(\d+[a-zA-Z]?)\s*$/)
-      if (numMatch) {
-        rua = numMatch[1].trim()
-        numero = numMatch[2].trim()
+      let completo = rua
+
+      // Extrai referencia entre parenteses
+      const refMatch = completo.match(/\(([^)]+)\)/)
+      if (refMatch) {
+        referencia = refMatch[1].trim()
+        completo = completo.replace(/\([^)]+\)/g, '').replace(/\s+/g, ' ').trim()
+      }
+
+      // Divide por " - " (separador do formatEndereco)
+      const parts = completo.split(' - ').map(s => s.trim()).filter(Boolean)
+
+      // 1a parte: "Rua, 123"
+      if (parts[0]) {
+        const numMatch = parts[0].match(/^(.+?),\s*(\d+[a-zA-Z]?)\s*$/)
+        if (numMatch) {
+          rua = numMatch[1].trim()
+          numero = numMatch[2].trim()
+        } else {
+          rua = parts[0]
+        }
+      }
+
+      // 2a parte: "Bairro, Cidade" ou so "Bairro"
+      if (parts[1]) {
+        const bairroMatch = parts[1].match(/^(.+?),\s*(.+)$/)
+        if (bairroMatch) {
+          bairro = bairroMatch[1].trim()
+          cidade = bairroMatch[2].trim()
+        } else {
+          bairro = parts[1]
+        }
+      }
+
+      // 3a parte: "SP"
+      if (parts[2]) {
+        estado = parts[2].trim()
       }
     }
 
