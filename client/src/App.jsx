@@ -2712,6 +2712,7 @@ function MotoboyPage({ onVoltar }) {
       const d = haversineKm(motoboyPos.lat, motoboyPos.lng, p.entrega_lat, p.entrega_lng) * 1000
       if (d < 400) {
         proximityNotifiedRef.current[p.id] = true
+        tocarSomProximo('400m')
         try {
           if ('Notification' in window && Notification.permission === 'granted') {
             new Notification('🛵 Próximo da entrega #' + p.id, {
@@ -2721,7 +2722,6 @@ function MotoboyPage({ onVoltar }) {
             })
           }
         } catch (_) {}
-        try { navigator.vibrate?.([200, 100, 200, 100, 200]) } catch (_) {}
         fetch(`${API}/orders/${p.id}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
@@ -2745,7 +2745,7 @@ function MotoboyPage({ onVoltar }) {
         novas[p.id] = true
         chegouRef.current[p.id] = true
         mudou = true
-        try { navigator.vibrate?.([300, 200, 300]) } catch (_) {}
+        tocarSomProximo('100m')
         try {
           if ('Notification' in window && Notification.permission === 'granted') {
             new Notification('📍 Chegou no destino #' + p.id, {
@@ -2809,6 +2809,41 @@ function MotoboyPage({ onVoltar }) {
         if (toques < 2) setTimeout(tocar, 1200)
       }
       tocar()
+    } catch (_) {}
+  }
+
+  const tocarSomProximo = (tipo) => {
+    try { navigator.vibrate?.([300, 150, 300]) } catch (_) {}
+    try {
+      let ctx = audioCtxRef.current
+      if (!ctx) {
+        ctx = new (window.AudioContext || window.webkitAudioContext)()
+        audioCtxRef.current = ctx
+      }
+      if (ctx.state === 'suspended') ctx.resume()
+      const t = ctx.currentTime
+      if (tipo === '400m') {
+        for (let i = 0; i < 3; i++) {
+          const osc = ctx.createOscillator()
+          const gain = ctx.createGain()
+          osc.type = 'triangle'
+          osc.frequency.value = 520 + i * 130
+          gain.gain.setValueAtTime(0.25, t + i * 0.15)
+          gain.gain.exponentialRampToValueAtTime(0.01, t + i * 0.15 + 0.25)
+          osc.connect(gain); gain.connect(ctx.destination)
+          osc.start(t + i * 0.15); osc.stop(t + i * 0.15 + 0.25)
+        }
+      } else {
+        const osc = ctx.createOscillator()
+        const gain = ctx.createGain()
+        osc.type = 'sine'
+        osc.frequency.setValueAtTime(660, t)
+        osc.frequency.exponentialRampToValueAtTime(440, t + 0.5)
+        gain.gain.setValueAtTime(0.3, t)
+        gain.gain.exponentialRampToValueAtTime(0.01, t + 0.6)
+        osc.connect(gain); gain.connect(ctx.destination)
+        osc.start(t); osc.stop(t + 0.6)
+      }
     } catch (_) {}
   }
 
