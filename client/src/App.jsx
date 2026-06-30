@@ -2581,7 +2581,11 @@ function MotoboyPage({ onVoltar }) {
         if (!mountedRef.current) return
         setPizzariaConfig(data)
         const addrStr = data.rua ? `${data.rua}, ${data.numero} - ${data.bairro}, ${data.cidade} - ${data.estado}` : ''
-        if (addrStr) {
+        // Priorizar coordenadas salvas (local exato marcado no mapa pelo usuário)
+        if (data.lat && data.lng) {
+          setPizzariaCoords({ lat: data.lat, lng: data.lng })
+        } else if (addrStr) {
+          // Fallback: geocodificar do endereço quando não tem coordenadas salvas
           fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(addrStr)}&limit=1`, {
             headers: { 'User-Agent': 'IsraelitaPizzasApp/1.0' }
           })
@@ -2589,17 +2593,9 @@ function MotoboyPage({ onVoltar }) {
             .then(geo => {
               if (geo?.length && mountedRef.current) {
                 setPizzariaCoords({ lat: parseFloat(geo[0].lat), lng: parseFloat(geo[0].lon) })
-              } else if (data.lat && data.lng && mountedRef.current) {
-                setPizzariaCoords({ lat: data.lat, lng: data.lng })
               }
             })
-            .catch(() => {
-              if (data.lat && data.lng && mountedRef.current) {
-                setPizzariaCoords({ lat: data.lat, lng: data.lng })
-              }
-            })
-        } else if (data.lat && data.lng) {
-          setPizzariaCoords({ lat: data.lat, lng: data.lng })
+            .catch(() => {})
         }
       })
       .catch(() => {})
