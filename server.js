@@ -257,7 +257,8 @@ app.get('/orders/stats', async (req, res) => {
       aceitos: orders.filter(o => o.status === 'aceito').length,
       entregues: orders.filter(o => o.status === 'entregue').length,
       recusados: orders.filter(o => o.status === 'recusado').length,
-      receitaPendente: orders.filter(o => o.status === 'aceito').reduce((s, o) => s + (o.total || 0), 0)
+      receitaPendente: orders.filter(o => o.status === 'aceito').reduce((s, o) => s + (o.total || 0), 0),
+      proximos: orders.filter(o => o.status === 'entregador_proximo').length
     })
   } catch (err) {
     res.status(500).json({ erro: 'Erro ao buscar estatísticas' })

@@ -752,8 +752,8 @@ function MeusPedidos({ token, onVoltar }) {
     } catch (_) { alert('Erro ao buscar pedido') }
   }
 
-  const statusLabel = { pendente: 'Pendente', aceito: 'Aceito', liberado: 'Liberado p/ Entrega', entregue: 'Entregue', recusado: 'Recusado' }
-  const statusClass = { pendente: 'status-pendente', aceito: 'status-aceito', liberado: 'status-liberado', entregue: 'status-entregue', recusado: 'status-recusado' }
+  const statusLabel = { pendente: 'Pendente', aceito: 'Aceito', liberado: 'Liberado p/ Entrega', entregador_proximo: 'Entregador Próximo', entregue: 'Entregue', recusado: 'Recusado' }
+  const statusClass = { pendente: 'status-pendente', aceito: 'status-aceito', liberado: 'status-liberado', entregador_proximo: 'status-entregador_proximo', entregue: 'status-entregue', recusado: 'status-recusado' }
 
   return (
     <div className="carrinho-page">
@@ -785,6 +785,9 @@ function MeusPedidos({ token, onVoltar }) {
                 <strong>Pedido #{pedidoBuscado.id}</strong>
                 <span className={`status-badge ${statusClass[pedidoBuscado.status]}`}>{statusLabel[pedidoBuscado.status]}</span>
               </div>
+              {pedidoBuscado.status === 'entregador_proximo' && (
+                <div className="entregador-proximo-aviso">🛵 O entregador está próximo! Por favor, dirija-se ao local da entrega para receber o pedido.</div>
+              )}
               <div className="pedido-body">
                 <p><strong>Cliente:</strong> {pedidoBuscado.cliente?.nome}</p>
                 <p><strong>Data:</strong> {new Date(pedidoBuscado.data).toLocaleString('pt-BR')}</p>
@@ -817,6 +820,9 @@ function MeusPedidos({ token, onVoltar }) {
                 <strong>Pedido #{pedido.id}</strong>
                 <span className={`status-badge ${statusClass[pedido.status]}`}>{statusLabel[pedido.status]}</span>
               </div>
+              {pedido.status === 'entregador_proximo' && (
+                <div className="entregador-proximo-aviso">🛵 O entregador está próximo! Por favor, dirija-se ao local da entrega para receber o pedido.</div>
+              )}
               <div className="pedido-body">
                 <p><strong>Cliente:</strong> {pedido.cliente?.nome}</p>
                 <p><strong>Data:</strong> {new Date(pedido.data).toLocaleString('pt-BR')}</p>
@@ -1600,15 +1606,15 @@ function AdminOrders({ pendentesCount }) {
     return `${min}:${seg.toString().padStart(2, '0')}`
   }
 
-  const statusLabel = { pendente: 'Pendente', aceito: 'Aceito', liberado: 'Liberado p/ Entrega', entregue: 'Entregue', recusado: 'Recusado' }
-  const statusClass = { pendente: 'status-pendente', aceito: 'status-aceito', liberado: 'status-liberado', entregue: 'status-entregue', recusado: 'status-recusado' }
+  const statusLabel = { pendente: 'Pendente', aceito: 'Aceito', liberado: 'Liberado p/ Entrega', entregador_proximo: 'Entregador Próximo', entregue: 'Entregue', recusado: 'Recusado' }
+  const statusClass = { pendente: 'status-pendente', aceito: 'status-aceito', liberado: 'status-liberado', entregador_proximo: 'status-entregador_proximo', entregue: 'status-entregue', recusado: 'status-recusado' }
 
   return (
     <>
       <div className="admin-header">
         <h2>Pedidos Recebidos</h2>
         <div className="filtro-status">
-          {['todos', 'pendente', 'aceito', 'entregue', 'recusado'].map(s => (
+          {['todos', 'pendente', 'aceito', 'liberado', 'entregador_proximo', 'entregue', 'recusado'].map(s => (
             <button key={s} className={`cat-btn ${filtro === s ? 'active' : ''}`} onClick={() => setFiltro(s)}>
               {s === 'todos' ? 'Todos' : statusLabel[s]}
             </button>
@@ -1654,6 +1660,12 @@ function AdminOrders({ pendentesCount }) {
                 </div>
               )}
               {pedido.status === 'liberado' && (
+                <div className="pedido-actions">
+                  <button className="btn-aceitar" onClick={() => atualizarStatus(pedido.id, 'entregue')}>Marcar como Entregue</button>
+                  <button className="btn-recusar" onClick={() => atualizarStatus(pedido.id, 'recusado')}>Recusar</button>
+                </div>
+              )}
+              {pedido.status === 'entregador_proximo' && (
                 <div className="pedido-actions">
                   <button className="btn-aceitar" onClick={() => atualizarStatus(pedido.id, 'entregue')}>Marcar como Entregue</button>
                   <button className="btn-recusar" onClick={() => atualizarStatus(pedido.id, 'recusado')}>Recusar</button>
@@ -2674,7 +2686,7 @@ function MotoboyPage({ onVoltar }) {
         .then(data => {
           if (!mountedRef.current) return
           if (!Array.isArray(data)) return
-          const liberados = data.filter(p => p.status === 'liberado')
+          const liberados = data.filter(p => p.status === 'liberado' || p.status === 'entregador_proximo')
           liberados.forEach(p => console.log('[DEBUG API] pedido', p.id, 'entrega_lat:', p.entrega_lat, 'entrega_lng:', p.entrega_lng, 'cliente.lat:', p.cliente?.lat, 'cliente.lng:', p.cliente?.lng))
           if (liberados.length > prevCountRef.current && !primeiraCarga.current) {
             tocarSomMotoboy()
@@ -2689,6 +2701,35 @@ function MotoboyPage({ onVoltar }) {
     const id = setInterval(carregar, 10000)
     return () => { clearInterval(id); mountedRef.current = false }
   }, [])
+
+  // Detecta proximidade (400m) — alerta + atualiza status no servidor
+  const proximityNotifiedRef = useRef({})
+  useEffect(() => {
+    if (!motoboyPos) return
+    const alvos = etapa === 'organizar' ? ordemOtimizada : pedidos.filter(p => selecionados.includes(p.id))
+    alvos.forEach(p => {
+      if (!p.entrega_lat || !p.entrega_lng || proximityNotifiedRef.current[p.id] || chegouRef.current[p.id]) return
+      const d = haversineKm(motoboyPos.lat, motoboyPos.lng, p.entrega_lat, p.entrega_lng) * 1000
+      if (d < 400) {
+        proximityNotifiedRef.current[p.id] = true
+        try {
+          if ('Notification' in window && Notification.permission === 'granted') {
+            new Notification('🛵 Próximo da entrega #' + p.id, {
+              body: 'Cliente: ' + (p.cliente?.nome || '') + ' - ' + (p.cliente?.endereco || ''),
+              vibrate: [200, 100, 200],
+              tag: 'prox-' + p.id
+            })
+          }
+        } catch (_) {}
+        try { navigator.vibrate?.([200, 100, 200, 100, 200]) } catch (_) {}
+        fetch(`${API}/orders/${p.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: 'entregador_proximo' })
+        }).catch(() => {})
+      }
+    })
+  }, [motoboyPos, etapa, ordemOtimizada, pedidos, selecionados])
 
   // Detecta chegada nos destinos (dentro de 50m)
   const chegouRef = useRef({})
