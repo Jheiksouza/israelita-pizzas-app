@@ -595,6 +595,7 @@ function AuthModal({ onLogin, onClose }) {
   const [endereco, setEndereco] = useState('')
   const [enderecoLat, setEnderecoLat] = useState(null)
   const [enderecoLng, setEnderecoLng] = useState(null)
+  const [enderecoForm, setEnderecoForm] = useState(null)
   const [erro, setErro] = useState('')
   const [loading, setLoading] = useState(false)
   const [mostrarEnderecoModal, setMostrarEnderecoModal] = useState(false)
@@ -616,7 +617,16 @@ function AuthModal({ onLogin, onClose }) {
     e.preventDefault(); setErro(''); setLoading(true)
     try {
       const endpoint = modo === 'login' ? '/auth/login' : '/auth/signup'
-      const body = modo === 'login' ? { email, senha } : { nome, email, senha, telefone, endereco, endereco_lat: enderecoLat, endereco_lng: enderecoLng }
+      const body = modo === 'login' ? { email, senha } : {
+        nome, email, senha, telefone, endereco,
+        endereco_lat: enderecoLat, endereco_lng: enderecoLng,
+        enderecos: enderecoForm ? [{
+          id: 'addr1', cep: enderecoForm.cep, rua: enderecoForm.rua,
+          numero: enderecoForm.numero, referencia: enderecoForm.referencia,
+          bairro: enderecoForm.bairro, cidade: enderecoForm.cidade,
+          estado: enderecoForm.estado, lat: enderecoLat, lng: enderecoLng
+        }] : endereco ? [{ id: 'addr1', rua: endereco, lat: enderecoLat, lng: enderecoLng }] : []
+      }
       const res = await fetch(`${API}${endpoint}`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
       })
@@ -659,7 +669,7 @@ function AuthModal({ onLogin, onClose }) {
         {mostrarEnderecoModal && (
           <EnderecoFormModal
             enderecoInicial={endereco}
-            onSave={(addr, lat, lng) => { setEndereco(addr); setEnderecoLat(lat); setEnderecoLng(lng); setMostrarEnderecoModal(false); }}
+            onSave={(addr, lat, lng, formData) => { setEndereco(addr); setEnderecoLat(lat); setEnderecoLng(lng); setEnderecoForm(formData); setMostrarEnderecoModal(false); }}
             onClose={() => setMostrarEnderecoModal(false)}
           />
         )}
@@ -2215,7 +2225,11 @@ function EnderecoFormModal({ onSave, onClose, enderecoInicial }) {
     if (!form.cep) { setFormErro('Preencha o CEP'); return }
     if (!form.rua) { setFormErro('Preencha a Rua'); return }
     if (!form.numero) { setFormErro('Preencha o Número'); return }
-    onSave(formatEndereco(form), form.lat, form.lng)
+    onSave(formatEndereco(form), form.lat, form.lng, {
+      cep: form.cep, rua: form.rua, numero: form.numero,
+      referencia: form.referencia || '', bairro: form.bairro || '',
+      cidade: form.cidade || '', estado: form.estado || ''
+    })
   }
 
   return (

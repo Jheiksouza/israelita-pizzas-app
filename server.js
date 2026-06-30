@@ -75,14 +75,16 @@ app.use(authMiddleware)
 app.post('/auth/signup', async (req, res) => {
   if (!checkSupabase(res)) return
   try {
-    const { nome, email, senha, telefone, endereco, endereco_lat, endereco_lng } = req.body
+    const { nome, email, senha, telefone, endereco, endereco_lat, endereco_lng, enderecos } = req.body
     if (!email || !senha) return res.status(400).json({ erro: 'Email e senha obrigatórios' })
     const { data: existente } = await supabase.from('users').select('id').eq('email', email).maybeSingle()
     if (existente) return res.status(409).json({ erro: 'Email já cadastrado' })
     const hash = await bcrypt.hash(senha, 10)
     
-    // Preparar endereços com lat/lng se fornecidos
-    const enderecosIniciais = endereco ? [{ id: 'addr1', rua: endereco, lat: endereco_lat, lng: endereco_lng }] : []
+    // Usar enderecos estruturados do cliente se fornecidos
+    const enderecosIniciais = Array.isArray(enderecos) && enderecos.length > 0
+      ? enderecos
+      : endereco ? [{ id: 'addr1', rua: endereco, lat: endereco_lat, lng: endereco_lng }] : []
     
     const { data, error } = await supabase.from('users').insert({
       nome: nome || '', email, senha: hash, telefone: telefone || '', endereco: endereco || '', enderecos: enderecosIniciais, enderecoselecionado: endereco ? 'addr1' : null
