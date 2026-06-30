@@ -2559,6 +2559,7 @@ function MotoboyPage({ onVoltar }) {
   const primeiraCarga = useRef(true)
   const watchIdRef = useRef(null)
   const audioCtxRef = useRef(null)
+  const motoboyPosRef = useRef(null)
 
   useEffect(() => {
     if ('Notification' in window && Notification.permission === 'default') {
@@ -2604,8 +2605,51 @@ function MotoboyPage({ onVoltar }) {
   useEffect(() => {
     mountedRef.current = true
     if (!navigator.geolocation) { setErroGps('indisponivel'); console.error('[Motoboy] Geolocation não suportado'); return }
+
+    // Wake Lock: mantém a tela acesa enquanto a página estiver visível
+    let wakeLock = null
+    const adquirirWakeLock = async () => {
+      try {
+        if (navigator.wakeLock) {
+          wakeLock = await navigator.wakeLock.request('screen')
+        }
+      } catch (_) {}
+    }
+    adquirirWakeLock()
+
+    // Retoma wake lock quando a página voltar a ficar visível
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        adquirirWakeLock()
+        // Re-adquire posição GPS imediatamente ao voltar
+        if (navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(
+            pos => { if (mountedRef.current) { setMotoboyPos({ lat: pos.coords.latitude, lng: pos.coords.longitude }); setErroGps(null) } },
+            () => {},
+            { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+          )
+        }
+      }
+    }
+    document.addEventListener('visibilitychange', onVisibilityChange)
+
+    // Envia última posição quando a página for fechada/oculta
+    const onPageHide = () => {
+      if (motoboyPosRef.current) {
+        navigator.sendBeacon?.(
+          `${API}/motoboy/position`,
+          JSON.stringify({ lat: motoboyPosRef.current.lat, lng: motoboyPosRef.current.lng })
+        )
+      }
+    }
+    window.addEventListener('pagehide', onPageHide)
+
     watchIdRef.current = navigator.geolocation.watchPosition(
-      pos => { if (mountedRef.current) { setMotoboyPos({ lat: pos.coords.latitude, lng: pos.coords.longitude }); setErroGps(null) } },
+      pos => {
+        const p = { lat: pos.coords.latitude, lng: pos.coords.longitude }
+        motoboyPosRef.current = p
+        if (mountedRef.current) { setMotoboyPos(p); setErroGps(null) }
+      },
       err => { console.error('[Motoboy] Erro GPS:', err.code, err.message); if (mountedRef.current) setErroGps(err.code) },
       { enableHighAccuracy: true, timeout: 20000, maximumAge: 5000 }
     )
@@ -2616,6 +2660,9 @@ function MotoboyPage({ onVoltar }) {
     return () => {
       if (watchIdRef.current) navigator.geolocation.clearWatch(watchIdRef.current)
       clearTimeout(timeout)
+      document.removeEventListener('visibilitychange', onVisibilityChange)
+      window.removeEventListener('pagehide', onPageHide)
+      if (wakeLock) wakeLock.release()
     }
   }, [])
 
@@ -2663,14 +2710,14 @@ function MotoboyPage({ onVoltar }) {
     if (mudou) setChegadas(novas)
   }, [motoboyPos, etapa, ordemOtimizada, pedidos, selecionados])
 
-  // Envia posição do motoboy para o servidor a cada 15s
+  // Envia posição do motoboy para o servidor a cada atualização do GPS + intervalo de 15s
   useEffect(() => {
     if (!motoboyPos) return
     const enviar = () => {
       fetch(`${API}/motoboy/position`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ lat: motoboyPos.lat, lng: motoboyPos.lng })
+        body: JSON.stringify(motoboyPos)
       }).then(r => { if (r.ok) setRastreioOk(true); else setRastreioOk(false) }).catch(() => setRastreioOk(false))
     }
     enviar()
