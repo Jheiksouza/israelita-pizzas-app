@@ -2080,9 +2080,23 @@ function AddressModal({ user, token, onClose, onSave }) {
         }
       }
 
-      // 3a parte: "SP"
+      // 3a parte: "SP" (ou "PR - CEP: 81470-220" se 4 partes)
       if (parts[2]) {
-        estado = parts[2].trim()
+        // Se tem 4 partes, a 3a é estado e a 4a é CEP
+        if (parts[3]) {
+          estado = parts[2].trim()
+          const cepMatch = parts[3].match(/CEP:\s*([\d-]+)/i)
+          if (cepMatch) cep = cepMatch[1].trim()
+        } else {
+          // Verifica se a 3a parte contém estado + CEP juntos
+          const cepMatch = parts[2].match(/^(\w{2})\s*-\s*CEP:\s*([\d-]+)$/i)
+          if (cepMatch) {
+            estado = cepMatch[1].trim()
+            cep = cepMatch[2].trim()
+          } else {
+            estado = parts[2].trim()
+          }
+        }
       }
     }
 

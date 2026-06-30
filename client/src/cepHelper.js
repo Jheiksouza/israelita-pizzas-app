@@ -44,6 +44,7 @@ export function formatEndereco(addr) {
     let s = `${addr.rua}${addr.numero ? ', ' + addr.numero : ''}`
     if (addr.referencia) s += ` (${addr.referencia})`
     s += ` - ${addr.bairro}${addr.cidade ? ', ' + addr.cidade : ''}${addr.estado ? ' - ' + addr.estado : ''}`
+    if (addr.cep) s += ` - CEP: ${addr.cep}`
     return s
   }
   return addr.rua || addr || ''
