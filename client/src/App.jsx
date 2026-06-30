@@ -1719,6 +1719,23 @@ function AdminPizzariaConfig() {
   const [form, setForm] = useState(null)
   const [salvando, setSalvando] = useState(false)
   const [msg, setMsg] = useState('')
+  const [buscandoCep, setBuscandoCep] = useState(false)
+  const cepTimer = useRef(null)
+
+  const handleCepChange = (value) => {
+    const fmt = formatCEP(value)
+    setForm(f => ({ ...f, cep: fmt }))
+    const digits = fmt.replace(/\D/g, '')
+    if (digits.length === 8) {
+      if (cepTimer.current) clearTimeout(cepTimer.current)
+      cepTimer.current = setTimeout(async () => {
+        setBuscandoCep(true)
+        const result = await buscarCEP(digits)
+        if (result) setForm(f => ({ ...f, ...result }))
+        setBuscandoCep(false)
+      }, 300)
+    }
+  }
 
   useEffect(() => {
     fetch(`${API}/admin/config/pizzaria`)
@@ -1735,10 +1752,24 @@ function AdminPizzariaConfig() {
     setSalvando(true)
     setMsg('')
     try {
+      const payload = { ...form, senha: 'admin123' }
+      if (!payload.lat && payload.rua) {
+        try {
+          const addrStr = `${payload.rua}, ${payload.numero} - ${payload.bairro}, ${payload.cidade} - ${payload.estado}`
+          const r = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(addrStr)}&limit=1`, {
+            headers: { 'User-Agent': 'IsraelitaPizzasApp/1.0' }
+          })
+          const geo = await r.json()
+          if (geo?.length) {
+            payload.lat = parseFloat(geo[0].lat)
+            payload.lng = parseFloat(geo[0].lon)
+          }
+        } catch {}
+      }
       const res = await fetch(`${API}/admin/config/pizzaria`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...form, senha: 'admin123' })
+        body: JSON.stringify(payload)
       })
       const data = await res.json()
       if (res.ok) {
@@ -1780,7 +1811,10 @@ function AdminPizzariaConfig() {
         </div>
         <div className="pizzaria-form-row">
           <label>CEP</label>
-          <input placeholder="82840-080" value={form.cep} onChange={e => handleChange('cep', e.target.value)} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <input placeholder="82840-080" value={form.cep} onChange={e => { handleCepChange(e.target.value) }} />
+            {buscandoCep && <span className="endereco-loading">Consultando...</span>}
+          </div>
         </div>
         <div className="pizzaria-form-row pizzaria-form-row-duplo">
           <div className="pizzaria-form-field">
@@ -1950,30 +1984,8 @@ function AddressModal({ user, token, onClose, onSave }) {
     return enderecosList
   })
   const [selecionado, setSelecionado] = useState(user?.enderecoSelecionado || enderecos[0]?.id || '')
-  const [form, setForm] = useState({ cep: '', rua: '', numero: '', referencia: '', bairro: '', cidade: '', estado: '' })
-  const [buscandoCep, setBuscandoCep] = useState(false)
-  const [mostrarForm, setMostrarForm] = useState(false)
-  const [editandoId, setEditandoId] = useState(null)
-  const [formErro, setFormErro] = useState('')
-  const [mostrarMapa, setMostrarMapa] = useState(false)
-  const [enderecoParaMapa, setEnderecoParaMapa] = useState('')
-  const [coordsIniciais, setCoordsIniciais] = useState(null)
-  const cepTimer = useRef(null)
-
-  const handleCepChange = (value) => {
-    const fmt = formatCEP(value)
-    setForm(f => ({ ...f, cep: fmt }))
-    const digits = fmt.replace(/\D/g, '')
-    if (digits.length === 8) {
-      if (cepTimer.current) clearTimeout(cepTimer.current)
-      cepTimer.current = setTimeout(async () => {
-        setBuscandoCep(true)
-        const result = await buscarCEP(digits)
-        if (result) setForm(f => ({ ...f, ...result }))
-        setBuscandoCep(false)
-      }, 300)
-    }
-  }
+  const [mostrarEnderecoForm, setMostrarEnderecoForm] = useState(false)
+  const [enderecoEditando, setEnderecoEditando] = useState(null)
 
   const handleSelect = async (id) => {
     try {
@@ -1986,17 +1998,13 @@ function AddressModal({ user, token, onClose, onSave }) {
     } catch {}
   }
 
-  const handleAdd = async () => {
-    setFormErro('')
-    if (!form.cep) { setFormErro('Preencha o CEP'); return }
-    if (!form.rua) { setFormErro('Preencha a Rua'); return }
-    if (!form.numero) { setFormErro('Preencha o Número'); return }
-    const id = editandoId || 'addr' + Date.now()
-    const addr = { id, ...form }
-    const novos = editandoId
-      ? enderecos.map(a => a.id === editandoId ? addr : a)
+  const handleEnderecoFormSave = async (addrStr, lat, lng, formData) => {
+    const id = enderecoEditando ? enderecoEditando.id : 'addr' + Date.now()
+    const addr = { id, ...formData, lat, lng }
+    const novos = enderecoEditando
+      ? enderecos.map(a => a.id === id ? addr : a)
       : [...enderecos, addr]
-    const novoSelecionado = editandoId ? selecionado : id
+    const novoSelecionado = enderecoEditando ? selecionado : id
     try {
       const res = await fetch(`${API}/auth/enderecos`, {
         method: 'PATCH', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
@@ -2006,28 +2014,11 @@ function AddressModal({ user, token, onClose, onSave }) {
       if (res.ok) {
         setEnderecos(novos)
         setSelecionado(novoSelecionado)
-        setForm({ cep: '', rua: '', numero: '', referencia: '', bairro: '', cidade: '', estado: '' })
-        setMostrarForm(false)
-        setEditandoId(null)
         onSave({ enderecos: data.enderecos, endereco: data.endereco, enderecoSelecionado: novoSelecionado })
       }
     } catch {}
-  }
-
-  const handleAbrirMapa = (enderecoCompleto, coords = null) => {
-    console.log('[Mapa] handleAbrirMapa chamado com endereco:', enderecoCompleto, 'coords:', coords)
-    setEnderecoParaMapa(enderecoCompleto)
-    setCoordsIniciais(coords)
-    setMostrarMapa(true)
-  }
-
-  const handleMapaConfirm = ({ lat, lng }) => {
-    console.log('[Mapa] Confirmado:', { lat, lng })
-    // Atualiza o endereço atual (form + item da lista) com lat/lng
-    if (editandoId) {
-      setEnderecos(prev => prev.map(a => a.id === editandoId ? { ...a, lat, lng } : a))
-    }
-    setForm(f => ({ ...f, lat, lng }))
+    setMostrarEnderecoForm(false)
+    setEnderecoEditando(null)
   }
 
   const handleDelete = async (id) => {
@@ -2045,81 +2036,8 @@ function AddressModal({ user, token, onClose, onSave }) {
   }
 
   const handleEdit = (addr) => {
-    // Se o endereço está no formato legado (apenas rua com endereço completo), tenta parsear
-    let cep = addr.cep || ''
-    let rua = addr.rua || ''
-    let numero = addr.numero || ''
-    let referencia = addr.referencia || ''
-    let bairro = addr.bairro || ''
-    let cidade = addr.cidade || ''
-    let estado = addr.estado || ''
-
-    // Se tem apenas rua preenchida e parece ser endereço completo, tenta extrair partes
-    if (rua && !numero && !bairro && !cidade && !estado) {
-      let completo = rua
-
-      // Extrai referencia entre parenteses
-      const refMatch = completo.match(/\(([^)]+)\)/)
-      if (refMatch) {
-        referencia = refMatch[1].trim()
-        completo = completo.replace(/\([^)]+\)/g, '').replace(/\s+/g, ' ').trim()
-      }
-
-      // Divide por " - " (separador do formatEndereco)
-      const parts = completo.split(' - ').map(s => s.trim()).filter(Boolean)
-
-      // 1a parte: "Rua, 123"
-      if (parts[0]) {
-        const numMatch = parts[0].match(/^(.+?),\s*(\d+[a-zA-Z]?)\s*$/)
-        if (numMatch) {
-          rua = numMatch[1].trim()
-          numero = numMatch[2].trim()
-        } else {
-          rua = parts[0]
-        }
-      }
-
-      // 2a parte: "Bairro, Cidade" ou so "Bairro"
-      if (parts[1]) {
-        const bairroMatch = parts[1].match(/^(.+?),\s*(.+)$/)
-        if (bairroMatch) {
-          bairro = bairroMatch[1].trim()
-          cidade = bairroMatch[2].trim()
-        } else {
-          bairro = parts[1]
-        }
-      }
-
-      // 3a parte: "SP" (ou "PR - CEP: 81470-220" se 4 partes)
-      if (parts[2]) {
-        // Se tem 4 partes, a 3a é estado e a 4a é CEP
-        if (parts[3]) {
-          estado = parts[2].trim()
-          const cepMatch = parts[3].match(/CEP:\s*([\d-]+)/i)
-          if (cepMatch) cep = cepMatch[1].trim()
-        } else {
-          // Verifica se a 3a parte contém estado + CEP juntos
-          const cepMatch = parts[2].match(/^(\w{2})\s*-\s*CEP:\s*([\d-]+)$/i)
-          if (cepMatch) {
-            estado = cepMatch[1].trim()
-            cep = cepMatch[2].trim()
-          } else {
-            estado = parts[2].trim()
-          }
-        }
-      }
-    }
-
-    setForm({ cep, rua, numero, referencia, bairro, cidade, estado, lat: addr.lat, lng: addr.lng })
-    setEditandoId(addr.id)
-    setMostrarForm(true)
-    console.log('[AddressModal] handleEdit - dados extraídos do endereço:', { cep, rua, numero, referencia, bairro, cidade, estado, id: addr.id, lat: addr.lat, lng: addr.lng })
-  }
-
-  const cancelForm = () => {
-    setForm({ cep: '', rua: '', numero: '', referencia: '', bairro: '', cidade: '', estado: '' })
-    setMostrarForm(false)
-    setEditandoId(null)
+    setEnderecoEditando(addr)
+    setMostrarEnderecoForm(true)
   }
 
   return (
@@ -2132,59 +2050,46 @@ function AddressModal({ user, token, onClose, onSave }) {
             <input type="radio" name="endereco-modal" checked={selecionado === addr.id} onChange={() => {}} />
             <span className="endereco-text">{formatEndereco(addr)}</span>
             <button className="endereco-edit" onClick={e => { e.stopPropagation(); handleEdit(addr) }}>✏️</button>
-            <button className="endereco-mapa" onClick={e => { e.stopPropagation(); handleAbrirMapa(formatEndereco(addr), addr.lat && addr.lng ? { lat: addr.lat, lng: addr.lng } : null) }}>📍</button>
             {enderecos.length > 1 && <button className="endereco-remove" onClick={e => { e.stopPropagation(); handleDelete(addr.id) }}>✕</button>}
           </div>
         ))}
-        {!mostrarForm ? (
-          <button className="endereco-add-btn" onClick={() => setMostrarForm(true)}>+ Adicionar novo endereço</button>
-        ) : (
-          <div className="endereco-form">
-            <p className="endereco-form-title">{editandoId ? 'Editar endereço' : 'Novo endereço'}</p>
-            {formErro && <p className="endereco-erro">{formErro}</p>}
-            <div className="endereco-form-cep-row">
-              <input className="endereco-input endereco-input-cep" placeholder="CEP *" value={form.cep} onChange={e => { setFormErro(''); handleCepChange(e.target.value) }} />
-              {buscandoCep && <span className="endereco-loading">Consultando...</span>}
-            </div>
-            <div className="endereco-form-row">
-              <input className="endereco-input endereco-input-rua" placeholder="Rua *" value={form.rua} onChange={e => { setFormErro(''); setForm(f => ({ ...f, rua: e.target.value })) }} />
-              <input className="endereco-input endereco-input-num" placeholder="Nº *" maxLength={6} value={form.numero} onChange={e => { setFormErro(''); setForm(f => ({ ...f, numero: e.target.value })) }} />
-            </div>
-            <input className="endereco-input" placeholder="Complemento" value={form.referencia} onChange={e => setForm(f => ({ ...f, referencia: e.target.value }))} />
-            <div className="endereco-form-row endereco-form-row-triple">
-              <input className="endereco-input endereco-input-bairro" placeholder="Bairro" value={form.bairro} onChange={e => setForm(f => ({ ...f, bairro: e.target.value }))} />
-              <input className="endereco-input endereco-input-cidade" placeholder="Cidade" value={form.cidade} onChange={e => setForm(f => ({ ...f, cidade: e.target.value }))} />
-              <input className="endereco-input endereco-input-estado" placeholder="UF" maxLength={2} value={form.estado} onChange={e => setForm(f => ({ ...f, estado: e.target.value }))} />
-            </div>
-            <button className="endereco-mapa-btn" type="button" onClick={() => handleAbrirMapa(formatEndereco(form), form.lat && form.lng ? { lat: form.lat, lng: form.lng } : null)}>📍 Marcar local exato no mapa</button>
-            <div className="endereco-form-actions">
-              <button className="btn-add" onClick={handleAdd}>{editandoId ? 'Salvar' : 'Adicionar'}</button>
-              <button className="btn-del" onClick={cancelForm}>Cancelar</button>
-            </div>
-          </div>
-        )}
-        {!mostrarForm && <button className="btn-add" style={{marginTop:16}} onClick={onClose}>Concluído</button>}
-        <MapaEntregaModal
-          key={'mapa-addr-' + mostrarMapa}
-          isOpen={mostrarMapa}
-          onClose={() => { setMostrarMapa(false); setCoordsIniciais(null) }}
-          onConfirm={handleMapaConfirm}
-          enderecoInicial={enderecoParaMapa}
-          initialCoords={coordsIniciais}
-        />
+        <button className="endereco-add-btn" onClick={() => { setEnderecoEditando(null); setMostrarEnderecoForm(true) }}>+ Adicionar novo endereço</button>
+        <button className="btn-add" style={{marginTop:8}} onClick={onClose}>Concluído</button>
       </div>
+      {mostrarEnderecoForm && (
+        <EnderecoFormModal
+          enderecoInicial={enderecoEditando}
+          onSave={handleEnderecoFormSave}
+          onClose={() => { setMostrarEnderecoForm(false); setEnderecoEditando(null) }}
+        />
+      )}
     </div>
   )
 }
 
 function EnderecoFormModal({ onSave, onClose, enderecoInicial }) {
   const [form, setForm] = useState(() => {
-    if (enderecoInicial) {
-      const cepMatch = enderecoInicial.match(/^(\d{5}-?\d{3})/)
-      const cep = cepMatch ? cepMatch[1] : ''
-      return { cep, rua: '', numero: '', referencia: '', bairro: '', cidade: '', estado: '' }
+    if (!enderecoInicial) {
+      return { cep: '', rua: '', numero: '', referencia: '', bairro: '', cidade: '', estado: '', lat: null, lng: null }
     }
-    return { cep: '', rua: '', numero: '', referencia: '', bairro: '', cidade: '', estado: '' }
+    if (typeof enderecoInicial === 'object') {
+      return {
+        cep: enderecoInicial.cep || '',
+        rua: enderecoInicial.rua || '',
+        numero: enderecoInicial.numero || '',
+        referencia: enderecoInicial.referencia || '',
+        bairro: enderecoInicial.bairro || '',
+        cidade: enderecoInicial.cidade || '',
+        estado: enderecoInicial.estado || '',
+        lat: enderecoInicial.lat || null,
+        lng: enderecoInicial.lng || null
+      }
+    }
+    const cepMatch = enderecoInicial.match(/^(\d{5}-?\d{3})/)
+    return {
+      cep: cepMatch ? cepMatch[1] : '',
+      rua: '', numero: '', referencia: '', bairro: '', cidade: '', estado: '', lat: null, lng: null
+    }
   })
   const [buscandoCep, setBuscandoCep] = useState(false)
   const [formErro, setFormErro] = useState('')
@@ -2598,7 +2503,7 @@ function RastreioPage() {
   )
 }
 
-const PIZZARIA_ADDR = 'Rua Eloir Dide Maria, 283 - Tatuquara, Curitiba - PR'
+const PIZZARIA_ADDR = ''
 
 function MotoboyPage({ onVoltar }) {
   const [pedidos, setPedidos] = useState([])
@@ -2639,18 +2544,26 @@ function MotoboyPage({ onVoltar }) {
       .then(data => {
         if (!mountedRef.current) return
         setPizzariaConfig(data)
-        if (data.lat && data.lng) {
-          setPizzariaCoords({ lat: data.lat, lng: data.lng })
-        } else if (data.rua) {
-          const addrStr = `${data.rua}, ${data.numero} - ${data.bairro}, ${data.cidade} - ${data.estado}`
-          fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(addrStr)}&limit=1`)
+        const addrStr = data.rua ? `${data.rua}, ${data.numero} - ${data.bairro}, ${data.cidade} - ${data.estado}` : ''
+        if (addrStr) {
+          fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(addrStr)}&limit=1`, {
+            headers: { 'User-Agent': 'IsraelitaPizzasApp/1.0' }
+          })
             .then(r => r.json())
             .then(geo => {
               if (geo?.length && mountedRef.current) {
                 setPizzariaCoords({ lat: parseFloat(geo[0].lat), lng: parseFloat(geo[0].lon) })
+              } else if (data.lat && data.lng && mountedRef.current) {
+                setPizzariaCoords({ lat: data.lat, lng: data.lng })
               }
             })
-            .catch(() => {})
+            .catch(() => {
+              if (data.lat && data.lng && mountedRef.current) {
+                setPizzariaCoords({ lat: data.lat, lng: data.lng })
+              }
+            })
+        } else if (data.lat && data.lng) {
+          setPizzariaCoords({ lat: data.lat, lng: data.lng })
         }
       })
       .catch(() => {})
