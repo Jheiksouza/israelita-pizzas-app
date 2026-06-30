@@ -2711,19 +2711,20 @@ function MotoboyPage({ onVoltar }) {
     const extrairLng = a => a.entrega_lng ?? a.cliente?.lng ?? a.cliente?.endereco_lng ?? null
     ordemOtimizada.forEach(p => console.log('[DEBUG abrirNoMapsRota] pedido', p.id, 'extrairLat:', extrairLat(p), 'extrairLng:', extrairLng(p), 'endereco:', p.cliente?.endereco))
     const destinos = ordemOtimizada.filter(p => (extrairLat(p) && extrairLng(p)) || p.cliente?.endereco)
+    if (destinos.length === 0) return
     const enc = a => {
       const lat = extrairLat(a)
       const lng = extrairLng(a)
       if (lat && lng) return `${lat},${lng}`
       return a.cliente?.endereco
     }
+    const pontos = destinos.map(enc)
     const params = new URLSearchParams({ api: 1, travelmode: 'driving', dir_action: 'navigate' })
-    params.set('destination', PIZZARIA_ADDR)
-    if (destinos.length > 0) {
-      const encoded = destinos.map(enc).join('|')
-      console.log('[DEBUG abrirNoMapsRota] waypoints (decoded):', encoded)
-      params.set('waypoints', encoded)
+    params.set('destination', pontos[pontos.length - 1])
+    if (pontos.length > 1) {
+      params.set('waypoints', pontos.slice(0, -1).join('|'))
     }
+    console.log('[DEBUG abrirNoMapsRota] destination:', pontos[pontos.length - 1], 'waypoints:', pontos.length > 1 ? pontos.slice(0, -1).join('|') : '(nenhum)')
     const url = `https://www.google.com/maps/dir/?${params}`
     console.log('[DEBUG abrirNoMapsRota] URL final:', url)
     window.open(url, '_blank')
