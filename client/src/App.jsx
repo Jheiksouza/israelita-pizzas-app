@@ -1841,6 +1841,7 @@ function AddressModal({ user, token, onClose, onSave }) {
   const [formErro, setFormErro] = useState('')
   const [mostrarMapa, setMostrarMapa] = useState(false)
   const [enderecoParaMapa, setEnderecoParaMapa] = useState('')
+  const [coordsIniciais, setCoordsIniciais] = useState(null)
   const cepTimer = useRef(null)
 
   const handleCepChange = (value) => {
@@ -1897,9 +1898,10 @@ function AddressModal({ user, token, onClose, onSave }) {
     } catch {}
   }
 
-  const handleAbrirMapa = (enderecoCompleto) => {
-    console.log('[Mapa] handleAbrirMapa chamado com endereco:', enderecoCompleto)
+  const handleAbrirMapa = (enderecoCompleto, coords = null) => {
+    console.log('[Mapa] handleAbrirMapa chamado com endereco:', enderecoCompleto, 'coords:', coords)
     setEnderecoParaMapa(enderecoCompleto)
+    setCoordsIniciais(coords)
     setMostrarMapa(true)
   }
 
@@ -1947,7 +1949,7 @@ function AddressModal({ user, token, onClose, onSave }) {
       }
     }
 
-    setForm({ cep, rua, numero, referencia, bairro, cidade, estado })
+    setForm({ cep, rua, numero, referencia, bairro, cidade, estado, lat: addr.lat, lng: addr.lng })
     setEditandoId(addr.id)
     setMostrarForm(true)
     console.log('[AddressModal] handleEdit - dados extraídos do endereço:', { cep, rua, numero, referencia, bairro, cidade, estado, id: addr.id, lat: addr.lat, lng: addr.lng })
@@ -1969,7 +1971,7 @@ function AddressModal({ user, token, onClose, onSave }) {
             <input type="radio" name="endereco-modal" checked={selecionado === addr.id} onChange={() => {}} />
             <span className="endereco-text">{formatEndereco(addr)}</span>
             <button className="endereco-edit" onClick={e => { e.stopPropagation(); handleEdit(addr) }}>✏️</button>
-            <button className="endereco-mapa" onClick={e => { e.stopPropagation(); handleAbrirMapa(formatEndereco(addr)) }}>📍</button>
+            <button className="endereco-mapa" onClick={e => { e.stopPropagation(); handleAbrirMapa(formatEndereco(addr), addr.lat && addr.lng ? { lat: addr.lat, lng: addr.lng } : null) }}>📍</button>
             {enderecos.length > 1 && <button className="endereco-remove" onClick={e => { e.stopPropagation(); handleDelete(addr.id) }}>✕</button>}
           </div>
         ))}
@@ -1993,7 +1995,7 @@ function AddressModal({ user, token, onClose, onSave }) {
               <input className="endereco-input endereco-input-cidade" placeholder="Cidade" value={form.cidade} onChange={e => setForm(f => ({ ...f, cidade: e.target.value }))} />
               <input className="endereco-input endereco-input-estado" placeholder="UF" maxLength={2} value={form.estado} onChange={e => setForm(f => ({ ...f, estado: e.target.value }))} />
             </div>
-            <button className="endereco-mapa-btn" type="button" onClick={() => handleAbrirMapa(formatEndereco(form))}>📍 Marcar local exato no mapa</button>
+            <button className="endereco-mapa-btn" type="button" onClick={() => handleAbrirMapa(formatEndereco(form), form.lat && form.lng ? { lat: form.lat, lng: form.lng } : null)}>📍 Marcar local exato no mapa</button>
             <div className="endereco-form-actions">
               <button className="btn-add" onClick={handleAdd}>{editandoId ? 'Salvar' : 'Adicionar'}</button>
               <button className="btn-del" onClick={cancelForm}>Cancelar</button>
@@ -2004,9 +2006,10 @@ function AddressModal({ user, token, onClose, onSave }) {
         <MapaEntregaModal
           key={'mapa-addr-' + mostrarMapa}
           isOpen={mostrarMapa}
-          onClose={() => setMostrarMapa(false)}
+          onClose={() => { setMostrarMapa(false); setCoordsIniciais(null) }}
           onConfirm={handleMapaConfirm}
           enderecoInicial={enderecoParaMapa}
+          initialCoords={coordsIniciais}
         />
       </div>
     </div>
@@ -2026,6 +2029,7 @@ function EnderecoFormModal({ onSave, onClose, enderecoInicial }) {
   const [formErro, setFormErro] = useState('')
   const [mostrarMapa, setMostrarMapa] = useState(false)
   const [enderecoParaMapa, setEnderecoParaMapa] = useState('')
+  const [coordsIniciais, setCoordsIniciais] = useState(null)
   const cepTimer = useRef(null)
 
   const handleCepChange = (value) => {
@@ -2043,9 +2047,10 @@ function EnderecoFormModal({ onSave, onClose, enderecoInicial }) {
     }
   }
 
-  const handleAbrirMapa = (enderecoCompleto) => {
-    console.log('[EnderecoFormModal] handleAbrirMapa chamado com endereco:', enderecoCompleto)
+  const handleAbrirMapa = (enderecoCompleto, coords = null) => {
+    console.log('[EnderecoFormModal] handleAbrirMapa chamado com endereco:', enderecoCompleto, 'coords:', coords)
     setEnderecoParaMapa(enderecoCompleto)
+    setCoordsIniciais(coords)
     setMostrarMapa(true)
   }
 
@@ -2084,7 +2089,7 @@ function EnderecoFormModal({ onSave, onClose, enderecoInicial }) {
             <input className="endereco-input endereco-input-cidade" placeholder="Cidade" value={form.cidade} onChange={e => setForm(f => ({ ...f, cidade: e.target.value }))} />
             <input className="endereco-input endereco-input-estado" placeholder="UF" maxLength={2} value={form.estado} onChange={e => setForm(f => ({ ...f, estado: e.target.value }))} />
           </div>
-          <button className="endereco-mapa-btn" type="button" onClick={() => handleAbrirMapa(formatEndereco(form))}>📍 Marcar local exato no mapa</button>
+          <button className="endereco-mapa-btn" type="button" onClick={() => handleAbrirMapa(formatEndereco(form), form.lat && form.lng ? { lat: form.lat, lng: form.lng } : null)}>📍 Marcar local exato no mapa</button>
           <div className="endereco-form-actions">
             <button className="btn-add" onClick={handleSave}>Salvar endereço</button>
           </div>
@@ -2092,9 +2097,10 @@ function EnderecoFormModal({ onSave, onClose, enderecoInicial }) {
         <MapaEntregaModal
           key={'mapa-end-' + mostrarMapa}
           isOpen={mostrarMapa}
-          onClose={() => setMostrarMapa(false)}
+          onClose={() => { setMostrarMapa(false); setCoordsIniciais(null) }}
           onConfirm={handleMapaConfirm}
           enderecoInicial={enderecoParaMapa}
+          initialCoords={coordsIniciais}
         />
       </div>
     </div>
@@ -2106,6 +2112,7 @@ function MapaEntregaModal({
   onClose,
   onConfirm,
   enderecoInicial,
+  initialCoords,
 }) {
   const [lat, setLat] = useState(null)
   const [lng, setLng] = useState(null)
@@ -2119,7 +2126,7 @@ function MapaEntregaModal({
 
   useEffect(() => {
     if (!isOpen) return
-    console.log('[MapaEntregaModal] Abrindo modal. enderecoInicial:', enderecoInicial)
+    console.log('[MapaEntregaModal] Abrindo modal. enderecoInicial:', enderecoInicial, 'initialCoords:', initialCoords)
     mountedRef.current = true
     setPronto(false)
     setLat(null)
@@ -2127,6 +2134,15 @@ function MapaEntregaModal({
     setBuscando(true)
     setBuscaEndereco('')
     setErroBusca('')
+
+    if (initialCoords?.lat && initialCoords?.lng) {
+      console.log('[MapaEntregaModal] Usando coordenadas iniciais:', initialCoords)
+      setLat(initialCoords.lat)
+      setLng(initialCoords.lng)
+      setBuscando(false)
+      setPronto(true)
+      return
+    }
 
     if (!enderecoInicial) {
       console.log('[MapaEntregaModal] Sem enderecoInicial, fallback SP')
