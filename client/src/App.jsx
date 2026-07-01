@@ -2611,6 +2611,9 @@ function RastreioPage() {
 
 const PIZZARIA_ADDR = ''
 
+const getLat = p => parseFloat(p.entrega_lat) || parseFloat(p.cliente?.lat) || parseFloat(p.cliente?.endereco_lat) || null
+const getLng = p => parseFloat(p.entrega_lng) || parseFloat(p.cliente?.lng) || parseFloat(p.cliente?.endereco_lng) || null
+
 function MotoboyPage({ onVoltar, userNome }) {
   const [pedidosDisponiveis, setPedidosDisponiveis] = useState([])
   const [selecionados, setSelecionados] = useState([])
