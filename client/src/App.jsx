@@ -702,19 +702,38 @@ function MeusPedidos({ token, onVoltar }) {
 
   useEffect(() => {
     if (!token) { setLoading(false); return }
-    fetch(`${API}/orders/mine`, { headers: { 'Authorization': `Bearer ${token}` } })
-      .then(r => r.json()).then(data => {
-        setPedidos(data)
-        setLoading(false)
-        data.forEach(p => {
-          const prevStatus = prevStatusRef.current[p.id]
-          if (prevStatus && prevStatus !== 'liberado' && p.status === 'liberado') {
-            tocarSomLiberado()
-            setNotificacaoLiberado(p)
-          }
-          prevStatusRef.current[p.id] = p.status
-        })
-      }).catch(() => setLoading(false))
+    const carregar = () => {
+      fetch(`${API}/orders/mine`, { headers: { 'Authorization': `Bearer ${token}` } })
+        .then(r => r.json()).then(data => {
+          setPedidos(data)
+          setLoading(false)
+          data.forEach(p => {
+            const prev = prevStatusRef.current[p.id]
+            if (!prev) { prevStatusRef.current[p.id] = p.status; return }
+            if (prev !== p.status) {
+              if (p.status === 'liberado' && prev !== 'entregador_proximo') {
+                tocarSomLiberado()
+                setNotificacaoLiberado(p)
+              }
+              if (p.status === 'entregador_proximo') {
+                try {
+                  if ('Notification' in window && Notification.permission === 'granted') {
+                    new Notification('🛵 Entregador próximo!', {
+                      body: 'Pedido #' + p.id + ' - O entregador está chegando!',
+                      vibrate: [200, 100, 200]
+                    })
+                  }
+                } catch (_) {}
+                try { navigator.vibrate?.([200, 100, 200]) } catch (_) {}
+              }
+            }
+            prevStatusRef.current[p.id] = p.status
+          })
+        }).catch(() => setLoading(false))
+    }
+    carregar()
+    const id = setInterval(carregar, 10000)
+    return () => clearInterval(id)
   }, [token])
 
   const tocarSomLiberado = () => {
@@ -2812,8 +2831,27 @@ function MotoboyPage({ onVoltar }) {
     } catch (_) {}
   }
 
+  const gerarBeepWav = (freq, dur) => {
+    const sr = 8000, n = Math.floor(sr * dur)
+    const buf = new ArrayBuffer(44 + n * 2)
+    const v = new DataView(buf)
+    const w = (o, s) => { for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)) }
+    w(0, 'RIFF'); v.setUint32(4, 36 + n * 2, true); w(8, 'WAVE')
+    w(12, 'fmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true)
+    v.setUint16(22, 1, true); v.setUint32(24, sr, true); v.setUint32(28, sr * 2, true)
+    v.setUint16(32, 2, true); v.setUint16(34, 16, true); w(36, 'data')
+    v.setUint32(40, n * 2, true)
+    for (let i = 0; i < n; i++) {
+      const s = Math.sin(2 * Math.PI * freq * i / sr) * 0.4
+      v.setInt16(44 + i * 2, s * 32767, true)
+    }
+    return URL.createObjectURL(new Blob([buf], { type: 'audio/wav' }))
+  }
+
   const tocarSomProximo = (tipo) => {
     try { navigator.vibrate?.([300, 150, 300]) } catch (_) {}
+    const steps = tipo === '400m' ? 3 : 1
+    // AudioContext (desktop)
     try {
       let ctx = audioCtxRef.current
       if (!ctx) {
@@ -2822,28 +2860,26 @@ function MotoboyPage({ onVoltar }) {
       }
       if (ctx.state === 'suspended') ctx.resume()
       const t = ctx.currentTime
-      if (tipo === '400m') {
-        for (let i = 0; i < 3; i++) {
-          const osc = ctx.createOscillator()
-          const gain = ctx.createGain()
-          osc.type = 'triangle'
-          osc.frequency.value = 520 + i * 130
-          gain.gain.setValueAtTime(0.25, t + i * 0.15)
-          gain.gain.exponentialRampToValueAtTime(0.01, t + i * 0.15 + 0.25)
-          osc.connect(gain); gain.connect(ctx.destination)
-          osc.start(t + i * 0.15); osc.stop(t + i * 0.15 + 0.25)
-        }
-      } else {
+      for (let i = 0; i < steps; i++) {
         const osc = ctx.createOscillator()
         const gain = ctx.createGain()
-        osc.type = 'sine'
-        osc.frequency.setValueAtTime(660, t)
-        osc.frequency.exponentialRampToValueAtTime(440, t + 0.5)
-        gain.gain.setValueAtTime(0.3, t)
-        gain.gain.exponentialRampToValueAtTime(0.01, t + 0.6)
+        osc.type = tipo === '400m' ? 'triangle' : 'sine'
+        osc.frequency.value = (tipo === '400m' ? 520 : 660) + i * 130
+        gain.gain.setValueAtTime(0.25, t + i * 0.15)
+        gain.gain.exponentialRampToValueAtTime(0.01, t + i * 0.15 + (tipo === '400m' ? 0.2 : 0.5))
         osc.connect(gain); gain.connect(ctx.destination)
-        osc.start(t); osc.stop(t + 0.6)
+        osc.start(t + i * 0.15); osc.stop(t + i * 0.15 + (tipo === '400m' ? 0.2 : 0.5))
       }
+    } catch (_) {}
+    // Fallback: Audio element (funciona em iOS)
+    try {
+      const url = gerarBeepWav(tipo === '400m' ? 650 : 800, tipo === '400m' ? 0.15 : 0.4)
+      const tocar = (i) => {
+        if (i >= steps) { setTimeout(() => URL.revokeObjectURL(url), 1000); return }
+        const a = new Audio(url); a.volume = 0.8; a.play().catch(() => {})
+        a.onended = () => setTimeout(() => tocar(i + 1), 150)
+      }
+      tocar(0)
     } catch (_) {}
   }
 
