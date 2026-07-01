@@ -2612,7 +2612,10 @@ function RastreioPage() {
 const PIZZARIA_ADDR = ''
 
 function MotoboyPage({ onVoltar, userNome }) {
-  const [pedidos, setPedidos] = useState([])
+  const [pedidosDisponiveis, setPedidosDisponiveis] = useState([])
+  const [selecionados, setSelecionados] = useState([])
+  const [etapa, setEtapa] = useState('selecao')
+  const [ordemOtimizada, setOrdemOtimizada] = useState([])
   const [entregaAtual, setEntregaAtual] = useState(0)
   const [navegacaoIniciada, setNavegacaoIniciada] = useState(false)
   const [motoboyPos, setMotoboyPos] = useState(null)
@@ -2622,6 +2625,7 @@ function MotoboyPage({ onVoltar, userNome }) {
   const [menuOpen, setMenuOpen] = useState(false)
   const [pizzariaCoords, setPizzariaCoords] = useState(null)
   const [concluidos, setConcluidos] = useState([])
+  const [otimizando, setOtimizando] = useState(false)
   const mountedRef = useRef(true)
   const watchIdRef = useRef(null)
   const motoboyPosRef = useRef(null)
@@ -2646,12 +2650,12 @@ function MotoboyPage({ onVoltar, userNome }) {
         .then(r => r.json())
         .then(data => {
           if (!mountedRef.current || !Array.isArray(data)) return
-          const liberados = data.filter(p => p.status === 'liberado' || p.status === 'entregador_proximo')
-          if (liberados.length > prevPedidosCount.current && prevPedidosCount.current > 0) {
+          const disponiveis = data.filter(p => p.status === 'liberado')
+          if (disponiveis.length > prevPedidosCount.current && prevPedidosCount.current > 0) {
             try { navigator.vibrate?.([200, 100, 200]) } catch {}
           }
-          prevPedidosCount.current = liberados.length
-          setPedidos(liberados)
+          prevPedidosCount.current = disponiveis.length
+          setPedidosDisponiveis(disponiveis)
         }).catch(() => {})
     }
     carregar()
@@ -2709,55 +2713,106 @@ function MotoboyPage({ onVoltar, userNome }) {
     return () => clearInterval(id)
   }, [motoboyPos, userNome])
 
-  const pedidoAtual = pedidos[entregaAtual]
-  const getLat = (p) => p?.entrega_lat ?? p?.cliente?.lat ?? p?.cliente?.endereco_lat ?? null
-  const getLng = (p) => p?.entrega_lng ?? p?.cliente?.lng ?? p?.cliente?.endereco_lng ?? null
-
-  const haversineKm = (lat1, lng1, lat2, lng2) => {
-    const R = 6371
-    const dLat = (lat2 - lat1) * Math.PI / 180
-    const dLng = (lng2 - lng1) * Math.PI / 180
-    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-              Math.sin(dLng/2) * Math.sin(dLng/2)
-    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
-  }
-
+  // Proximity detection for current delivery
   useEffect(() => {
-    if (!motoboyPos || !pedidoAtual || !navegacaoIniciada) return
-    const pLat = getLat(pedidoAtual)
-    const pLng = getLng(pedidoAtual)
+    if (!motoboyPos || etapa !== 'entrega') return
+    const p = ordemOtimizada[entregaAtual]
+    if (!p) return
+    const pLat = getLat(p)
+    const pLng = getLng(p)
     if (!pLat || !pLng) return
     const d = haversineKm(motoboyPos.lat, motoboyPos.lng, pLat, pLng) * 1000
-    if (d < 400 && !proximityNotifiedRef.current[pedidoAtual.id]) {
-      proximityNotifiedRef.current[pedidoAtual.id] = true
+    if (d < 400 && !proximityNotifiedRef.current[p.id]) {
+      proximityNotifiedRef.current[p.id] = true
       try { navigator.vibrate?.([200, 100, 200]) } catch {}
-      fetch(`${API}/orders/${pedidoAtual.id}`, {
+      fetch(`${API}/orders/${p.id}`, {
         method: 'PATCH', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: 'entregador_proximo' })
       }).catch(() => {})
     }
-    if (d < 100) {
-      setChegou(true)
-    } else {
-      setChegou(false)
+    setChegou(d < 100)
+  }, [motoboyPos, etapa, entregaAtual])
+
+  const toggleSelecionado = (id) => {
+    setSelecionados(prev =>
+      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+    )
+  }
+
+  const organizarRota = async () => {
+    const selec = pedidosDisponiveis.filter(p => selecionados.includes(p.id))
+    if (selec.length === 0) return
+    setOtimizando(true)
+
+    // Mark orders as 'em_rota' so other motoboys don't see them
+    await Promise.all(selec.map(p =>
+      fetch(`${API}/orders/${p.id}`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'em_rota' })
+      }).catch(() => {})
+    ))
+
+    const temCoords = selec.filter(p => getLat(p) && getLng(p))
+    const semCoords = selec.filter(p => !getLat(p) || !getLng(p))
+
+    if (motoboyPos && pizzariaCoords && temCoords.length >= 1) {
+      try {
+        const coordsStr = [
+          `${motoboyPos.lng},${motoboyPos.lat}`,
+          ...temCoords.map(p => `${getLng(p)},${getLat(p)}`),
+          `${pizzariaCoords.lng},${pizzariaCoords.lat}`
+        ].join(';')
+        const r = await fetch(`https://router.project-osrm.org/trip/v1/driving/${coordsStr}?source=first&destination=last&overview=false`)
+        if (r.ok) {
+          const data = await r.json()
+          if (data.code === 'Ok') {
+            const waypoints = data.trips[0].waypoints
+            const rotaOtimizada = waypoints.slice(1, -1).map((wp) => ({
+              ...temCoords[wp.waypoint_index - 1],
+            }))
+            const semCoordsOrd = [...semCoords].sort((a, b) => new Date(a.data) - new Date(b.data))
+            setOrdemOtimizada([...rotaOtimizada, ...semCoordsOrd])
+            setEtapa('organizar')
+            setOtimizando(false)
+            setEntregaAtual(0)
+            return
+          }
+        }
+      } catch (_) {}
     }
-  }, [motoboyPos, navegacaoIniciada, entregaAtual])
+
+    const ordenados = [...selec].sort((a, b) => {
+      const aLat = getLat(a); const aLng = getLng(a)
+      const bLat = getLat(b); const bLng = getLng(b)
+      const da = aLat && motoboyPos ? haversineKm(motoboyPos.lat, motoboyPos.lng, aLat, aLng) : Infinity
+      const db = bLat && motoboyPos ? haversineKm(motoboyPos.lat, motoboyPos.lng, bLat, bLng) : Infinity
+      if (da !== db) return da - db
+      return new Date(a.data) - new Date(b.data)
+    })
+    setOrdemOtimizada(ordenados)
+    setEtapa('organizar')
+    setOtimizando(false)
+    setEntregaAtual(0)
+  }
 
   const iniciarNavegacao = () => {
     setNavegacaoIniciada(true)
-    const lat = getLat(pedidoAtual)
-    const lng = getLng(pedidoAtual)
+    const p = ordemOtimizada[entregaAtual]
+    if (!p) return
+    const lat = getLat(p)
+    const lng = getLng(p)
     if (lat && lng) {
       window.open(`https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving&dir_action=navigate`, '_blank')
-    } else if (pedidoAtual?.cliente?.endereco) {
-      window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(pedidoAtual.cliente.endereco)}&travelmode=driving&dir_action=navigate`, '_blank')
+    } else if (p?.cliente?.endereco) {
+      window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(p.cliente.endereco)}&travelmode=driving&dir_action=navigate`, '_blank')
     }
   }
 
   const reiniciarNavegacao = () => {
-    const lat = getLat(pedidoAtual)
-    const lng = getLng(pedidoAtual)
+    const p = ordemOtimizada[entregaAtual]
+    if (!p) return
+    const lat = getLat(p)
+    const lng = getLng(p)
     if (lat && lng) {
       window.open(`https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving&dir_action=navigate`, '_blank')
     }
@@ -2772,68 +2827,231 @@ function MotoboyPage({ onVoltar, userNome }) {
     setNavegacaoIniciada(false)
     setChegou(false)
     setConcluidos(prev => [...prev, id])
-    if (entregaAtual + 1 >= pedidos.length) {
+    if (entregaAtual + 1 >= ordemOtimizada.length) {
+      setEtapa('selecao')
+      setOrdemOtimizada([])
+      setSelecionados([])
+      setEntregaAtual(0)
       return
     }
     setEntregaAtual(prev => prev + 1)
   }
 
-  const pularProxima = () => {
-    setConfirmarModal(null)
-    setNavegacaoIniciada(false)
-    setChegou(false)
-    setConcluidos(prev => [...prev, pedidoAtual.id])
-    setEntregaAtual(prev => prev + 1)
+  const formatTel = (t) => {
+    if (!t) return ''
+    const s = t.replace(/\D/g, '')
+    if (s.length === 11) return `(${s.slice(0,2)}) ${s.slice(2,7)}-${s.slice(7)}`
+    if (s.length === 10) return `(${s.slice(0,2)}) ${s.slice(2,6)}-${s.slice(6)}`
+    return t
   }
 
-  const pendentes = pedidos.filter(p => !concluidos.includes(p.id))
+  // ========== GROUP LOGIC (for selection screen) ==========
+  const pedidosAgrupados = (() => {
+    if (!pizzariaCoords) return []
+    const mapa = {}
+    pedidosDisponiveis.forEach(p => {
+      const pLat = getLat(p); const pLng = getLng(p)
+      let id = 'semLocal'
+      if (pLat && pLng && pizzariaCoords) {
+        const bearing = getBearing(pizzariaCoords.lat, pizzariaCoords.lng, pLat, pLng)
+        id = getDirectionId(bearing)
+      }
+      if (!mapa[id]) mapa[id] = []
+      let dist = Infinity
+      if (pLat && pLng) {
+        if (motoboyPos) dist = haversineKm(motoboyPos.lat, motoboyPos.lng, pLat, pLng)
+        else dist = haversineKm(pizzariaCoords.lat, pizzariaCoords.lng, pLat, pLng)
+      }
+      mapa[id].push({ ...p, _dist: dist })
+    })
+    Object.values(mapa).forEach(g => g.sort((a, b) => a._dist - b._dist))
+    const arr = Object.entries(mapa).map(([id, itens]) => ({
+      id, itens,
+      minDist: Math.min(...itens.map(i => i._dist))
+    }))
+    arr.sort((a, b) => {
+      if (a.id === 'semLocal') return 1
+      if (b.id === 'semLocal') return -1
+      return a.minDist - b.minDist
+    })
+    let prio = 0
+    arr.forEach(g => g.itens.forEach(i => { i._prio = ++prio }))
+    return arr
+  })()
 
+  // ========== RENDER ==========
   if (erroGps === 'indisponivel') {
     return (
       <div className="motoboy-page" style={{display:'flex',alignItems:'center',justifyContent:'center',textAlign:'center',padding:24}}>
-        <div><div style={{fontSize:48,marginBottom:16}}>📍</div><p style={{color:'#888',fontSize:14}}>GPS não suportado neste navegador.</p></div>
+        <div><div style={{fontSize:48,marginBottom:16}}>📍</div><p style={{color:'#888',fontSize:14}}>GPS não suportado.</p></div>
       </div>
     )
   }
 
-  if (pendentes.length === 0) {
+  const topBar = (titulo, children) => (
+    <div className="motoboy-topo">
+      <div className="motoboy-topo-titulo">{titulo}</div>
+      <div style={{display:'flex',alignItems:'center',gap:8}}>
+        {children}
+        <div className="motoboy-menu-container">
+          <button className="motoboy-menu-btn" onClick={() => setMenuOpen(!menuOpen)}>☰</button>
+          {menuOpen && (
+            <div className="motoboy-menu-dropdown">
+              <button onClick={onVoltar}>🚪 Sair</button>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+
+  // ===== TELA 1: SELEÇÃO =====
+  if (etapa === 'selecao') {
     return (
       <div className="motoboy-page">
-        <div className="motoboy-topo">
-          <div style={{flex:1}}></div>
-          <h1 className="motoboy-titulo">🛵 Entregas</h1>
-          <div className="motoboy-menu-container">
-            <button className="motoboy-menu-btn" onClick={() => setMenuOpen(!menuOpen)}>☰</button>
-            {menuOpen && (
-              <div className="motoboy-menu-dropdown">
-                <button onClick={onVoltar}>🚪 Sair</button>
-              </div>
-            )}
+        {topBar('🛵 Selecionar entregas')}
+        {pedidosDisponiveis.length === 0 ? (
+          <div className="motoboy-vazio" style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:12}}>
+            <div className="motoboy-vazio-icone">🛵</div>
+            <p className="motoboy-vazio-texto">Nenhuma entrega disponível</p>
+            <p className="motoboy-vazio-sub">Aguardando novos pedidos...</p>
+            {erroGps === 1 && <p className="motoboy-gps-aviso">⚠️ Permissão de localização negada.</p>}
+            {erroGps === 2 && <p className="motoboy-gps-aviso">⚠️ GPS indisponível.</p>}
+            {erroGps === 'timeout' && <p className="motoboy-gps-aviso">⏳ GPS não respondeu.</p>}
           </div>
-        </div>
-        <div className="motoboy-vazio" style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:12}}>
-          <div className="motoboy-vazio-icone">🛵</div>
-          <p className="motoboy-vazio-texto">Todas as entregas concluídas!</p>
-          <p className="motoboy-vazio-sub">Aguardando novos pedidos...</p>
-          {erroGps === 1 && <p className="motoboy-gps-aviso">⚠️ Permissão de localização negada.</p>}
-          {erroGps === 2 && <p className="motoboy-gps-aviso">⚠️ GPS indisponível.</p>}
-          {erroGps === 3 && <p className="motoboy-gps-aviso">⏳ GPS timeout.</p>}
-          {erroGps === 'timeout' && <p className="motoboy-gps-aviso">⏳ GPS não respondeu.</p>}
+        ) : (
+          <div className="motoboy-selecao">
+            {pedidosAgrupados.map(grupo => (
+              <div key={grupo.id} className="motoboy-grupo">
+                <div className="motoboy-grupo-header">
+                  <span className="motoboy-grupo-nome">
+                    {ROTA_GRUPOS[grupo.id]?.icon || ''} {ROTA_GRUPOS[grupo.id]?.nome || 'Indefinido'}
+                  </span>
+                  <span className="motoboy-grupo-qtd">{grupo.itens.length} entrega{grupo.itens.length !== 1 ? 's' : ''}</span>
+                </div>
+                {grupo.itens.map(p => {
+                  const sel = selecionados.includes(p.id)
+                  return (
+                    <div key={p.id} className={`motoboy-card${sel ? ' motoboy-card-checked' : ''}`} onClick={() => toggleSelecionado(p.id)}>
+                      <div className="motoboy-check"><div className={`cb${sel ? ' on' : ''}`}>{sel ? '✓' : ''}</div></div>
+                      <div className="motoboy-card-corpo">
+                        <div className="motoboy-card-linha">
+                          <strong className="motoboy-card-nome">{p.cliente?.nome}</strong>
+                          <span className="motoboy-card-valor">R$ {p.total?.toFixed(2)}</span>
+                        </div>
+                        <span className="motoboy-card-end">📍 {p.cliente?.endereco}</span>
+                        <span className="motoboy-card-tel">📞 {formatTel(p.cliente?.telefone)}</span>
+                        <div className="motoboy-card-info-rota">
+                          {p._dist < Infinity && <span className="motoboy-card-dist">📏 {p._dist.toFixed(1)} km</span>}
+                          <span className="motoboy-card-hora">🕐 {new Date(p.data).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
+                        </div>
+                        <div className="motoboy-card-itens">
+                          {p.itens?.map(item => (
+                            <span key={item.id} className={`motoboy-card-item${item.tipo !== 'pizza' ? ' motoboy-item-badge-m' : ''}`}>
+                              {item.qtd}x {item.nome}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            ))}
+          </div>
+        )}
+        <div className="motoboy-rodape">
+          <button className="motoboy-btn-primario" disabled={selecionados.length === 0 || otimizando} onClick={organizarRota}>
+            {otimizando ? '🔄 Organizando...' : `📦 Pegar entregas (${selecionados.length})`}
+          </button>
         </div>
       </div>
     )
   }
 
-  const p = pendentes[0]
+  // ===== TELA 2: ORGANIZAR =====
+  if (etapa === 'organizar') {
+    const total = ordemOtimizada.length
+    return (
+      <div className="motoboy-page">
+        {topBar('📋 Organizar mercadoria')}
+        <div className="motoboy-organizar">
+          <div className="motoboy-progresso-indicator" style={{margin: '0 20px 12px'}}>
+            <div className="motoboy-progresso-texto">{concluidos.length + 1} de {concluidos.length + total} entregas</div>
+            <div className="motoboy-progresso-barra">
+              <div className="motoboy-progresso-preenchido" style={{width: `${(concluidos.length / (concluidos.length + total)) * 100}%`}} />
+            </div>
+          </div>
+          <div className="motoboy-organizar-lista">
+            {ordemOtimizada.map((p, idx) => {
+              const eAtual = idx === entregaAtual
+              const temBebidas = p.itens?.filter(i => i.tipo !== 'pizza')?.length > 0
+              return (
+                <div key={p.id} className={`motoboy-org-card${eAtual ? ' motoboy-org-card-atual' : ''}${idx < entregaAtual ? ' motoboy-org-card-feito' : ''}`}>
+                  <div className="motoboy-org-ordem">{idx + 1}</div>
+                  <div className="motoboy-org-conteudo">
+                    <div className="motoboy-org-header">
+                      <strong className="motoboy-org-nome">{p.cliente?.nome}</strong>
+                      <span className="motoboy-org-valor">R$ {p.total?.toFixed(2)}</span>
+                    </div>
+                    <span className="motoboy-org-endereco">📍 {p.cliente?.endereco}</span>
+                    <span className="motoboy-org-tel">📞 {formatTel(p.cliente?.telefone)}</span>
+                    <div className="motoboy-org-itens">
+                      {p.itens?.map(item => (
+                        <span key={item.id} className={`motoboy-org-item${item.tipo !== 'pizza' ? ' motoboy-org-item-bebida' : ''}`}>
+                          {item.qtd}x {item.nome}
+                          {item.tipo !== 'pizza' && <span className="motoboy-item-badge">🥤</span>}
+                        </span>
+                      ))}
+                    </div>
+                    {temBebidas && (
+                      <div className="motoboy-org-aviso">📌 Não esqueça das bebidas!</div>
+                    )}
+                  </div>
+                  {eAtual && (
+                    <div className="motoboy-org-badge-atual">PRÓXIMO</div>
+                  )}
+                  {idx < entregaAtual && (
+                    <div className="motoboy-org-check">✅</div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+        <div className="motoboy-rodape">
+          <button className="motoboy-btn-primario" onClick={() => setEtapa('entrega')}>
+            🗺️ Iniciar entregas
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  // ===== TELA 3: ENTREGA =====
+  const p = ordemOtimizada[entregaAtual]
+  if (!p) {
+    return (
+      <div className="motoboy-page">
+        {topBar('🛵 Entregas')}
+        <div className="motoboy-vazio" style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:12}}>
+          <div className="motoboy-vazio-icone">✅</div>
+          <p className="motoboy-vazio-texto">Todas concluídas!</p>
+        </div>
+      </div>
+    )
+  }
+
   const temBebidas = p.itens?.filter(i => i.tipo !== 'pizza')?.length > 0
 
   return (
     <div className="motoboy-page">
       <div className="motoboy-topo">
-        <div className="motoboy-progresso-indicator">
-          <div className="motoboy-progresso-texto">{concluidos.length + 1} de {concluidos.length + pendentes.length}</div>
+        <button className="motoboy-btn-voltar-lista" onClick={() => setEtapa('organizar')}>←</button>
+        <div className="motoboy-progresso-indicator" style={{flex:1}}>
+          <div className="motoboy-progresso-texto">{entregaAtual + 1} de {ordemOtimizada.length}</div>
           <div className="motoboy-progresso-barra">
-            <div className="motoboy-progresso-preenchido" style={{width: `${(concluidos.length / (concluidos.length + pendentes.length)) * 100}%`}} />
+            <div className="motoboy-progresso-preenchido" style={{width: `${((entregaAtual + 1) / ordemOtimizada.length) * 100}%`}} />
           </div>
         </div>
         <div className="motoboy-menu-container">
@@ -2853,7 +3071,7 @@ function MotoboyPage({ onVoltar, userNome }) {
             <h2 className="motoboy-cliente-nome">{p.cliente?.nome || 'Cliente'}</h2>
             <div className="motoboy-cliente-detalhes">
               <span className="motoboy-cliente-endereco">📍 {p.cliente?.endereco || 'Endereço não informado'}</span>
-              <a href={`tel:${p.cliente?.telefone}`} className="motoboy-cliente-telefone">📞 {p.cliente?.telefone || '---'}</a>
+              <a href={`tel:${p.cliente?.telefone}`} className="motoboy-cliente-telefone">📞 {formatTel(p.cliente?.telefone) || '---'}</a>
             </div>
           </div>
         </div>
@@ -2891,16 +3109,11 @@ function MotoboyPage({ onVoltar, userNome }) {
               </button>
               <button
                 className={`motoboy-btn-concluir ${chegou ? 'motoboy-btn-chamativo' : ''}`}
-                onClick={() => { if (chegou) { setConfirmarModal(p) } }}
+                onClick={() => { if (chegou) setConfirmarModal(p) }}
                 disabled={!chegou}
               >
                 {chegou ? '✅ Concluir entrega' : '📦 Entregar'}
               </button>
-              {!chegou && (
-                <button className="motoboy-btn-pular" onClick={pularProxima}>
-                  ⏭️ Pular
-                </button>
-              )}
             </div>
           )}
         </div>
@@ -2925,13 +3138,11 @@ function MotoboyPage({ onVoltar, userNome }) {
               ))}
             </div>
             {temBebidas && (
-              <p className="motoboy-confirm-aviso">Verifique se as bebidas foram entregues</p>
+              <p className="motoboy-confirm-aviso">📌 Verifique se as bebidas foram entregues</p>
             )}
             <div className="motoboy-confirm-actions">
               <button className="motoboy-btn-cancelar" onClick={() => setConfirmarModal(null)}>Voltar</button>
-              <button className="motoboy-btn-confirmar" onClick={() => confirmarEntrega(p.id)}>
-                ✅ Confirmar
-              </button>
+              <button className="motoboy-btn-confirmar" onClick={() => confirmarEntrega(p.id)}>✅ Confirmar</button>
             </div>
           </div>
         </div>
