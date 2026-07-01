@@ -2625,6 +2625,9 @@ function MotoboyPage({ onVoltar }) {
   const [chegadas, setChegadas] = useState({})
   const [rastreioOk, setRastreioOk] = useState(null)
   const [erroGps, setErroGps] = useState(null)
+  const [confirmarItens, setConfirmarItens] = useState(null)
+  const [confirmCheck, setConfirmCheck] = useState(false)
+  const totalEntregasRef = useRef(0)
   const prevCountRef = useRef(0)
   const mountedRef = useRef(true)
   const primeiraCarga = useRef(true)
@@ -3005,6 +3008,7 @@ function MotoboyPage({ onVoltar }) {
               setOrdemOtimizada([...rotaOtimizada, ...semCoordsOrd])
               setVoltaPizzaria({ distKm: voltaDist, durMin: voltaDur })
               setEtapa('organizar')
+              totalEntregasRef.current = rotaOtimizada.length + semCoordsOrd.length
               setOtimizando(false)
               return
             }
@@ -3030,6 +3034,7 @@ function MotoboyPage({ onVoltar }) {
       setOrdemOtimizada(ordenados)
       setEtapa('organizar')
       setOtimizando(false)
+      totalEntregasRef.current = ordenados.length
     } else if (pizzariaCoords) {
       const ordenados = [...selec].sort((a, b) => new Date(a.data) - new Date(b.data))
       const ultimo = ordenados[ordenados.length - 1]
@@ -3047,10 +3052,23 @@ function MotoboyPage({ onVoltar }) {
       setOrdemOtimizada(ordenados)
       setEtapa('organizar')
       setOtimizando(false)
+      totalEntregasRef.current = ordenados.length
     }
   }
 
-  const marcarEntregue = async (id) => {
+  const iniciarConfirmacao = (id) => {
+    const pedido = ordemOtimizada.find(p => p.id === id) || pedidos.find(p => p.id === id)
+    if (!pedido) return
+    const foraDaCaixa = pedido.itens?.filter(i => i.tipo !== 'pizza') || []
+    if (foraDaCaixa.length > 0) {
+      setConfirmarItens({ pedido, itensFora: foraDaCaixa })
+      setConfirmCheck(false)
+    } else {
+      marcarEntregueEfetivo(id)
+    }
+  }
+
+  const marcarEntregueEfetivo = async (id) => {
     await fetch(`${API}/orders/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -3058,6 +3076,7 @@ function MotoboyPage({ onVoltar }) {
     })
     setSelecionados(prev => prev.filter(x => x !== id))
     setOrdemOtimizada(prev => prev.filter(p => p.id !== id))
+    setConfirmarItens(null)
   }
 
   const abrirNoMapsRota = () => {
@@ -3214,58 +3233,132 @@ function MotoboyPage({ onVoltar }) {
 
       {etapa === 'organizar' && ordemOtimizada.length > 0 && (
         <div className="motoboy-rota">
+          <div className="motoboy-progresso">
+            <div className="motoboy-progresso-texto">
+              {totalEntregasRef.current - ordemOtimizada.length} de {totalEntregasRef.current} entregas concluidas
+            </div>
+            <div className="motoboy-progresso-barra">
+              <div className="motoboy-progresso-preenchido"
+                   style={{ width: `${((totalEntregasRef.current - ordemOtimizada.length) / totalEntregasRef.current) * 100}%` }} />
+            </div>
+          </div>
+
           <div className="motoboy-box">
             <div className="motoboy-box-label">
-              <span>📦 Organizar a Caixa</span>
-              <span className="motoboy-box-info">Empilhe as mercadorias nesta ordem — a 1ª entrega fica no topo da caixa</span>
+              <span>Proxima entrega</span>
             </div>
-            <div className="motoboy-box-pilha">
-              {ordemOtimizada.map((p, idx) => (
-                <div key={p.id} className={`motoboy-box-item ${idx === 0 ? 'first' : ''} ${chegadas[p.id] ? 'chegou' : ''}`}
-                     style={{ animationDelay: `${idx * 0.12}s` }}>
-                  <div className={`motoboy-box-ordem ${chegadas[p.id] ? 'checked' : ''}`}>
-                    {chegadas[p.id] ? '✓' : idx + 1}
+            {(() => {
+              const atual = ordemOtimizada[0]
+              if (!atual) return null
+              const foraDaCaixa = atual.itens?.filter(i => i.tipo !== 'pizza') || []
+              return (
+                <div className={`motoboy-box-item motoboy-box-item-atual ${chegadas[atual.id] ? 'chegou' : ''}`}>
+                  <div className="motoboy-box-ordem motoboy-box-ordem-atual">
+                    {chegadas[atual.id] ? '✓' : (totalEntregasRef.current - ordemOtimizada.length + 1)}
                   </div>
+                  <div className="motoboy-box-conteudo">
+                    <div className="motoboy-box-cabecalho">
+                      <strong className="motoboy-box-nome">{atual.cliente?.nome}</strong>
+                      <span className="motoboy-box-valor">R$ {atual.total?.toFixed(2)}</span>
+                    </div>
+                    <div className="motoboy-box-detalhes">
+                      <span>{atual.cliente?.endereco}</span>
+                      <span>{formatTel(atual.cliente?.telefone)}</span>
+                    </div>
+                    <div className="motoboy-box-info-row">
+                      {atual.distKm && <span>{atual.distKm.toFixed(1)} km - {atual.durMin} min</span>}
+                      <span className="motoboy-box-hora">{new Date(atual.data).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
+                    </div>
+                    <div className="motoboy-box-itens">
+                      {atual.itens?.map(i => (
+                        <span key={i.id} className={`motoboy-box-item-tag ${i.tipo !== 'pizza' ? 'tag-fora-caixa' : ''}`}>
+                          {i.qtd}x {i.nome}
+                        </span>
+                      ))}
+                    </div>
+                    {foraDaCaixa.length > 0 && (
+                      <div className="motoboy-box-aviso-fora-caixa">
+                        Esta entrega tem itens fora da caixa de pizza
+                      </div>
+                    )}
+                  </div>
+                  <div className="motoboy-box-acoes">
+                    <button className="motoboy-btn-navegar" onClick={() => {
+                      const lat = getLat(atual); const lng = getLng(atual)
+                      if (lat && lng) window.location.href = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving&dir_action=navigate`
+                      else if (atual.cliente?.endereco) window.location.href = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(atual.cliente.endereco)}&travelmode=driving&dir_action=navigate`
+                    }}>
+                      Navegar
+                    </button>
+                    <button className={`motoboy-btn-entregar${chegadas[atual.id] ? ' pulse' : ''}`}
+                            onClick={() => iniciarConfirmacao(atual.id)}>
+                      {chegadas[atual.id] ? 'Chegou - Marcar entregue' : 'Marcar como entregue'}
+                    </button>
+                  </div>
+                </div>
+              )
+            })()}
+          </div>
+
+          {ordemOtimizada.length > 1 && (
+            <div className="motoboy-proximas">
+              <div className="motoboy-proximas-label">
+                Proximas entregas ({ordemOtimizada.length - 1})
+              </div>
+              {ordemOtimizada.slice(1).map((p, idx) => (
+                <div key={p.id} className="motoboy-box-item motoboy-box-item-proxima">
+                  <div className="motoboy-box-ordem">{totalEntregasRef.current - ordemOtimizada.length + idx + 2}</div>
                   <div className="motoboy-box-conteudo">
                     <div className="motoboy-box-cabecalho">
                       <strong className="motoboy-box-nome">{p.cliente?.nome}</strong>
                       <span className="motoboy-box-valor">R$ {p.total?.toFixed(2)}</span>
                     </div>
                     <div className="motoboy-box-detalhes">
-                      <span>📍 {p.cliente?.endereco}</span>
-                      <span>📞 {formatTel(p.cliente?.telefone)}</span>
+                      <span>{p.cliente?.endereco}</span>
+                      <span>{p.cliente?.telefone}</span>
                     </div>
-                    <div className="motoboy-box-info-row">
-                      {p.distKm && <span>📏 {p.distKm.toFixed(1)} km · ≈ {p.durMin} min</span>}
-                      <span className="motoboy-box-hora">🕐 {new Date(p.data).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
-                    </div>
-                    <div className="motoboy-box-itens">
-                      {p.itens?.map(i => <span key={i.id} className="motoboy-box-item-tag">{i.qtd}x {i.nome}</span>)}
-                    </div>
+                    {p.distKm && <div className="motoboy-box-dist">{p.distKm.toFixed(1)} km</div>}
                   </div>
-                  <button className={`motoboy-box-btn-entregue${chegadas[p.id] ? ' pulse' : ''}`}
-                          onClick={() => marcarEntregue(p.id)}
-                          title={chegadas[p.id] ? 'Chegou! Clique para marcar entregue' : 'Marcar como entregue'}>
-                    {chegadas[p.id] ? '📍' : '✅'}
-                  </button>
                 </div>
               ))}
               {voltaPizzaria && (
                 <div className="motoboy-box-volta">
-                  <div className="motoboy-box-ordem motoboy-volta-ordem">🏠</div>
+                  <div className="motoboy-box-ordem">R</div>
                   <div className="motoboy-box-conteudo">
-                    <strong>🔄 Retorno à Pizzaria</strong>
-                    <span>📍 {pizzariaConfig ? `${pizzariaConfig.rua}, ${pizzariaConfig.numero} - ${pizzariaConfig.bairro}, ${pizzariaConfig.cidade} - ${pizzariaConfig.estado}` : PIZZARIA_ADDR}</span>
-                    <span className="motoboy-box-dist">📏 {voltaPizzaria.distKm.toFixed(1)} km · ≈ {voltaPizzaria.durMin} min</span>
+                    <strong>Retorno a pizzaria</strong>
+                    <span>{pizzariaConfig ? `${pizzariaConfig.rua}, ${pizzariaConfig.numero} - ${pizzariaConfig.bairro}` : PIZZARIA_ADDR}</span>
+                    <span className="motoboy-box-dist">{voltaPizzaria.distKm.toFixed(1)} km - {voltaPizzaria.durMin} min</span>
                   </div>
                 </div>
               )}
             </div>
-          </div>
-          <div className="motoboy-rodape">
-            <button className="motoboy-btn-primario" onClick={abrirNoMapsRota}>
-              🗺️ Abrir navegação
-            </button>
+          )}
+        </div>
+      )}
+
+      {confirmarItens && (
+        <div className="modal-overlay" onClick={() => setConfirmarItens(null)}>
+          <div className="modal-content motoboy-confirm-modal" onClick={e => e.stopPropagation()}>
+            <h3>Confirmar entrega</h3>
+            <p className="motoboy-confirm-cliente">
+              <strong>{confirmarItens.pedido.cliente?.nome}</strong>
+            </p>
+            <p>Este pedido tem itens que nao estao na caixa de pizza:</p>
+            <ul className="motoboy-confirm-lista">
+              {confirmarItens.itensFora.map((i, idx) => (
+                <li key={idx}>{i.qtd}x {i.nome}</li>
+              ))}
+            </ul>
+            <label className="motoboy-confirm-check">
+              <input type="checkbox" checked={confirmCheck} onChange={e => setConfirmCheck(e.target.checked)} />
+              <span>Sim, entreguei todos esses itens</span>
+            </label>
+            <div className="motoboy-confirm-acoes">
+              <button className="btn-recusar" onClick={() => setConfirmarItens(null)}>Voltar</button>
+              <button className="btn-aceitar" disabled={!confirmCheck} onClick={() => marcarEntregueEfetivo(confirmarItens.pedido.id)}>
+                Confirmar entrega
+              </button>
+            </div>
           </div>
         </div>
       )}

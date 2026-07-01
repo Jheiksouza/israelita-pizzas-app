@@ -5884,6 +5884,185 @@ body {
   to { transform: scale(1.15); }
 }
 
+/* Progress bar */
+.motoboy-progresso {
+  margin-bottom: 16px;
+}
+.motoboy-progresso-texto {
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+.motoboy-progresso-barra {
+  height: 6px;
+  background: var(--bg-surface);
+  border-radius: 50px;
+  overflow: hidden;
+}
+.motoboy-progresso-preenchido {
+  height: 100%;
+  background: linear-gradient(90deg, var(--primary), var(--secondary));
+  border-radius: 50px;
+  transition: width 0.5s ease;
+}
+
+/* Current delivery card */
+.motoboy-box-item-atual {
+  border: 2px solid var(--primary) !important;
+  box-shadow: 0 0 0 3px rgba(229,57,53,0.1), 0 4px 16px rgba(0,0,0,0.06) !important;
+  flex-direction: column;
+  gap: 0;
+}
+.motoboy-box-item-atual .motoboy-box-conteudo {
+  padding: 0;
+}
+.motoboy-box-ordem-atual {
+  background: var(--primary) !important;
+  box-shadow: 0 0 0 4px rgba(229,57,53,0.15);
+  width: 36px; height: 36px;
+  font-size: 0.85rem;
+}
+.motoboy-box-aviso-fora-caixa {
+  font-size: 0.72rem;
+  color: #E65100;
+  font-weight: 600;
+  background: #FFF3E0;
+  padding: 3px 10px;
+  border-radius: 50px;
+  margin-top: 4px;
+  display: inline-block;
+  width: fit-content;
+}
+.tag-fora-caixa {
+  background: #FFF3E0 !important;
+  color: #E65100 !important;
+  font-weight: 600;
+}
+
+/* Action buttons */
+.motoboy-box-acoes {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border-light);
+}
+.motoboy-btn-navegar {
+  flex: 1;
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  border: 1.5px solid var(--border);
+  padding: 12px 16px;
+  border-radius: var(--radius-md);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+  text-align: center;
+}
+.motoboy-btn-navegar:hover {
+  background: var(--bg-card);
+  border-color: var(--primary);
+  color: var(--primary);
+}
+.motoboy-btn-entregar {
+  flex: 2;
+  background: linear-gradient(135deg, #43A047, #2E7D32);
+  color: #fff;
+  border: none;
+  padding: 12px 16px;
+  border-radius: var(--radius-md);
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: var(--transition);
+  box-shadow: 0 2px 8px rgba(67,160,71,0.2);
+}
+.motoboy-btn-entregar:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(67,160,71,0.3);
+}
+.motoboy-btn-entregar.pulse {
+  animation: motoboyBtnPulse 0.8s ease-in-out infinite alternate;
+  box-shadow: 0 0 0 4px rgba(67,160,71,0.2);
+}
+
+/* Proximas entregas list */
+.motoboy-proximas {
+  margin-top: 4px;
+}
+.motoboy-proximas-label {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  font-weight: 600;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.motoboy-box-item-proxima {
+  opacity: 0.7;
+  margin-bottom: 6px;
+  animation: none;
+}
+
+/* Confirmation modal */
+.motoboy-confirm-modal {
+  max-width: 400px;
+}
+.motoboy-confirm-modal h3 {
+  font-size: 1.1rem;
+  margin-bottom: 8px;
+  color: var(--text-primary);
+}
+.motoboy-confirm-cliente {
+  font-size: 1rem;
+  margin-bottom: 12px;
+}
+.motoboy-confirm-lista {
+  list-style: none;
+  padding: 0;
+  margin: 8px 0 16px;
+  background: var(--bg-surface);
+  border-radius: var(--radius-md);
+  padding: 12px 16px;
+}
+.motoboy-confirm-lista li {
+  padding: 4px 0;
+  font-size: 0.9rem;
+  color: var(--text-primary);
+  font-weight: 500;
+}
+.motoboy-confirm-lista li::before {
+  content: '•';
+  color: #E65100;
+  font-weight: bold;
+  margin-right: 8px;
+}
+.motoboy-confirm-check {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  background: #E8F5E9;
+  border-radius: var(--radius-md);
+  margin-bottom: 16px;
+  cursor: pointer;
+  font-size: 0.88rem;
+  font-weight: 500;
+  color: #2E7D32;
+}
+.motoboy-confirm-check input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  accent-color: #43A047;
+}
+.motoboy-confirm-acoes {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
 /* Return to pizzaria */
 .motoboy-box-volta {
   display: flex;
