@@ -2614,6 +2614,40 @@ const PIZZARIA_ADDR = ''
 const getLat = p => parseFloat(p.entrega_lat) || parseFloat(p.cliente?.lat) || parseFloat(p.cliente?.endereco_lat) || null
 const getLng = p => parseFloat(p.entrega_lng) || parseFloat(p.cliente?.lng) || parseFloat(p.cliente?.endereco_lng) || null
 
+const haversineKm = (lat1, lon1, lat2, lon2) => {
+  const R = 6371
+  const dLat = (lat2 - lat1) * Math.PI / 180
+  const dLon = (lon2 - lon1) * Math.PI / 180
+  const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLon/2) * Math.sin(dLon/2)
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+  return R * c
+}
+
+const getBearing = (lat1, lon1, lat2, lon2) => {
+  const dLon = (lon2 - lon1) * Math.PI / 180
+  const y = Math.sin(dLon) * Math.cos(lat2 * Math.PI / 180)
+  const x = Math.cos(lat1 * Math.PI / 180) * Math.sin(lat2 * Math.PI / 180) -
+    Math.sin(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.cos(dLon)
+  return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360
+}
+
+const getDirectionId = (bearing) => {
+  if (bearing >= 315 || bearing < 45) return 'norte'
+  if (bearing >= 45 && bearing < 135) return 'leste'
+  if (bearing >= 135 && bearing < 225) return 'sul'
+  return 'oeste'
+}
+
+const ROTA_GRUPOS = {
+  norte: { nome: 'Norte', icon: '⬆️' },
+  sul: { nome: 'Sul', icon: '⬇️' },
+  leste: { nome: 'Leste', icon: '➡️' },
+  oeste: { nome: 'Oeste', icon: '⬅️' },
+  semLocal: { nome: 'Sem localização', icon: '📍' }
+}
+
 function MotoboyPage({ onVoltar, userNome }) {
   const [pedidosDisponiveis, setPedidosDisponiveis] = useState([])
   const [selecionados, setSelecionados] = useState([])
