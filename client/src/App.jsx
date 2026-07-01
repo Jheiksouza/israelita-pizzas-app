@@ -716,15 +716,38 @@ function MeusPedidos({ token, onVoltar }) {
                 setNotificacaoLiberado(p)
               }
               if (p.status === 'entregador_proximo') {
+                try { navigator.vibrate?.([200, 100, 200]) } catch (_) {}
                 try {
                   if ('Notification' in window && Notification.permission === 'granted') {
                     new Notification('🛵 Entregador próximo!', {
-                      body: 'Pedido #' + p.id + ' - O entregador está chegando!',
-                      vibrate: [200, 100, 200]
+                      body: 'Pedido #' + p.id + ' - O entregador está chegando!'
                     })
                   }
                 } catch (_) {}
-                try { navigator.vibrate?.([200, 100, 200]) } catch (_) {}
+              }
+              if (p.status === 'entregue' && prev === 'entregador_proximo') {
+                try { navigator.vibrate?.([300, 200, 300, 200, 300]) } catch (_) {}
+                try {
+                  if ('Notification' in window && Notification.permission === 'granted') {
+                    new Notification('✅ Pedido #' + p.id + ' entregue!', {
+                      body: 'Seu pedido chegou! Bom apetite! 🍕'
+                    })
+                  }
+                } catch (_) {}
+                try {
+                  const ctx = new (window.AudioContext || window.webkitAudioContext)()
+                  if (ctx.state === 'suspended') ctx.resume()
+                  const t = ctx.currentTime
+                  for (let i = 0; i < 2; i++) {
+                    const o = ctx.createOscillator()
+                    const g = ctx.createGain()
+                    o.type = 'sine'; o.frequency.value = 880
+                    g.gain.setValueAtTime(0.3, t + i * 0.3)
+                    g.gain.exponentialRampToValueAtTime(0.01, t + i * 0.3 + 0.2)
+                    o.connect(g); g.connect(ctx.destination)
+                    o.start(t + i * 0.3); o.stop(t + i * 0.3 + 0.2)
+                  }
+                } catch (_) {}
               }
             }
             prevStatusRef.current[p.id] = p.status
@@ -2596,16 +2619,25 @@ function MotoboyPage({ onVoltar }) {
     if ('Notification' in window && Notification.permission === 'default') {
       Notification.requestPermission()
     }
-    const initAudio = () => {
-      if (!audioCtxRef.current) {
-        audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)()
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)()
+      audioCtxRef.current = ctx
+      const unlock = () => {
+        if (ctx.state === 'suspended') {
+          ctx.resume().then(() => {
+            try {
+              const o = ctx.createOscillator()
+              const g = ctx.createGain()
+              g.gain.value = 0.01; o.connect(g); g.connect(ctx.destination)
+              o.start(); o.stop(ctx.currentTime + 0.01)
+            } catch (_) {}
+          }).catch(() => {})
+        }
       }
-      if (audioCtxRef.current.state === 'suspended') {
-        audioCtxRef.current.resume()
-      }
-    }
-    document.addEventListener('click', initAudio, { once: true })
-    document.addEventListener('touchstart', initAudio, { once: true })
+      document.addEventListener('touchstart', unlock, { passive: true })
+      document.addEventListener('click', unlock, { passive: true })
+      unlock()
+    } catch (_) {}
     // Carregar configuração da pizzaria do servidor
     fetch(`${API}/admin/config/pizzaria`)
       .then(r => r.json())
@@ -2736,7 +2768,6 @@ function MotoboyPage({ onVoltar }) {
           if ('Notification' in window && Notification.permission === 'granted') {
             new Notification('🛵 Próximo da entrega #' + p.id, {
               body: 'Cliente: ' + (p.cliente?.nome || '') + ' - ' + (p.cliente?.endereco || ''),
-              vibrate: [200, 100, 200],
               tag: 'prox-' + p.id
             })
           }
@@ -2769,7 +2800,6 @@ function MotoboyPage({ onVoltar }) {
           if ('Notification' in window && Notification.permission === 'granted') {
             new Notification('📍 Chegou no destino #' + p.id, {
               body: 'Cliente: ' + (p.cliente?.nome || '') + ' - ' + (p.cliente?.endereco || ''),
-              vibrate: [300, 200, 300],
               tag: 'chegou-' + p.id
             })
           }
