@@ -39,6 +39,9 @@ window.__googleCallback = (response) => {
 }
 
 function App() {
+  if (window.location.pathname.startsWith('/motoboy')) {
+    return <MotoboyStandalone />
+  }
   const [pagina, setPagina] = useState(() => localStorage.getItem('appPagina') || 'cardapio')
   const [carrinho, setCarrinho] = useState(() => {
     const saved = localStorage.getItem('carrinho_guest')
@@ -338,7 +341,7 @@ function App() {
       </div>
       {bannerApp.texto && <div className="banner-max-sabores" role="alert">{bannerApp.texto}</div>}
       {pagina !== 'motoboy' && (
-        <header className="header">
+      <header className="header">
           <div className="header-content">
             <div className="logo" onClick={() => setPagina('cardapio')}>
               <span className="logo-icon">🍕</span>
@@ -365,11 +368,6 @@ function App() {
                 {adminAutenticado ? 'Admin' : 'Entrar'}
                 {adminAutenticado && pendentesCount > 0 && <span key={pendentesCount} className="badge badge-alerta">{pendentesCount}</span>}
               </button>
-              {adminAutenticado && (
-                <button className={`nav-btn nav-btn-motoboy ${pagina === 'motoboy' ? 'active' : ''}`} onClick={() => setPagina('motoboy')}>
-                  🏍️ Motoboy
-                </button>
-              )}
             </nav>
           </div>
         </header>
@@ -381,6 +379,8 @@ function App() {
           <AdminPanel
             autenticado={adminAutenticado}
             pendentesCount={pendentesCount}
+            user={user}
+            token={token}
             onLogin={() => {
               setAdminAutenticado(true)
               sessionStorage.setItem('adminAuth', 'true')
@@ -390,7 +390,6 @@ function App() {
           />
         )}
         {pagina === 'meus-pedidos' && <MeusPedidos token={token} onVoltar={() => setPagina('cardapio')} />}
-        {pagina === 'motoboy' && <MotoboyPage onVoltar={() => setPagina('admin')} />}
       </main>
 
       {mostrarAuth && (
@@ -462,12 +461,6 @@ function App() {
             <span className="bottom-nav-label">Admin</span>
             {adminAutenticado && pendentesCount > 0 && <span key={pendentesCount} className="bottom-nav-badge">{pendentesCount}</span>}
           </button>
-          {adminAutenticado && (
-            <button className={`bottom-nav-btn ${pagina === 'motoboy' ? 'active' : ''}`} onClick={() => setPagina('motoboy')}>
-              <span className="bottom-nav-icon">🏍️</span>
-              <span className="bottom-nav-label">Motoboy</span>
-            </button>
-          )}
         </nav>
       )}
       {pagina !== 'motoboy' && (
@@ -1239,7 +1232,7 @@ function Cardapio({ onAdicionar, onBanner, pizzaEditando, onPizzaEditDone }) {
 }
 
 
-function AdminPanel({ autenticado, onLogin, onThemeChange, onFontChange, pendentesCount }) {
+function AdminPanel({ autenticado, onLogin, onThemeChange, onFontChange, pendentesCount, user, token }) {
   const [aba, setAba] = useState(() => localStorage.getItem('appAdminAba') || 'cardapio')
 
   useEffect(() => {
@@ -1259,12 +1252,14 @@ function AdminPanel({ autenticado, onLogin, onThemeChange, onFontChange, pendent
         <button className={`tab-btn ${aba === 'financeiro' ? 'active' : ''}`} onClick={() => setAba('financeiro')}>Financeiro</button>
         <button className={`tab-btn ${aba === 'rastreio' ? 'active' : ''}`} onClick={() => setAba('rastreio')}>📍 Rastreio</button>
         <button className={`tab-btn ${aba === 'pizzaria' ? 'active' : ''}`} onClick={() => setAba('pizzaria')}>🏪 Pizzaria</button>
+        <button className={`tab-btn ${aba === 'permissoes' ? 'active' : ''}`} onClick={() => setAba('permissoes')}>🔐 Permissões</button>
       </div>
       {aba === 'cardapio' && <AdminMenu onThemeChange={onThemeChange} onFontChange={onFontChange} />}
       {aba === 'pedidos' && <AdminOrders pendentesCount={pendentesCount} />}
       {aba === 'financeiro' && <AdminFinanceiro />}
       {aba === 'rastreio' && <RastreioPage />}
       {aba === 'pizzaria' && <AdminPizzariaConfig />}
+      {aba === 'permissoes' && <AdminPermissoes user={user} token={token} />}
     </div>
   )
 }
@@ -3362,6 +3357,478 @@ function MotoboyPage({ onVoltar }) {
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+function AdminPermissoes({ user, token }) {
+  const [usuarios, setUsuarios] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [editandoId, setEditandoId] = useState(null)
+  const [novaRole, setNovaRole] = useState('')
+  const [novoStatus, setNovoStatus] = useState('')
+  const [filtroRole, setFiltroRole] = useState('todas')
+  const [msg, setMsg] = useState('')
+
+  const carregar = async () => {
+    setLoading(true)
+    try {
+      const headers = token ? { Authorization: `Bearer ${token}` } : { 'x-admin-password': 'admin123' }
+      const res = await fetch(`${API}/auth/users`, { headers })
+      if (res.ok) {
+        const data = await res.json()
+        setUsuarios(data)
+      }
+    } catch {}
+    setLoading(false)
+  }
+
+  useEffect(() => { carregar() }, [])
+
+  const alterarRole = async (id) => {
+    if (!novaRole && !novoStatus) return
+    try {
+      const headers = { 'Content-Type': 'application/json' }
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`
+      } else {
+        headers['x-admin-password'] = 'admin123'
+      }
+      const body = {}
+      if (novaRole) body.role = novaRole
+      if (novoStatus) body.status = novoStatus
+      const res = await fetch(`${API}/auth/users/${id}/role`, {
+        method: 'PATCH', headers, body: JSON.stringify(body)
+      })
+      if (res.ok) {
+        setMsg('Permissão atualizada!')
+        setTimeout(() => setMsg(''), 3000)
+        setEditandoId(null)
+        setNovaRole('')
+        setNovoStatus('')
+        carregar()
+      } else {
+        const err = await res.json()
+        setMsg('Erro: ' + (err.erro || 'Falha'))
+      }
+    } catch { setMsg('Erro de conexão') }
+  }
+
+  const ROLE_LABELS = {
+    cliente: 'Cliente',
+    motoboy: 'Motoboy',
+    atendente: 'Atendente',
+    financeiro: 'Financeiro',
+    admin: 'Admin'
+  }
+
+  const ROLE_COLORS = {
+    cliente: '#78909C',
+    motoboy: '#FF8F00',
+    atendente: '#43A047',
+    financeiro: '#1E88E5',
+    admin: '#E53935'
+  }
+
+  const STATUS_LABELS = {
+    ativo: 'Ativo',
+    pendente: 'Pendente',
+    bloqueado: 'Bloqueado'
+  }
+
+  const STATUS_COLORS = {
+    ativo: '#43A047',
+    pendente: '#FF8F00',
+    bloqueado: '#E53935'
+  }
+
+  const filtrados = filtroRole === 'todas' ? usuarios : usuarios.filter(u => u.role === filtroRole)
+
+  return (
+    <div className="permissoes-page">
+      <div className="admin-header">
+        <h2>🔐 Permissões</h2>
+        <div className="filtro-role">
+          <button className={`cat-btn ${filtroRole === 'todas' ? 'active' : ''}`} onClick={() => setFiltroRole('todas')}>Todas</button>
+          {Object.entries(ROLE_LABELS).map(([key, label]) => (
+            <button key={key} className={`cat-btn ${filtroRole === key ? 'active' : ''}`} onClick={() => setFiltroRole(key)}>
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+      {msg && <div className="pizzaria-msg pizzaria-msg-ok">{msg}</div>}
+      {loading ? (
+        <div className="empty-state"><p>Carregando...</p></div>
+      ) : filtrados.length === 0 ? (
+        <div className="empty-state"><p>Nenhum usuário encontrado</p></div>
+      ) : (
+        <div className="permissoes-lista">
+          {filtrados.map(u => (
+            <div key={u.id} className="permissoes-card">
+              <div className="permissoes-card-info">
+                <div className="permissoes-card-nome">
+                  <strong>{u.nome || 'Sem nome'}</strong>
+                  <span className="permissoes-card-email">{u.email}</span>
+                </div>
+                <div className="permissoes-card-badges">
+                  <span className="permissoes-badge" style={{ background: ROLE_COLORS[u.role] || '#78909C' }}>
+                    {ROLE_LABELS[u.role] || u.role}
+                  </span>
+                  <span className={`permissoes-status ${u.status}`}>
+                    {STATUS_LABELS[u.status] || u.status}
+                  </span>
+                </div>
+              </div>
+              <div className="permissoes-card-actions">
+                {editandoId === u.id ? (
+                  <div className="permissoes-edit-form">
+                    <select value={novaRole} onChange={e => setNovaRole(e.target.value)}>
+                      <option value="">Manter role</option>
+                      {Object.entries(ROLE_LABELS).map(([key, label]) => (
+                        <option key={key} value={key}>{label}</option>
+                      ))}
+                    </select>
+                    <select value={novoStatus} onChange={e => setNovoStatus(e.target.value)}>
+                      <option value="">Manter status</option>
+                      {Object.entries(STATUS_LABELS).map(([key, label]) => (
+                        <option key={key} value={key}>{label}</option>
+                      ))}
+                    </select>
+                    <button className="btn-add" onClick={() => alterarRole(u.id)} disabled={!novaRole && !novoStatus}>Salvar</button>
+                    <button className="btn-del" onClick={() => setEditandoId(null)}>Cancelar</button>
+                  </div>
+                ) : (
+                  <button className="btn-edit" onClick={() => { setEditandoId(u.id); setNovaRole(u.role); setNovoStatus(u.status) }}>
+                    Editar
+                  </button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+const MOTOSTYLES = {
+  container: {
+    width: '100vw',
+    height: '100vh',
+    overflow: 'hidden',
+    background: '#0D0D0D',
+    color: '#fff',
+    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+    display: 'flex',
+    flexDirection: 'column'
+  },
+  loginContainer: {
+    flex: 1,
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: '24px',
+    gap: '20px'
+  },
+  logo: {
+    fontSize: '64px',
+    marginBottom: '8px'
+  },
+  title: {
+    fontSize: '24px',
+    fontWeight: 700,
+    margin: 0,
+    textAlign: 'center'
+  },
+  subtitle: {
+    fontSize: '14px',
+    color: '#888',
+    margin: 0,
+    textAlign: 'center',
+    marginBottom: '8px'
+  },
+  input: {
+    width: '100%',
+    maxWidth: '320px',
+    padding: '14px 16px',
+    borderRadius: '12px',
+    border: '1px solid #333',
+    background: '#1A1A1A',
+    color: '#fff',
+    fontSize: '16px',
+    outline: 'none',
+    boxSizing: 'border-box'
+  },
+  button: {
+    width: '100%',
+    maxWidth: '320px',
+    padding: '14px',
+    borderRadius: '12px',
+    border: 'none',
+    fontSize: '16px',
+    fontWeight: 600,
+    cursor: 'pointer',
+    background: '#FF8F00',
+    color: '#fff'
+  },
+  googleBtn: {
+    width: '100%',
+    maxWidth: '320px',
+    padding: '14px',
+    borderRadius: '12px',
+    border: '1px solid #333',
+    fontSize: '16px',
+    fontWeight: 600,
+    cursor: 'pointer',
+    background: '#1A1A1A',
+    color: '#fff',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '10px'
+  },
+  divider: {
+    width: '100%',
+    maxWidth: '320px',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
+    color: '#555',
+    fontSize: '13px'
+  },
+  dividerLine: {
+    flex: 1,
+    height: '1px',
+    background: '#333'
+  },
+  toggleText: {
+    fontSize: '13px',
+    color: '#888'
+  },
+  toggleLink: {
+    color: '#FF8F00',
+    cursor: 'pointer',
+    background: 'none',
+    border: 'none',
+    fontSize: '13px',
+    fontWeight: 600
+  },
+  error: {
+    color: '#FF5252',
+    fontSize: '13px',
+    margin: 0
+  }
+}
+
+function MotoboyStandalone() {
+  const [user, setUser] = useState(() => {
+    const saved = localStorage.getItem('motoboy_user')
+    return saved ? JSON.parse(saved) : null
+  })
+  const [token, setToken] = useState(() => localStorage.getItem('motoboy_token') || '')
+  const [modo, setModo] = useState('login')
+  const [email, setEmail] = useState('')
+  const [senha, setSenha] = useState('')
+  const [nome, setNome] = useState('')
+  const [erro, setErro] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [verificando, setVerificando] = useState(true)
+  const [semPermissao, setSemPermissao] = useState(false)
+
+  useEffect(() => {
+    if (!user || !token) { setVerificando(false); return }
+    setVerificando(true)
+    fetch(`${API}/auth/me`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.json())
+      .then(data => {
+        if (data.role === 'motoboy' || data.role === 'admin') {
+          if (data.status === 'ativo' || data.status === 'aprovado') {
+            setUser(data)
+            localStorage.setItem('motoboy_user', JSON.stringify(data))
+            setSemPermissao(false)
+          } else {
+            setSemPermissao(true)
+          }
+        } else {
+          setSemPermissao(true)
+        }
+      })
+      .catch(() => { setUser(null); setToken(''); localStorage.removeItem('motoboy_user'); localStorage.removeItem('motoboy_token') })
+      .finally(() => setVerificando(false))
+  }, [])
+
+  const handleLogin = async (e) => {
+    e?.preventDefault()
+    setErro('')
+    setLoading(true)
+    try {
+      const res = await fetch(`${API}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, senha })
+      })
+      const data = await res.json()
+      if (!res.ok) { setErro(data.erro || 'Email ou senha inválidos'); return }
+      if (data.user.role !== 'motoboy' && data.user.role !== 'admin') {
+        setErro('Você não tem permissão para acessar o painel do motoboy')
+        return
+      }
+      if (data.user.status !== 'ativo' && data.user.status !== 'aprovado') {
+        setSemPermissao(true)
+        return
+      }
+      setUser(data.user)
+      setToken(data.token)
+      localStorage.setItem('motoboy_user', JSON.stringify(data.user))
+      localStorage.setItem('motoboy_token', data.token)
+    } catch { setErro('Erro de conexão') }
+    finally { setLoading(false) }
+  }
+
+  const handleGoogleLogin = () => {
+    try {
+      const client = google.accounts.oauth2.initTokenClient({
+        client_id: '433687511785-95t4n2nulpja1aotvq6rfo74oui708im.apps.googleusercontent.com',
+        scope: 'openid email profile',
+        callback: async (response) => {
+          if (response.error) { setErro('Erro ao autenticar com Google'); return }
+          try {
+            setLoading(true)
+            const r = await fetch(`${API}/auth/google`, {
+              method: 'POST', headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ accessToken: response.access_token })
+            })
+            const data = await r.json()
+            if (data.token && data.user) {
+              if (data.user.role !== 'motoboy' && data.user.role !== 'admin') {
+                setErro('Você não tem permissão para acessar o painel do motoboy')
+                return
+              }
+              if (data.user.status !== 'ativo' && data.user.status !== 'aprovado') {
+                setSemPermissao(true)
+                return
+              }
+              setUser(data.user)
+              setToken(data.token)
+              localStorage.setItem('motoboy_user', JSON.stringify(data.user))
+              localStorage.setItem('motoboy_token', data.token)
+            } else setErro(data.erro || 'Erro ao autenticar')
+          } catch { setErro('Erro de conexão') }
+          finally { setLoading(false) }
+        }
+      })
+      client.requestAccessToken()
+    } catch { setErro('Erro ao iniciar login Google') }
+  }
+
+  const handleSignup = async (e) => {
+    e.preventDefault()
+    setErro('')
+    setLoading(true)
+    try {
+      const res = await fetch(`${API}/auth/signup`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nome, email, senha, telefone: '', endereco: '' })
+      })
+      const data = await res.json()
+      if (!res.ok) { setErro(data.erro || 'Erro ao cadastrar'); return }
+      setErro('Conta criada! Faça login para continuar.')
+      setModo('login')
+      setEmail(email)
+    } catch { setErro('Erro de conexão') }
+    finally { setLoading(false) }
+  }
+
+  const handleLogout = () => {
+    setUser(null)
+    setToken('')
+    setSemPermissao(false)
+    localStorage.removeItem('motoboy_user')
+    localStorage.removeItem('motoboy_token')
+  }
+
+  if (verificando) {
+    return (
+      <div style={{...MOTOSTYLES.container, alignItems: 'center', justifyContent: 'center', display: 'flex'}}>
+        <div style={{fontSize: '48px', marginBottom: '16px'}}>🛵</div>
+        <p style={{color: '#888'}}>Verificando...</p>
+      </div>
+    )
+  }
+
+  if (user && token && semPermissao) {
+    return (
+      <div style={{...MOTOSTYLES.container, alignItems: 'center', justifyContent: 'center', display: 'flex'}}>
+        <div style={{textAlign: 'center', padding: '24px', maxWidth: '320px'}}>
+          <div style={{fontSize: '64px', marginBottom: '16px'}}>🔒</div>
+          <h2 style={{color: '#fff', margin: '0 0 8px'}}>Sem permissão</h2>
+          <p style={{color: '#888', fontSize: '14px', lineHeight: '1.5'}}>
+            Sua conta ainda não foi liberada para usar o painel do motoboy.
+            Entre em contato com o administrador.
+          </p>
+          <button onClick={handleLogout}
+            style={{...MOTOSTYLES.button, marginTop: '16px', background: '#E53935'}}>
+            Sair
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  if (user && token) {
+    return <MotoboyPage onVoltar={handleLogout} />
+  }
+
+  return (
+    <div style={MOTOSTYLES.container}>
+      <div style={MOTOSTYLES.loginContainer}>
+        <div style={MOTOSTYLES.logo}>🛵</div>
+        <h1 style={MOTOSTYLES.title}>Israelita Entregas</h1>
+        <p style={MOTOSTYLES.subtitle}>Faça login para começar suas entregas</p>
+
+        {erro && <p style={MOTOSTYLES.error}>{erro}</p>}
+
+        {modo === 'login' ? (
+          <form onSubmit={handleLogin} style={{width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px'}}>
+            <input style={MOTOSTYLES.input} type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} required />
+            <input style={MOTOSTYLES.input} type="password" placeholder="Senha" value={senha} onChange={e => setSenha(e.target.value)} required />
+            <button style={MOTOSTYLES.button} type="submit" disabled={loading}>
+              {loading ? 'Entrando...' : 'Entrar'}
+            </button>
+          </form>
+        ) : (
+          <form onSubmit={handleSignup} style={{width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px'}}>
+            <input style={MOTOSTYLES.input} placeholder="Nome" value={nome} onChange={e => setNome(e.target.value)} required />
+            <input style={MOTOSTYLES.input} type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} required />
+            <input style={MOTOSTYLES.input} type="password" placeholder="Senha" value={senha} onChange={e => setSenha(e.target.value)} required />
+            <button style={MOTOSTYLES.button} type="submit" disabled={loading}>
+              {loading ? 'Cadastrando...' : 'Criar conta'}
+            </button>
+          </form>
+        )}
+
+        <div style={MOTOSTYLES.divider}>
+          <div style={MOTOSTYLES.dividerLine}></div>
+          <span>ou</span>
+          <div style={MOTOSTYLES.dividerLine}></div>
+        </div>
+
+        <button style={MOTOSTYLES.googleBtn} onClick={handleGoogleLogin} disabled={loading || !window.google?.accounts?.oauth2}>
+          <svg width="20" height="20" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+          <span>Entrar com Google</span>
+        </button>
+
+        <p style={MOTOSTYLES.toggleText}>
+          {modo === 'login' ? (
+            <>Não tem conta? <button style={MOTOSTYLES.toggleLink} onClick={() => { setModo('signup'); setErro('') }}>Cadastre-se</button></>
+          ) : (
+            <>Já tem conta? <button style={MOTOSTYLES.toggleLink} onClick={() => { setModo('login'); setErro('') }}>Faça login</button></>
+          )}
+        </p>
+      </div>
     </div>
   )
 }

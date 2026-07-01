@@ -6271,3 +6271,153 @@ body {
   color: #43A047;
 }
 
+/* ===== PERMISSÕES ===== */
+.permissoes-page {
+  padding: 16px;
+}
+
+.permissoes-page .admin-header {
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.filtro-role {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.permissoes-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.permissoes-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.permissoes-card-info {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  flex: 1;
+}
+
+.permissoes-card-nome {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.permissoes-card-nome strong {
+  font-size: 0.95rem;
+  color: var(--text-primary);
+}
+
+.permissoes-card-email {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.permissoes-card-badges {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.permissoes-badge {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #fff;
+  padding: 3px 10px;
+  border-radius: 50px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.permissoes-status {
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 50px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.permissoes-status.ativo {
+  background: #43A04720;
+  color: #43A047;
+  border: 1px solid #43A047;
+}
+
+.permissoes-status.pendente {
+  background: #FF8F0020;
+  color: #FF8F00;
+  border: 1px solid #FF8F00;
+}
+
+.permissoes-status.bloqueado {
+  background: #E5393520;
+  color: #E53935;
+  border: 1px solid #E53935;
+}
+
+.permissoes-card-actions {
+  flex-shrink: 0;
+}
+
+.permissoes-edit-form {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.permissoes-edit-form select {
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 6px 10px;
+  font-size: 0.8rem;
+  outline: none;
+}
+
+.permissoes-edit-form .btn-add,
+.permissoes-edit-form .btn-del {
+  padding: 6px 12px;
+  font-size: 0.78rem;
+}
+
+@media (max-width: 600px) {
+  .permissoes-card {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .permissoes-card-info {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  .permissoes-card-actions {
+    width: 100%;
+  }
+  .permissoes-edit-form {
+    width: 100%;
+  }
+  .permissoes-edit-form select {
+    flex: 1;
+  }
+}
+

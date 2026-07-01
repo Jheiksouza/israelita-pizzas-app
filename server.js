@@ -12,6 +12,8 @@ const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || ''
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || ''
 const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, 'postmessage')
 
+const VALID_ROLES = ['cliente', 'motoboy', 'atendente', 'financeiro', 'admin']
+
 const app = express()
 const PORT = process.env.PORT || 3001
 const JWT_SECRET = process.env.JWT_SECRET || 'israelita-pizzas-jwt-secret-dev'
@@ -61,6 +63,14 @@ function authMiddleware(req, res, next) {
   next()
 }
 
+function requireRole(...roles) {
+  return (req, res, next) => {
+    if (!req.user) return res.status(401).json({ erro: 'Não autenticado' })
+    if (!roles.includes(req.user.role)) return res.status(403).json({ erro: 'Sem permissão' })
+    next()
+  }
+}
+
 function checkSupabase(res) {
   if (!supabase) {
     res.status(500).json({ erro: 'Banco de dados não configurado (SUPABASE_URL/KEY ausentes)' })
@@ -87,11 +97,11 @@ app.post('/auth/signup', async (req, res) => {
       : endereco ? [{ id: 'addr1', rua: endereco, lat: endereco_lat, lng: endereco_lng }] : []
     
     const { data, error } = await supabase.from('users').insert({
-      nome: nome || '', email, senha: hash, telefone: telefone || '', endereco: endereco || '', enderecos: enderecosIniciais, enderecoselecionado: endereco ? 'addr1' : null
+      nome: nome || '', email, senha: hash, telefone: telefone || '', endereco: endereco || '', enderecos: enderecosIniciais, enderecoselecionado: endereco ? 'addr1' : null, role: 'cliente', status: 'ativo'
     }).select()
     if (error) throw error
-    const token = jwt.sign({ id: data[0].id, email: data[0].email, nome: data[0].nome }, JWT_SECRET, { expiresIn: '7d' })
-    res.status(201).json({ token, user: { id: data[0].id, nome: data[0].nome, email: data[0].email, telefone: data[0].telefone, endereco: data[0].endereco, enderecos: data[0].enderecos, enderecoSelecionado: data[0].enderecoselecionado } })
+    const token = jwt.sign({ id: data[0].id, email: data[0].email, nome: data[0].nome, role: data[0].role }, JWT_SECRET, { expiresIn: '7d' })
+    res.status(201).json({ token, user: { id: data[0].id, nome: data[0].nome, email: data[0].email, telefone: data[0].telefone, endereco: data[0].endereco, enderecos: data[0].enderecos, enderecoSelecionado: data[0].enderecoselecionado, role: data[0].role, status: data[0].status } })
   } catch (err) {
     console.error('Erro ao cadastrar:', err)
     res.status(500).json({ erro: 'Erro ao cadastrar' })
@@ -107,8 +117,8 @@ app.post('/auth/login', async (req, res) => {
     if (error || !user) return res.status(401).json({ erro: 'Email ou senha inválidos' })
     const ok = await bcrypt.compare(senha, user.senha)
     if (!ok) return res.status(401).json({ erro: 'Email ou senha inválidos' })
-    const token = jwt.sign({ id: user.id, email: user.email, nome: user.nome }, JWT_SECRET, { expiresIn: '7d' })
-    res.json({ token, user: { id: user.id, nome: user.nome, email: user.email, telefone: user.telefone, endereco: user.endereco, enderecos: user.enderecos, enderecoSelecionado: user.enderecoselecionado } })
+    const token = jwt.sign({ id: user.id, email: user.email, nome: user.nome, role: user.role }, JWT_SECRET, { expiresIn: '7d' })
+    res.json({ token, user: { id: user.id, nome: user.nome, email: user.email, telefone: user.telefone, endereco: user.endereco, enderecos: user.enderecos, enderecoSelecionado: user.enderecoselecionado, role: user.role, status: user.status } })
   } catch (err) {
     console.error('Erro ao logar:', err)
     res.status(500).json({ erro: 'Erro ao fazer login' })
@@ -119,7 +129,7 @@ app.get('/auth/me', async (req, res) => {
   if (!req.user) return res.status(401).json({ erro: 'Não autenticado' })
   if (!checkSupabase(res)) return
   try {
-    const { data, error } = await supabase.from('users').select('id,nome,email,telefone,endereco,enderecos,enderecoselecionado').eq('id', req.user.id).single()
+    const { data, error } = await supabase.from('users').select('id,nome,email,telefone,endereco,enderecos,enderecoselecionado,role,status').eq('id', req.user.id).single()
     if (error || !data) return res.status(404).json({ erro: 'Usuário não encontrado' })
     data.enderecoSelecionado = data.enderecoselecionado
     delete data.enderecoselecionado
@@ -148,8 +158,8 @@ app.patch('/auth/me', async (req, res) => {
     if (Object.keys(updates).length === 0) return res.status(400).json({ erro: 'Nenhum campo para atualizar' })
     const { data, error } = await supabase.from('users').update(updates).eq('id', req.user.id).select()
     if (error) throw error
-    const token = jwt.sign({ id: data[0].id, email: data[0].email, nome: data[0].nome }, JWT_SECRET, { expiresIn: '7d' })
-    res.json({ token, user: { id: data[0].id, nome: data[0].nome, email: data[0].email, telefone: data[0].telefone, endereco: data[0].endereco, enderecos: data[0].enderecos, enderecoSelecionado: data[0].enderecoselecionado } })
+    const token = jwt.sign({ id: data[0].id, email: data[0].email, nome: data[0].nome, role: data[0].role }, JWT_SECRET, { expiresIn: '7d' })
+    res.json({ token, user: { id: data[0].id, nome: data[0].nome, email: data[0].email, telefone: data[0].telefone, endereco: data[0].endereco, enderecos: data[0].enderecos, enderecoSelecionado: data[0].enderecoselecionado, role: data[0].role, status: data[0].status } })
   } catch (err) {
     console.error('Erro ao atualizar usuário:', err)
     res.status(500).json({ erro: 'Erro ao atualizar dados' })
@@ -189,18 +199,71 @@ app.post('/auth/google', async (req, res) => {
     const { email, name, id: sub } = payload
     const { data: existing } = await supabase.from('users').select('*').eq('email', email).maybeSingle()
     if (existing) {
-      const token = jwt.sign({ id: existing.id, email: existing.email, nome: existing.nome }, JWT_SECRET, { expiresIn: '7d' })
-      return res.json({ token, user: { id: existing.id, nome: existing.nome, email: existing.email, telefone: existing.telefone, endereco: existing.endereco, enderecos: existing.enderecos, enderecoSelecionado: existing.enderecoselecionado } })
+      const token = jwt.sign({ id: existing.id, email: existing.email, nome: existing.nome, role: existing.role }, JWT_SECRET, { expiresIn: '7d' })
+      return res.json({ token, user: { id: existing.id, nome: existing.nome, email: existing.email, telefone: existing.telefone, endereco: existing.endereco, enderecos: existing.enderecos, enderecoSelecionado: existing.enderecoselecionado, role: existing.role, status: existing.status } })
     }
     const { data: created, error } = await supabase.from('users').insert({
-      nome: name || email.split('@')[0], email, senha: '', telefone: '', endereco: '', google_id: sub
+      nome: name || email.split('@')[0], email, senha: '', telefone: '', endereco: '', google_id: sub, role: 'cliente', status: 'ativo'
     }).select()
     if (error) throw error
-    const token = jwt.sign({ id: created[0].id, email: created[0].email, nome: created[0].nome }, JWT_SECRET, { expiresIn: '7d' })
-    res.status(201).json({ token, user: { id: created[0].id, nome: created[0].nome, email: created[0].email, telefone: '', endereco: '', enderecos: [], enderecoSelecionado: null } })
+    const token = jwt.sign({ id: created[0].id, email: created[0].email, nome: created[0].nome, role: created[0].role }, JWT_SECRET, { expiresIn: '7d' })
+    res.status(201).json({ token, user: { id: created[0].id, nome: created[0].nome, email: created[0].email, telefone: '', endereco: '', enderecos: [], enderecoSelecionado: null, role: created[0].role, status: created[0].status } })
   } catch (err) {
     console.error('Erro auth google:', err.message || err)
     res.status(500).json({ erro: err.message || 'Erro ao autenticar com Google' })
+  }
+})
+
+app.get('/auth/users', async (req, res) => {
+  if (!checkSupabase(res)) return
+  const authHeader = req.headers.authorization
+  let isAdmin = false
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    try {
+      const decoded = jwt.verify(authHeader.split(' ')[1], JWT_SECRET)
+      if (decoded.role === 'admin') isAdmin = true
+    } catch (_) {}
+  }
+  if (!isAdmin && req.headers['x-admin-password'] !== 'admin123' && req.query.senha !== 'admin123') {
+    return res.status(401).json({ erro: 'Não autorizado' })
+  }
+  try {
+    const { data, error } = await supabase.from('users').select('id,nome,email,telefone,role,status,created_at').order('id')
+    if (error) throw error
+    res.json(data || [])
+  } catch (err) {
+    console.error('Erro ao listar usuários:', err)
+    res.status(500).json({ erro: 'Erro ao listar usuários' })
+  }
+})
+
+app.patch('/auth/users/:id/role', async (req, res) => {
+  if (!checkSupabase(res)) return
+  const authHeader = req.headers.authorization
+  let isAdmin = false
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    try {
+      const decoded = jwt.verify(authHeader.split(' ')[1], JWT_SECRET)
+      if (decoded.role === 'admin') isAdmin = true
+    } catch (_) {}
+  }
+  if (!isAdmin && req.headers['x-admin-password'] !== 'admin123' && req.query.senha !== 'admin123') {
+    return res.status(401).json({ erro: 'Não autorizado' })
+  }
+  const { role, status } = req.body
+  if (role && !VALID_ROLES.includes(role)) return res.status(400).json({ erro: 'Role inválida' })
+  const updates = {}
+  if (role !== undefined) updates.role = role
+  if (status !== undefined) updates.status = status
+  if (Object.keys(updates).length === 0) return res.status(400).json({ erro: 'Nada para atualizar' })
+  try {
+    const { data, error } = await supabase.from('users').update(updates).eq('id', parseInt(req.params.id)).select()
+    if (error) throw error
+    if (!data || data.length === 0) return res.status(404).json({ erro: 'Usuário não encontrado' })
+    res.json({ id: data[0].id, role: data[0].role, status: data[0].status, nome: data[0].nome, email: data[0].email })
+  } catch (err) {
+    console.error('Erro ao atualizar role:', err)
+    res.status(500).json({ erro: 'Erro ao atualizar permissão' })
   }
 })
 
@@ -421,9 +484,17 @@ app.put('/admin/config/pizzaria', async (req, res) => {
 })
 
 // Login
-app.post('/login', (req, res) => {
-  const { senha } = req.body
+app.post('/login', async (req, res) => {
+  const { senha, userId } = req.body
   if (senha === 'admin123') {
+    if (userId && checkSupabase(res)) {
+      try {
+        const { data } = await supabase.from('users').select('id,nome,email,telefone,role,status,endereco,enderecos,enderecoselecionado').eq('id', parseInt(userId)).maybeSingle()
+        if (data) {
+          return res.json({ autenticado: true, user: { ...data, enderecoSelecionado: data.enderecoselecionado } })
+        }
+      } catch (_) {}
+    }
     return res.json({ autenticado: true })
   }
   res.status(401).json({ autenticado: false, erro: 'Senha incorreta' })
