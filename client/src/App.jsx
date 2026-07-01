@@ -794,7 +794,7 @@ function MeusPedidos({ token, onVoltar }) {
     } catch (_) { alert('Erro ao buscar pedido') }
   }
 
-  const statusLabel = { pendente: 'Pendente', aceito: 'Aceito', liberado: 'Liberado p/ Entrega', entregador_proximo: 'Entregador Próximo', entregue: 'Entregue', recusado: 'Recusado' }
+  const statusLabel = { pendente: 'Pendente', aceito: 'Em preparo', liberado: 'À caminho', entregador_proximo: 'Entregador Próximo', entregue: 'Entregue', recusado: 'Recusado' }
   const statusClass = { pendente: 'status-pendente', aceito: 'status-aceito', liberado: 'status-liberado', entregador_proximo: 'status-entregador_proximo', entregue: 'status-entregue', recusado: 'status-recusado' }
 
   return (
@@ -1636,7 +1636,13 @@ function AdminOrders({ pendentesCount }) {
     carregar()
   }
 
-  const ordenados = [...pedidos].sort((a, b) => new Date(b.data || 0) - new Date(a.data || 0))
+  const hojeStr = () => new Date().toLocaleDateString('pt-BR')
+  const pedidosDoDia = useMemo(() => {
+    const hoje = hojeStr()
+    return pedidos.filter(p => p.data && new Date(p.data).toLocaleDateString('pt-BR') === hoje)
+  }, [pedidos])
+
+  const ordenados = [...pedidosDoDia].sort((a, b) => new Date(b.data || 0) - new Date(a.data || 0))
   const filtrados = (filtro === 'todos' ? ordenados : ordenados.filter(p => p.status === filtro))
 
   const tempoRestante = (data) => {
@@ -1648,71 +1654,82 @@ function AdminOrders({ pendentesCount }) {
     return `${min}:${seg.toString().padStart(2, '0')}`
   }
 
-  const statusLabel = { pendente: 'Pendente', aceito: 'Aceito', liberado: 'Liberado p/ Entrega', entregador_proximo: 'Entregador Próximo', entregue: 'Entregue', recusado: 'Recusado' }
+  const statusLabel = { pendente: 'Pendente', aceito: 'Em preparo', liberado: 'À caminho', entregador_proximo: 'Entregador Próximo', entregue: 'Entregue', recusado: 'Recusado' }
   const statusClass = { pendente: 'status-pendente', aceito: 'status-aceito', liberado: 'status-liberado', entregador_proximo: 'status-entregador_proximo', entregue: 'status-entregue', recusado: 'status-recusado' }
+
+  const FILTROS = ['pendente', 'aceito', 'liberado', 'entregador_proximo', 'entregue', 'recusado', 'todos']
 
   return (
     <>
       <div className="admin-header">
         <h2>Pedidos Recebidos</h2>
         <div className="filtro-status">
-          {['todos', 'pendente', 'aceito', 'liberado', 'entregador_proximo', 'entregue', 'recusado'].map(s => (
-            <button key={s} className={`cat-btn ${filtro === s ? 'active' : ''}`} onClick={() => setFiltro(s)}>
-              {s === 'todos' ? 'Todos' : statusLabel[s]}
-            </button>
-          ))}
+          {FILTROS.map(s => {
+            const count = s === 'todos' ? ordenados.length : ordenados.filter(p => p.status === s).length
+            return (
+              <button key={s} className={`cat-btn ${filtro === s ? 'active' : ''}`} onClick={() => setFiltro(s)}>
+                {s === 'todos' ? 'Todos' : statusLabel[s]}
+                <span className={`status-count-badge ${count === 0 ? 'zero' : ''}`}>{count}</span>
+              </button>
+            )
+          })}
         </div>
       </div>
       {filtrados.length === 0 ? (
-        <div className="empty-state"><p>Nenhum pedido encontrado</p></div>
+        <div className="empty-state"><p>Nenhum pedido hoje</p></div>
       ) : (
         <div className="pedidos-lista">
           {filtrados.map(pedido => (
-            <div key={pedido.id} className={`pedido-card${pedido.status === 'pendente' ? ' pedido-pendente-destaque' : ''}`}>
+            <div key={pedido.id} className={`pedido-card ${pedido.status}${pedido.status === 'pendente' ? ' pedido-pendente-destaque' : ''}`}>
               <div className="pedido-header">
                 <strong>Pedido #{pedido.id}</strong>
                 <span className={`status-badge ${statusClass[pedido.status]}`}>{statusLabel[pedido.status]}</span>
               </div>
               <div className="pedido-body">
-                <p><strong>Cliente:</strong> {pedido.cliente?.nome}</p>
-                <p><strong>Telefone:</strong> {pedido.cliente?.telefone}</p>
-                <p><strong>Endereço:</strong> {pedido.cliente?.endereco || 'Não informado'}</p>
-                <p><strong>Data:</strong> {new Date(pedido.data).toLocaleString('pt-BR')}</p>
-                {pedido.status === 'pendente' && pedido.data && (
-                  <p className="pedido-timer"><strong>⏱ Cancela em:</strong> <span className={`pedido-timer-value${tempoRestante(pedido.data) === 'Cancelado' ? ' timer-expirado' : ''}`}>{tempoRestante(pedido.data)}</span></p>
-                )}
+                <div className="pedido-cliente">
+                  <span className="pedido-cliente-nome">{pedido.cliente?.nome}</span>
+                  <span className="pedido-cliente-tel">{pedido.cliente?.telefone}</span>
+                </div>
+                <div className="pedido-endereco">📍 {pedido.cliente?.endereco || 'Não informado'}</div>
+                <div className="pedido-meta">
+                  <span className="pedido-data">🕐 {new Date(pedido.data).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
+                  <span className="pedido-valor">R$ {pedido.total?.toFixed(2)}</span>
+                  {pedido.status === 'pendente' && pedido.data && (
+                    <span className={`pedido-timer ${tempoRestante(pedido.data) === 'Cancelado' ? 'timer-expirado' : ''}`}>⏱ {tempoRestante(pedido.data)}</span>
+                  )}
+                </div>
                 <div className="pedido-itens">
-                  <strong>Itens:</strong>
                   {pedido.itens?.map(item => (
-                    <span key={item.id} className="pedido-item">{item.qtd}x {item.nome} - R$ {(item.preco * item.qtd).toFixed(2)}</span>
+                    <span key={item.id} className="pedido-item">{item.qtd}x {item.nome}</span>
                   ))}
                 </div>
-                <p className="pedido-total"><strong>Total: R$ {pedido.total?.toFixed(2)}</strong></p>
               </div>
-              {pedido.status === 'pendente' && (
-                <div className="pedido-actions">
-                  <button className="btn-aceitar" onClick={() => atualizarStatus(pedido.id, 'aceito')}>Aceitar</button>
-                  <button className="btn-recusar" onClick={() => atualizarStatus(pedido.id, 'recusado')}>Recusar</button>
-                </div>
-              )}
-              {pedido.status === 'aceito' && (
-                <div className="pedido-actions">
-                  <button className="btn-liberar" onClick={() => atualizarStatus(pedido.id, 'liberado')}>Liberar para Entrega</button>
-                  <button className="btn-recusar" onClick={() => atualizarStatus(pedido.id, 'recusado')}>Recusar</button>
-                </div>
-              )}
-              {pedido.status === 'liberado' && (
-                <div className="pedido-actions">
-                  <button className="btn-aceitar" onClick={() => atualizarStatus(pedido.id, 'entregue')}>Marcar como Entregue</button>
-                  <button className="btn-recusar" onClick={() => atualizarStatus(pedido.id, 'recusado')}>Recusar</button>
-                </div>
-              )}
-              {pedido.status === 'entregador_proximo' && (
-                <div className="pedido-actions">
-                  <button className="btn-aceitar" onClick={() => atualizarStatus(pedido.id, 'entregue')}>Marcar como Entregue</button>
-                  <button className="btn-recusar" onClick={() => atualizarStatus(pedido.id, 'recusado')}>Recusar</button>
-                </div>
-              )}
+              <div className="pedido-actions">
+                {pedido.status === 'pendente' && (
+                  <>
+                    <button className="btn-aceitar" onClick={() => atualizarStatus(pedido.id, 'aceito')}>✓ Aceitar</button>
+                    <button className="btn-recusar" onClick={() => atualizarStatus(pedido.id, 'recusado')}>✕ Recusar</button>
+                  </>
+                )}
+                {pedido.status === 'aceito' && (
+                  <>
+                    <button className="btn-liberar" onClick={() => atualizarStatus(pedido.id, 'liberado')}>🚚 Liberar</button>
+                    <button className="btn-recusar" onClick={() => atualizarStatus(pedido.id, 'recusado')}>✕ Recusar</button>
+                  </>
+                )}
+                {pedido.status === 'liberado' && (
+                  <>
+                    <button className="btn-aceitar" onClick={() => atualizarStatus(pedido.id, 'entregue')}>✅ Entregue</button>
+                    <button className="btn-recusar" onClick={() => atualizarStatus(pedido.id, 'recusado')}>✕ Recusar</button>
+                  </>
+                )}
+                {pedido.status === 'entregador_proximo' && (
+                  <>
+                    <button className="btn-aceitar" onClick={() => atualizarStatus(pedido.id, 'entregue')}>✅ Entregue</button>
+                    <button className="btn-recusar" onClick={() => atualizarStatus(pedido.id, 'recusado')}>✕ Recusar</button>
+                  </>
+                )}
+              </div>
             </div>
           ))}
         </div>
