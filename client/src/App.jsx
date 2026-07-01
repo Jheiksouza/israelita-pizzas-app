@@ -2959,7 +2959,7 @@ function MotoboyPage({ onVoltar, userNome }) {
         ) : (
           <div className="motoboy-selecao">
             {pedidosAgrupados.map(grupo => (
-              <div key={grupo.id} className="motoboy-grupo">
+              <div key={grupo.id} className={`motoboy-grupo${grupo.id !== 'semLocal' ? ' ' + grupo.id : ''}`}>
                 <div className="motoboy-grupo-header">
                   <span className="motoboy-grupo-nome">
                     {ROTA_GRUPOS[grupo.id]?.icon || ''} {ROTA_GRUPOS[grupo.id]?.nome || 'Indefinido'}

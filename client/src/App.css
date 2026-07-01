@@ -6326,7 +6326,7 @@ body {
   background: #1A1A1A;
 }
 
-.motoboy-card-check {
+.motoboy-check {
   width: 22px;
   height: 22px;
   border-radius: 6px;
@@ -6414,7 +6414,7 @@ body {
   color: #aaa;
 }
 
-.motoboy-card-item-mista {
+.motoboy-item-badge-m {
   background: #FF8F0020 !important;
   color: #FF8F00 !important;
   font-weight: 600;
@@ -6459,7 +6459,28 @@ body {
   flex: 1;
 }
 
-.motoboy-btn-voltar {
+/* Empty state */
+.motoboy-vazio-icone { font-size: 3rem; }
+.motoboy-vazio-texto { color: #fff; font-size: 1.1rem; margin: 0; }
+.motoboy-vazio-sub { color: #666; font-size: 0.85rem; margin: 0; }
+
+.motoboy-gps-aviso {
+  font-size: 0.78rem;
+  color: #FFA726;
+  background: #FFA72610;
+  padding: 6px 14px;
+  border-radius: 8px;
+  margin: 0;
+}
+
+/* Progress bar */
+.motoboy-progresso-indicator { margin: 0 20px 12px; }
+.motoboy-progresso-texto { font-size: 0.78rem; color: #888; margin-bottom: 6px; }
+.motoboy-progresso-barra { height: 4px; background: #222; border-radius: 4px; overflow: hidden; }
+.motoboy-progresso-preenchido { height: 100%; background: linear-gradient(90deg, #FF8F00, #FF6D00); border-radius: 4px; transition: width 0.4s; }
+
+.motoboy-btn-voltar,
+.motoboy-btn-voltar-lista {
   width: 36px;
   height: 36px;
   border-radius: 10px;
