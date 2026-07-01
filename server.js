@@ -504,14 +504,19 @@ app.post('/login', async (req, res) => {
 let ultimaPosMotoboy = null
 
 app.post('/motoboy/position', (req, res) => {
-  const { lat, lng } = req.body
+  const { lat, lng, nome } = req.body
   if (lat == null || lng == null) return res.status(400).json({ erro: 'lat e lng obrigatórios' })
-  ultimaPosMotoboy = { lat: parseFloat(lat), lng: parseFloat(lng), timestamp: Date.now() }
+  ultimaPosMotoboy = {
+    lat: parseFloat(lat),
+    lng: parseFloat(lng),
+    timestamp: Date.now(),
+    nome: nome || ultimaPosMotoboy?.nome || 'Motoboy'
+  }
   res.json({ ok: true })
 })
 
 app.get('/motoboy/position', (req, res) => {
-  res.json(ultimaPosMotoboy || { lat: null, lng: null, timestamp: null })
+  res.json(ultimaPosMotoboy || { lat: null, lng: null, timestamp: null, nome: null })
 })
 
 // Servir frontend buildado (apenas local; no Vercel quem serve é o próprio Vercel)

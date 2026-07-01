@@ -2502,6 +2502,7 @@ function RastreioPage() {
   const [pos, setPos] = useState(null)
   const [status, setStatus] = useState('desconectado')
   const [ultimaAtualizacao, setUltimaAtualizacao] = useState(null)
+  const [motoboyNome, setMotoboyNome] = useState('')
 
   useEffect(() => {
     let mounted = true
@@ -2515,6 +2516,7 @@ function RastreioPage() {
             const diff = Date.now() - (data.timestamp || 0)
             setStatus(diff < 45000 ? 'conectado' : 'perdendo_sinal')
             setUltimaAtualizacao(data.timestamp)
+            if (data.nome) setMotoboyNome(data.nome)
           } else {
             setPos(null)
             setStatus('desconectado')
@@ -2528,7 +2530,6 @@ function RastreioPage() {
     return () => { mounted = false; clearInterval(id) }
   }, [])
 
-  // Atualiza status a cada 5s também (verifica se passou de 45s sem atualização)
   useEffect(() => {
     const verificar = () => {
       if (ultimaAtualizacao && Date.now() - ultimaAtualizacao > 45000) {
@@ -2541,11 +2542,14 @@ function RastreioPage() {
 
   const center = pos || { lat: -25.4290, lng: -49.2671 }
 
-  const statusText = {
-    conectado: 'Com sinal',
-    perdendo_sinal: 'Perdendo sinal',
-    desconectado: 'Sem sinal'
+  const getStatusText = () => {
+    if (status === 'conectado') return '🟢 Online'
+    if (!ultimaAtualizacao) return '🔴 Offline'
+    const diffMin = Math.floor((Date.now() - ultimaAtualizacao) / 60000)
+    if (diffMin < 1) return '🟡 Online'
+    return `🟡 ${diffMin} min offline`
   }
+
   const statusColor = {
     conectado: '#43A047',
     perdendo_sinal: '#FF8F00',
@@ -2558,7 +2562,7 @@ function RastreioPage() {
         <h2 style={{ margin: 0, fontSize: '1.15rem', flex: 1 }}>📍 Rastreio do Motoboy</h2>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 14px', borderRadius: '50px', background: `${statusColor[status]}15`, border: `2px solid ${statusColor[status]}` }}>
           <div style={{ width: 10, height: 10, borderRadius: '50%', background: statusColor[status], animation: status === 'conectado' ? 'motoboyBtnPulse 1s infinite alternate' : 'none' }} />
-          <span style={{ fontSize: '0.82rem', fontWeight: 600, color: statusColor[status] }}>{statusText[status]}</span>
+          <span style={{ fontSize: '0.82rem', fontWeight: 600, color: statusColor[status] }}>{getStatusText()}</span>
         </div>
       </div>
 
@@ -2577,14 +2581,14 @@ function RastreioPage() {
             {pos && (
               <Marker position={[pos.lat, pos.lng]} icon={L.divIcon({
                 className: '',
-                html: `<div class="motoboy-marker"><svg viewBox="0 0 24 36" width="26" height="40"><path d="M12 0C5.4 0 0 5.4 0 12c0 9 12 24 12 24s12-15 12-24C24 5.4 18.6 0 12 0z" fill="${statusColor[status]}"/><circle cx="12" cy="12" r="5" fill="#fff"/></svg><div class="motoboy-marker-pulse"></div></div>`,
-                iconSize: [26, 40],
-                iconAnchor: [13, 40],
+                html: `<div class="motoboy-marker-info"><div class="motoboy-marker-nome">${motoboyNome || 'Motoboy'}</div><div class="motoboy-marker-status" style="border-color:${statusColor[status]};color:${statusColor[status]}">${getStatusText()}</div><svg viewBox="0 0 24 36" width="28" height="42"><path d="M12 0C5.4 0 0 5.4 0 12c0 9 12 24 12 24s12-15 12-24C24 5.4 18.6 0 12 0z" fill="${statusColor[status]}"/><circle cx="12" cy="12" r="5" fill="#fff"/></svg><div class="motoboy-marker-pulse"></div></div>`,
+                iconSize: [28, 42],
+                iconAnchor: [14, 42],
               })}>
                 <Popup>
                   <div style={{ textAlign: 'center' }}>
-                    <strong>🛵 Motoboy</strong>
-                    <p style={{ margin: '4px 0 0', fontSize: '0.82rem', color: statusColor[status] }}>{statusText[status]}</p>
+                    <strong>🛵 {motoboyNome || 'Motoboy'}</strong>
+                    <p style={{ margin: '4px 0 0', fontSize: '0.82rem', color: statusColor[status] }}>{getStatusText()}</p>
                     <p style={{ margin: '2px 0 0', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                       {pos.lat.toFixed(6)}, {pos.lng.toFixed(6)}
                     </p>
@@ -2598,7 +2602,7 @@ function RastreioPage() {
 
       {(pos || ultimaAtualizacao) && (
         <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textAlign: 'center' }}>
-          Última atualização: {ultimaAtualizacao ? new Date(ultimaAtualizacao).toLocaleTimeString('pt-BR') : '—'}
+          {motoboyNome && <span style={{ fontWeight: 600 }}>{motoboyNome}</span>} · Última atualização: {ultimaAtualizacao ? new Date(ultimaAtualizacao).toLocaleTimeString('pt-BR') : '—'}
         </div>
       )}
     </div>
@@ -2607,326 +2611,107 @@ function RastreioPage() {
 
 const PIZZARIA_ADDR = ''
 
-function MotoboyPage({ onVoltar }) {
+function MotoboyPage({ onVoltar, userNome }) {
   const [pedidos, setPedidos] = useState([])
-  const [selecionados, setSelecionados] = useState([])
-  const [etapa, setEtapa] = useState('selecao')
-  const [ordemOtimizada, setOrdemOtimizada] = useState([])
-  const [voltaPizzaria, setVoltaPizzaria] = useState(null)
-  const [otimizando, setOtimizando] = useState(false)
+  const [entregaAtual, setEntregaAtual] = useState(0)
+  const [navegacaoIniciada, setNavegacaoIniciada] = useState(false)
   const [motoboyPos, setMotoboyPos] = useState(null)
-  const [pizzariaCoords, setPizzariaCoords] = useState(null)
-  const [pizzariaConfig, setPizzariaConfig] = useState(null)
-  const [chegadas, setChegadas] = useState({})
-  const [rastreioOk, setRastreioOk] = useState(null)
   const [erroGps, setErroGps] = useState(null)
-  const [confirmarItens, setConfirmarItens] = useState(null)
-  const [confirmCheck, setConfirmCheck] = useState(false)
-  const totalEntregasRef = useRef(0)
-  const prevCountRef = useRef(0)
+  const [chegou, setChegou] = useState(false)
+  const [confirmarModal, setConfirmarModal] = useState(null)
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [pizzariaCoords, setPizzariaCoords] = useState(null)
+  const [concluidos, setConcluidos] = useState([])
   const mountedRef = useRef(true)
-  const primeiraCarga = useRef(true)
   const watchIdRef = useRef(null)
-  const audioCtxRef = useRef(null)
   const motoboyPosRef = useRef(null)
+  const proximityNotifiedRef = useRef({})
+  const prevPedidosCount = useRef(0)
 
   useEffect(() => {
-    if ('Notification' in window && Notification.permission === 'default') {
-      Notification.requestPermission()
-    }
-    try {
-      const ctx = new (window.AudioContext || window.webkitAudioContext)()
-      audioCtxRef.current = ctx
-      const unlock = () => {
-        if (ctx.state === 'suspended') {
-          ctx.resume().then(() => {
-            try {
-              const o = ctx.createOscillator()
-              const g = ctx.createGain()
-              g.gain.value = 0.01; o.connect(g); g.connect(ctx.destination)
-              o.start(); o.stop(ctx.currentTime + 0.01)
-            } catch (_) {}
-          }).catch(() => {})
-        }
-      }
-      document.addEventListener('touchstart', unlock, { passive: true })
-      document.addEventListener('click', unlock, { passive: true })
-      unlock()
-    } catch (_) {}
-    // Carregar configuração da pizzaria do servidor
+    mountedRef.current = true
     fetch(`${API}/admin/config/pizzaria`)
       .then(r => r.json())
       .then(data => {
         if (!mountedRef.current) return
-        setPizzariaConfig(data)
-        const addrStr = data.rua ? `${data.rua}, ${data.numero} - ${data.bairro}, ${data.cidade} - ${data.estado}` : ''
-        // Priorizar coordenadas salvas (local exato marcado no mapa pelo usuário)
-        if (data.lat && data.lng) {
-          setPizzariaCoords({ lat: data.lat, lng: data.lng })
-        } else if (addrStr) {
-          // Fallback: geocodificar do endereço quando não tem coordenadas salvas
-          fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(addrStr)}&limit=1`, {
-            headers: { 'User-Agent': 'IsraelitaPizzasApp/1.0' }
-          })
-            .then(r => r.json())
-            .then(geo => {
-              if (geo?.length && mountedRef.current) {
-                setPizzariaCoords({ lat: parseFloat(geo[0].lat), lng: parseFloat(geo[0].lon) })
-              }
-            })
-            .catch(() => {})
-        }
-      })
-      .catch(() => {})
-  }, [])
-
-  useEffect(() => {
-    mountedRef.current = true
-    if (!navigator.geolocation) { setErroGps('indisponivel'); console.error('[Motoboy] Geolocation não suportado'); return }
-
-    // Wake Lock: mantém a tela acesa enquanto a página estiver visível
-    let wakeLock = null
-    const adquirirWakeLock = async () => {
-      try {
-        if (navigator.wakeLock) {
-          wakeLock = await navigator.wakeLock.request('screen')
-        }
-      } catch (_) {}
-    }
-    adquirirWakeLock()
-
-    // Retoma wake lock quando a página voltar a ficar visível
-    const onVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        adquirirWakeLock()
-        // Re-adquire posição GPS imediatamente ao voltar
-        if (navigator.geolocation) {
-          navigator.geolocation.getCurrentPosition(
-            pos => { if (mountedRef.current) { setMotoboyPos({ lat: pos.coords.latitude, lng: pos.coords.longitude }); setErroGps(null) } },
-            () => {},
-            { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-          )
-        }
-      }
-    }
-    document.addEventListener('visibilitychange', onVisibilityChange)
-
-    // Envia última posição quando a página for fechada/oculta
-    const onPageHide = () => {
-      if (motoboyPosRef.current) {
-        navigator.sendBeacon?.(
-          `${API}/motoboy/position`,
-          JSON.stringify({ lat: motoboyPosRef.current.lat, lng: motoboyPosRef.current.lng })
-        )
-      }
-    }
-    window.addEventListener('pagehide', onPageHide)
-
-    watchIdRef.current = navigator.geolocation.watchPosition(
-      pos => {
-        const p = { lat: pos.coords.latitude, lng: pos.coords.longitude }
-        motoboyPosRef.current = p
-        if (mountedRef.current) { setMotoboyPos(p); setErroGps(null) }
-      },
-      err => { console.error('[Motoboy] Erro GPS:', err.code, err.message); if (mountedRef.current) setErroGps(err.code) },
-      { enableHighAccuracy: true, timeout: 20000, maximumAge: 5000 }
-    )
-    // Timeout: se depois de 20s não tiver posição, mostra aviso
-    const timeout = setTimeout(() => {
-      if (mountedRef.current && !motoboyPos) setErroGps('timeout')
-    }, 20000)
-    return () => {
-      if (watchIdRef.current) navigator.geolocation.clearWatch(watchIdRef.current)
-      clearTimeout(timeout)
-      document.removeEventListener('visibilitychange', onVisibilityChange)
-      window.removeEventListener('pagehide', onPageHide)
-      if (wakeLock) wakeLock.release()
-    }
+        if (data.lat && data.lng) setPizzariaCoords({ lat: data.lat, lng: data.lng })
+      }).catch(() => {})
+    return () => { mountedRef.current = false }
   }, [])
 
   useEffect(() => {
     mountedRef.current = true
     const carregar = () => {
       fetch(`${API}/orders`)
-        .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json() })
+        .then(r => r.json())
         .then(data => {
-          if (!mountedRef.current) return
-          if (!Array.isArray(data)) return
+          if (!mountedRef.current || !Array.isArray(data)) return
           const liberados = data.filter(p => p.status === 'liberado' || p.status === 'entregador_proximo')
-          liberados.forEach(p => console.log('[DEBUG API] pedido', p.id, 'entrega_lat:', p.entrega_lat, 'entrega_lng:', p.entrega_lng, 'cliente.lat:', p.cliente?.lat, 'cliente.lng:', p.cliente?.lng))
-          if (liberados.length > prevCountRef.current && !primeiraCarga.current) {
-            tocarSomMotoboy()
+          if (liberados.length > prevPedidosCount.current && prevPedidosCount.current > 0) {
+            try { navigator.vibrate?.([200, 100, 200]) } catch {}
           }
-          prevCountRef.current = liberados.length
-          primeiraCarga.current = false
+          prevPedidosCount.current = liberados.length
           setPedidos(liberados)
-        })
-        .catch(() => {})
+        }).catch(() => {})
     }
     carregar()
     const id = setInterval(carregar, 10000)
     return () => { clearInterval(id); mountedRef.current = false }
   }, [])
 
-  // Detecta proximidade (400m) — alerta + atualiza status no servidor
-  const proximityNotifiedRef = useRef({})
   useEffect(() => {
-    if (!motoboyPos) return
-    const alvos = etapa === 'organizar' ? ordemOtimizada : pedidos.filter(p => selecionados.includes(p.id))
-    alvos.forEach(p => {
-      if (!p.entrega_lat || !p.entrega_lng || proximityNotifiedRef.current[p.id] || chegouRef.current[p.id]) return
-      const d = haversineKm(motoboyPos.lat, motoboyPos.lng, p.entrega_lat, p.entrega_lng) * 1000
-      if (d < 400) {
-        proximityNotifiedRef.current[p.id] = true
-        tocarSomProximo('400m')
-        try {
-          if ('Notification' in window && Notification.permission === 'granted') {
-            new Notification('🛵 Próximo da entrega #' + p.id, {
-              body: 'Cliente: ' + (p.cliente?.nome || '') + ' - ' + (p.cliente?.endereco || ''),
-              tag: 'prox-' + p.id
-            })
-          }
-        } catch (_) {}
-        fetch(`${API}/orders/${p.id}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ status: 'entregador_proximo' })
-        }).catch(() => {})
+    mountedRef.current = true
+    if (!navigator.geolocation) { setErroGps('indisponivel'); return }
+    let wakeLock = null
+    navigator.wakeLock?.request('screen').then(l => wakeLock = l).catch(() => {})
+    watchIdRef.current = navigator.geolocation.watchPosition(
+      pos => {
+        const p = { lat: pos.coords.latitude, lng: pos.coords.longitude }
+        motoboyPosRef.current = p
+        if (mountedRef.current) { setMotoboyPos(p); setErroGps(null) }
+      },
+      err => { if (mountedRef.current) setErroGps(err.code) },
+      { enableHighAccuracy: true, timeout: 20000, maximumAge: 5000 }
+    )
+    const timeout = setTimeout(() => {
+      if (mountedRef.current && !motoboyPos) setErroGps('timeout')
+    }, 20000)
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible' && navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          pos => { if (mountedRef.current) { setMotoboyPos({ lat: pos.coords.latitude, lng: pos.coords.longitude }); setErroGps(null) } },
+          () => {},
+          { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+        )
+        navigator.wakeLock?.request('screen').then(l => wakeLock = l).catch(() => {})
       }
-    })
-  }, [motoboyPos, etapa, ordemOtimizada, pedidos, selecionados])
+    }
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => {
+      if (watchIdRef.current) navigator.geolocation.clearWatch(watchIdRef.current)
+      clearTimeout(timeout)
+      document.removeEventListener('visibilitychange', onVisibility)
+      wakeLock?.release()
+    }
+  }, [])
 
-  // Detecta chegada nos destinos (dentro de 100m)
-  const chegouRef = useRef({})
   useEffect(() => {
-    if (!motoboyPos) return
-    const alvos = etapa === 'organizar' ? ordemOtimizada : pedidos.filter(p => selecionados.includes(p.id))
-    const novas = { ...chegadas }
-    let mudou = false
-    alvos.forEach(p => {
-      if (!p.entrega_lat || !p.entrega_lng || chegouRef.current[p.id]) return
-      const d = haversineKm(motoboyPos.lat, motoboyPos.lng, p.entrega_lat, p.entrega_lng) * 1000
-      if (d < 100) {
-        novas[p.id] = true
-        chegouRef.current[p.id] = true
-        mudou = true
-        tocarSomProximo('100m')
-        try {
-          if ('Notification' in window && Notification.permission === 'granted') {
-            new Notification('📍 Chegou no destino #' + p.id, {
-              body: 'Cliente: ' + (p.cliente?.nome || '') + ' - ' + (p.cliente?.endereco || ''),
-              tag: 'chegou-' + p.id
-            })
-          }
-        } catch (_) {}
-      }
-    })
-    if (mudou) setChegadas(novas)
-  }, [motoboyPos, etapa, ordemOtimizada, pedidos, selecionados])
-
-  // Envia posição do motoboy para o servidor a cada atualização do GPS + intervalo de 15s
-  useEffect(() => {
-    if (!motoboyPos) return
+    if (!motoboyPos || !userNome) return
     const enviar = () => {
       fetch(`${API}/motoboy/position`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(motoboyPos)
-      }).then(r => { if (r.ok) setRastreioOk(true); else setRastreioOk(false) }).catch(() => setRastreioOk(false))
+        body: JSON.stringify({ ...motoboyPos, nome: userNome })
+      }).catch(() => {})
     }
     enviar()
     const id = setInterval(enviar, 15000)
     return () => clearInterval(id)
-  }, [motoboyPos])
+  }, [motoboyPos, userNome])
 
-  useEffect(() => {
-    if (etapa === 'organizar' && ordemOtimizada.length === 0) {
-      setEtapa('selecao')
-    }
-  }, [ordemOtimizada.length, etapa])
-
-  const tocarSomMotoboy = () => {
-    try { navigator.vibrate?.([200, 100, 200, 100, 200]) } catch (_) {}
-    try {
-      let ctx = audioCtxRef.current
-      if (!ctx) {
-        ctx = new (window.AudioContext || window.webkitAudioContext)()
-        audioCtxRef.current = ctx
-      }
-      if (ctx.state === 'suspended') ctx.resume()
-      let toques = 0
-      const tocar = () => {
-        if (toques >= 2 || !ctx || ctx.state === 'closed') return
-        if (ctx.state === 'suspended') ctx.resume()
-        const t = ctx.currentTime
-        for (let i = 0; i < 3; i++) {
-          const osc = ctx.createOscillator()
-          const gain = ctx.createGain()
-          osc.type = 'sine'
-          osc.frequency.value = 660 + i * 110
-          gain.gain.setValueAtTime(0.2, t + i * 0.1)
-          gain.gain.exponentialRampToValueAtTime(0.01, t + i * 0.1 + 0.3)
-          osc.connect(gain); gain.connect(ctx.destination)
-          osc.start(t + i * 0.1); osc.stop(t + i * 0.1 + 0.3)
-        }
-        toques++
-        if (toques < 2) setTimeout(tocar, 1200)
-      }
-      tocar()
-    } catch (_) {}
-  }
-
-  const gerarBeepWav = (freq, dur) => {
-    const sr = 8000, n = Math.floor(sr * dur)
-    const buf = new ArrayBuffer(44 + n * 2)
-    const v = new DataView(buf)
-    const w = (o, s) => { for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)) }
-    w(0, 'RIFF'); v.setUint32(4, 36 + n * 2, true); w(8, 'WAVE')
-    w(12, 'fmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true)
-    v.setUint16(22, 1, true); v.setUint32(24, sr, true); v.setUint32(28, sr * 2, true)
-    v.setUint16(32, 2, true); v.setUint16(34, 16, true); w(36, 'data')
-    v.setUint32(40, n * 2, true)
-    for (let i = 0; i < n; i++) {
-      const s = Math.sin(2 * Math.PI * freq * i / sr) * 0.4
-      v.setInt16(44 + i * 2, s * 32767, true)
-    }
-    return URL.createObjectURL(new Blob([buf], { type: 'audio/wav' }))
-  }
-
-  const tocarSomProximo = (tipo) => {
-    try { navigator.vibrate?.([300, 150, 300]) } catch (_) {}
-    const steps = tipo === '400m' ? 3 : 1
-    // AudioContext (desktop)
-    try {
-      let ctx = audioCtxRef.current
-      if (!ctx) {
-        ctx = new (window.AudioContext || window.webkitAudioContext)()
-        audioCtxRef.current = ctx
-      }
-      if (ctx.state === 'suspended') ctx.resume()
-      const t = ctx.currentTime
-      for (let i = 0; i < steps; i++) {
-        const osc = ctx.createOscillator()
-        const gain = ctx.createGain()
-        osc.type = tipo === '400m' ? 'triangle' : 'sine'
-        osc.frequency.value = (tipo === '400m' ? 520 : 660) + i * 130
-        gain.gain.setValueAtTime(0.25, t + i * 0.15)
-        gain.gain.exponentialRampToValueAtTime(0.01, t + i * 0.15 + (tipo === '400m' ? 0.2 : 0.5))
-        osc.connect(gain); gain.connect(ctx.destination)
-        osc.start(t + i * 0.15); osc.stop(t + i * 0.15 + (tipo === '400m' ? 0.2 : 0.5))
-      }
-    } catch (_) {}
-    // Fallback: Audio element (funciona em iOS)
-    try {
-      const url = gerarBeepWav(tipo === '400m' ? 650 : 800, tipo === '400m' ? 0.15 : 0.4)
-      const tocar = (i) => {
-        if (i >= steps) { setTimeout(() => URL.revokeObjectURL(url), 1000); return }
-        const a = new Audio(url); a.volume = 0.8; a.play().catch(() => {})
-        a.onended = () => setTimeout(() => tocar(i + 1), 150)
-      }
-      tocar(0)
-    } catch (_) {}
-  }
+  const pedidoAtual = pedidos[entregaAtual]
+  const getLat = (p) => p?.entrega_lat ?? p?.cliente?.lat ?? p?.cliente?.endereco_lat ?? null
+  const getLng = (p) => p?.entrega_lng ?? p?.cliente?.lng ?? p?.cliente?.endereco_lng ?? null
 
   const haversineKm = (lat1, lng1, lat2, lng2) => {
     const R = 6371
@@ -2938,420 +2723,214 @@ function MotoboyPage({ onVoltar }) {
     return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
   }
 
-  const getBearing = (lat1, lng1, lat2, lng2) => {
-    const dLng = (lng2 - lng1) * Math.PI / 180
-    const y = Math.sin(dLng) * Math.cos(lat2 * Math.PI / 180)
-    const x = Math.cos(lat1 * Math.PI / 180) * Math.sin(lat2 * Math.PI / 180) -
-              Math.sin(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.cos(dLng)
-    return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360
+  useEffect(() => {
+    if (!motoboyPos || !pedidoAtual || !navegacaoIniciada) return
+    const pLat = getLat(pedidoAtual)
+    const pLng = getLng(pedidoAtual)
+    if (!pLat || !pLng) return
+    const d = haversineKm(motoboyPos.lat, motoboyPos.lng, pLat, pLng) * 1000
+    if (d < 400 && !proximityNotifiedRef.current[pedidoAtual.id]) {
+      proximityNotifiedRef.current[pedidoAtual.id] = true
+      try { navigator.vibrate?.([200, 100, 200]) } catch {}
+      fetch(`${API}/orders/${pedidoAtual.id}`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'entregador_proximo' })
+      }).catch(() => {})
+    }
+    if (d < 100) {
+      setChegou(true)
+    } else {
+      setChegou(false)
+    }
+  }, [motoboyPos, navegacaoIniciada, entregaAtual])
+
+  const iniciarNavegacao = () => {
+    setNavegacaoIniciada(true)
+    const lat = getLat(pedidoAtual)
+    const lng = getLng(pedidoAtual)
+    if (lat && lng) {
+      window.open(`https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving&dir_action=navigate`, '_blank')
+    } else if (pedidoAtual?.cliente?.endereco) {
+      window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(pedidoAtual.cliente.endereco)}&travelmode=driving&dir_action=navigate`, '_blank')
+    }
   }
 
-  const getDirectionId = (bearing) => {
-    if (bearing >= 315 || bearing < 45) return 'norte'
-    if (bearing >= 45 && bearing < 135) return 'leste'
-    if (bearing >= 135 && bearing < 225) return 'sul'
-    return 'oeste'
+  const reiniciarNavegacao = () => {
+    const lat = getLat(pedidoAtual)
+    const lng = getLng(pedidoAtual)
+    if (lat && lng) {
+      window.open(`https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving&dir_action=navigate`, '_blank')
+    }
   }
 
-  const ROTA_GRUPOS = {
-    norte: { nome: 'Norte', icon: '⬆️' },
-    leste: { nome: 'Leste', icon: '➡️' },
-    sul: { nome: 'Sul', icon: '⬇️' },
-    oeste: { nome: 'Oeste', icon: '⬅️' },
-    semLocal: { nome: 'Indefinido', icon: '📍' },
+  const confirmarEntrega = async (id) => {
+    await fetch(`${API}/orders/${id}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'entregue' })
+    })
+    setConfirmarModal(null)
+    setNavegacaoIniciada(false)
+    setChegou(false)
+    setConcluidos(prev => [...prev, id])
+    if (entregaAtual + 1 >= pedidos.length) {
+      return
+    }
+    setEntregaAtual(prev => prev + 1)
   }
 
-  const toggleSelecionado = (id) => {
-    setSelecionados(prev =>
-      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+  const pularProxima = () => {
+    setConfirmarModal(null)
+    setNavegacaoIniciada(false)
+    setChegou(false)
+    setConcluidos(prev => [...prev, pedidoAtual.id])
+    setEntregaAtual(prev => prev + 1)
+  }
+
+  const pendentes = pedidos.filter(p => !concluidos.includes(p.id))
+
+  if (erroGps === 'indisponivel') {
+    return (
+      <div className="motoboy-page" style={{display:'flex',alignItems:'center',justifyContent:'center',textAlign:'center',padding:24}}>
+        <div><div style={{fontSize:48,marginBottom:16}}>📍</div><p style={{color:'#888',fontSize:14}}>GPS não suportado neste navegador.</p></div>
+      </div>
     )
   }
 
-  const getLat = (p) => p.entrega_lat ?? p.cliente?.lat ?? p.cliente?.endereco_lat ?? null
-  const getLng = (p) => p.entrega_lng ?? p.cliente?.lng ?? p.cliente?.endereco_lng ?? null
-
-  const organizar = async () => {
-    setOtimizando(true)
-    const selec = pedidos.filter(p => selecionados.includes(p.id))
-    selec.forEach(p => console.log('[DEBUG organizar] pedido', p.id, 'getLat:', getLat(p), 'getLng:', getLng(p), 'entrega_lat:', p.entrega_lat, 'cliente.lat:', p.cliente?.lat))
-
-    if (motoboyPos && pizzariaCoords && selec.some(p => getLat(p) && getLng(p))) {
-      const comCoords = selec.filter(p => getLat(p) && getLng(p))
-      const semCoords = selec.filter(p => !getLat(p) || !getLng(p))
-
-      if (comCoords.length >= 1) {
-        const coordsStr = [
-          `${motoboyPos.lng},${motoboyPos.lat}`,
-          ...comCoords.map(p => `${getLng(p)},${getLat(p)}`),
-          `${pizzariaCoords.lng},${pizzariaCoords.lat}`
-        ].join(';')
-        try {
-          const r = await fetch(`https://router.project-osrm.org/trip/v1/driving/${coordsStr}?source=first&destination=last&overview=false`)
-          if (r.ok) {
-            const data = await r.json()
-            if (data.code === 'Ok') {
-              const waypoints = data.trips[0].waypoints
-              const legs = data.trips[0].legs
-              const rotaOtimizada = waypoints.slice(1, -1).map((wp, i) => ({
-                ...comCoords[wp.waypoint_index - 1],
-                distKm: legs[i].distance / 1000,
-                durMin: Math.round(legs[i].duration / 60)
-              }))
-              const voltaDist = legs[legs.length - 1].distance / 1000
-              const voltaDur = Math.round(legs[legs.length - 1].duration / 60)
-              const semCoordsOrd = [...semCoords].sort((a, b) => new Date(a.data) - new Date(b.data))
-              setOrdemOtimizada([...rotaOtimizada, ...semCoordsOrd])
-              setVoltaPizzaria({ distKm: voltaDist, durMin: voltaDur })
-              setEtapa('organizar')
-              totalEntregasRef.current = rotaOtimizada.length + semCoordsOrd.length
-              setOtimizando(false)
-              return
-            }
-          }
-        } catch (_) {}
-      }
-
-      const ordenados = [...selec].sort((a, b) => {
-        const aLat = getLat(a); const aLng = getLng(a)
-        const bLat = getLat(b); const bLng = getLng(b)
-        const da = aLat && motoboyPos ? haversineKm(motoboyPos.lat, motoboyPos.lng, aLat, aLng) : Infinity
-        const db = bLat && motoboyPos ? haversineKm(motoboyPos.lat, motoboyPos.lng, bLat, bLng) : Infinity
-        if (da !== db) return da - db
-        return new Date(a.data) - new Date(b.data)
-      })
-      const ultimo = ordenados[ordenados.length - 1]
-      const ultLat = getLat(ultimo); const ultLng = getLng(ultimo)
-      if (ultLat && pizzariaCoords) {
-        const d = haversineKm(ultLat, ultLng, pizzariaCoords.lat, pizzariaCoords.lng)
-        const t = Math.round(d / 0.4)
-        setVoltaPizzaria({ distKm: d, durMin: t })
-      }
-      setOrdemOtimizada(ordenados)
-      setEtapa('organizar')
-      setOtimizando(false)
-      totalEntregasRef.current = ordenados.length
-    } else if (pizzariaCoords) {
-      const ordenados = [...selec].sort((a, b) => new Date(a.data) - new Date(b.data))
-      const ultimo = ordenados[ordenados.length - 1]
-      const ultLat = getLat(ultimo); const ultLng = getLng(ultimo)
-      if (ultLat && pizzariaCoords) {
-        const d = haversineKm(ultLat, ultLng, pizzariaCoords.lat, pizzariaCoords.lng)
-        const t = Math.round(d / 0.4)
-        setVoltaPizzaria({ distKm: d, durMin: t })
-      }
-      setOrdemOtimizada(ordenados)
-      setEtapa('organizar')
-      setOtimizando(false)
-    } else {
-      const ordenados = [...selec].sort((a, b) => new Date(a.data) - new Date(b.data))
-      setOrdemOtimizada(ordenados)
-      setEtapa('organizar')
-      setOtimizando(false)
-      totalEntregasRef.current = ordenados.length
-    }
+  if (pendentes.length === 0) {
+    return (
+      <div className="motoboy-page">
+        <div className="motoboy-topo">
+          <div style={{flex:1}}></div>
+          <h1 className="motoboy-titulo">🛵 Entregas</h1>
+          <div className="motoboy-menu-container">
+            <button className="motoboy-menu-btn" onClick={() => setMenuOpen(!menuOpen)}>☰</button>
+            {menuOpen && (
+              <div className="motoboy-menu-dropdown">
+                <button onClick={onVoltar}>🚪 Sair</button>
+              </div>
+            )}
+          </div>
+        </div>
+        <div className="motoboy-vazio" style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:12}}>
+          <div className="motoboy-vazio-icone">🛵</div>
+          <p className="motoboy-vazio-texto">Todas as entregas concluídas!</p>
+          <p className="motoboy-vazio-sub">Aguardando novos pedidos...</p>
+          {erroGps === 1 && <p className="motoboy-gps-aviso">⚠️ Permissão de localização negada.</p>}
+          {erroGps === 2 && <p className="motoboy-gps-aviso">⚠️ GPS indisponível.</p>}
+          {erroGps === 3 && <p className="motoboy-gps-aviso">⏳ GPS timeout.</p>}
+          {erroGps === 'timeout' && <p className="motoboy-gps-aviso">⏳ GPS não respondeu.</p>}
+        </div>
+      </div>
+    )
   }
 
-  const iniciarConfirmacao = (id) => {
-    const pedido = ordemOtimizada.find(p => p.id === id) || pedidos.find(p => p.id === id)
-    if (!pedido) return
-    const foraDaCaixa = pedido.itens?.filter(i => i.tipo !== 'pizza') || []
-    if (foraDaCaixa.length > 0) {
-      setConfirmarItens({ pedido, itensFora: foraDaCaixa })
-      setConfirmCheck(false)
-    } else {
-      marcarEntregueEfetivo(id)
-    }
-  }
-
-  const marcarEntregueEfetivo = async (id) => {
-    await fetch(`${API}/orders/${id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status: 'entregue' })
-    })
-    setSelecionados(prev => prev.filter(x => x !== id))
-    setOrdemOtimizada(prev => prev.filter(p => p.id !== id))
-    setConfirmarItens(null)
-  }
-
-  const abrirNoMapsRota = () => {
-    const extrairLat = a => a.entrega_lat ?? a.cliente?.lat ?? a.cliente?.endereco_lat ?? null
-    const extrairLng = a => a.entrega_lng ?? a.cliente?.lng ?? a.cliente?.endereco_lng ?? null
-    ordemOtimizada.forEach(p => console.log('[DEBUG abrirNoMapsRota] pedido', p.id, 'extrairLat:', extrairLat(p), 'extrairLng:', extrairLng(p), 'endereco:', p.cliente?.endereco))
-    const destinos = ordemOtimizada.filter(p => (extrairLat(p) && extrairLng(p)) || p.cliente?.endereco)
-    if (destinos.length === 0) {
-      if (!pizzariaCoords) return
-      window.location.href = `https://www.google.com/maps/dir/?api=1&destination=${pizzariaCoords.lat},${pizzariaCoords.lng}&travelmode=driving&dir_action=navigate`
-      return
-    }
-    const enc = a => {
-      const lat = extrairLat(a)
-      const lng = extrairLng(a)
-      if (lat && lng) return `${lat},${lng}`
-      return a.cliente?.endereco
-    }
-    const pontos = destinos.map(enc)
-    const params = new URLSearchParams({ api: 1, travelmode: 'driving', dir_action: 'navigate' })
-    // Destino final = pizzaria (motoboy volta pra base)
-    if (pizzariaCoords?.lat && pizzariaCoords?.lng) {
-      params.set('destination', `${pizzariaCoords.lat},${pizzariaCoords.lng}`)
-    } else {
-      params.set('destination', pontos[pontos.length - 1])
-    }
-    // Todas as entregas como waypoints intermediários
-    params.set('waypoints', pontos.join('|'))
-    console.log('[DEBUG abrirNoMapsRota] destination (pizzaria):', params.get('destination'), 'waypoints:', pontos.join('|'))
-    window.location.href = `https://www.google.com/maps/dir/?${params}`
-  }
-
-  const formatTel = (t) => {
-    if (!t) return ''
-    const s = t.replace(/\D/g, '')
-    if (s.length === 11) return `(${s.slice(0,2)}) ${s.slice(2,7)}-${s.slice(7)}`
-    if (s.length === 10) return `(${s.slice(0,2)}) ${s.slice(2,6)}-${s.slice(6)}`
-    return t
-  }
-
-  const pedidosAgrupados = useMemo(() => {
-    if (!pizzariaCoords) return []
-    const mapa = {}
-    pedidos.forEach(p => {
-      const pLat = getLat(p); const pLng = getLng(p)
-      let id = 'semLocal'
-      if (pLat && pLng) {
-        const bearing = getBearing(pizzariaCoords.lat, pizzariaCoords.lng, pLat, pLng)
-        id = getDirectionId(bearing)
-      }
-      if (!mapa[id]) mapa[id] = []
-      let dist = Infinity
-      if (pLat && pLng) {
-        if (motoboyPos) dist = haversineKm(motoboyPos.lat, motoboyPos.lng, pLat, pLng)
-        else dist = haversineKm(pizzariaCoords.lat, pizzariaCoords.lng, pLat, pLng)
-      }
-      mapa[id].push({ ...p, _dist: dist })
-    })
-    Object.values(mapa).forEach(g => {
-      g.sort((a, b) => {
-        if (a._dist !== b._dist) return a._dist - b._dist
-        return new Date(a.data) - new Date(b.data)
-      })
-    })
-    const arr = Object.entries(mapa).map(([id, itens]) => ({
-      id, itens,
-      minDist: Math.min(...itens.map(i => i._dist))
-    }))
-    arr.sort((a, b) => {
-      if (a.id === 'semLocal') return 1
-      if (b.id === 'semLocal') return -1
-      return a.minDist - b.minDist
-    })
-    let prio = 0
-    arr.forEach(g => g.itens.forEach(i => { i._prio = ++prio }))
-    return arr
-  }, [pedidos, pizzariaCoords, motoboyPos])
+  const p = pendentes[0]
+  const temBebidas = p.itens?.filter(i => i.tipo !== 'pizza')?.length > 0
 
   return (
     <div className="motoboy-page">
       <div className="motoboy-topo">
-        <button className="motoboy-voltar" onClick={onVoltar}>←</button>
-        <h1 className="motoboy-titulo">🛵 Entregas</h1>
-        <div className="motoboy-topo-right">
-          <span className={`motoboy-rastreio-dot ${rastreioOk === null ? 'waiting' : rastreioOk ? 'on' : 'off'}`}
-            title={rastreioOk === null ? 'Aguardando GPS...' : rastreioOk ? 'Rastreio ativo' : 'Erro no rastreio'} />
-          <span className="motoboy-qtd">{pedidos.length} pedido{pedidos.length !== 1 ? 's' : ''}</span>
+        <div className="motoboy-progresso-indicator">
+          <div className="motoboy-progresso-texto">{concluidos.length + 1} de {concluidos.length + pendentes.length}</div>
+          <div className="motoboy-progresso-barra">
+            <div className="motoboy-progresso-preenchido" style={{width: `${(concluidos.length / (concluidos.length + pendentes.length)) * 100}%`}} />
+          </div>
+        </div>
+        <div className="motoboy-menu-container">
+          <button className="motoboy-menu-btn" onClick={() => setMenuOpen(!menuOpen)}>☰</button>
+          {menuOpen && (
+            <div className="motoboy-menu-dropdown">
+              <button onClick={onVoltar}>🚪 Sair</button>
+            </div>
+          )}
         </div>
       </div>
 
-      {pedidos.length === 0 && (
-        <div className="motoboy-vazio">
-          <div className="motoboy-vazio-icone">🛵</div>
-          <p className="motoboy-vazio-texto">Nenhuma entrega pendente</p>
-          <p className="motoboy-vazio-sub">Aguardando novos pedidos...</p>
-          {erroGps === 1 && <p className="motoboy-gps-aviso">⚠️ Permissão de localização negada. Ative o GPS e recarregue a página.</p>}
-          {erroGps === 2 && <p className="motoboy-gps-aviso">⚠️ GPS indisponível. Verifique se o GPS está ativado.</p>}
-          {erroGps === 3 && <p className="motoboy-gps-aviso">⏳ GPS timed out. Tente novamente.</p>}
-          {erroGps === 'timeout' && <p className="motoboy-gps-aviso">⏳ GPS não respondeu. Verifique se a localização está ativada e recarregue.</p>}
-          {erroGps === 'indisponivel' && <p className="motoboy-gps-aviso">❌ Geolocalização não suportada neste navegador.</p>}
-        </div>
-      )}
-
-      {etapa === 'selecao' && pedidos.length > 0 && (
-        <div className="motoboy-selecao">
-          <div className="motoboy-instrucao">
-            Selecione os pedidos que vai levar e depois organize a caixa
-          </div>
-
-          {pedidosAgrupados.map(grupo => (
-            <div key={grupo.id} className={`motoboy-grupo ${grupo.id}`}>
-              <div className="motoboy-grupo-header">
-                <span className="motoboy-grupo-nome">
-                  {ROTA_GRUPOS[grupo.id]?.icon || ''} {ROTA_GRUPOS[grupo.id]?.nome || 'Indefinido'}
-                </span>
-                <span className="motoboy-grupo-qtd">{grupo.itens.length} entrega{grupo.itens.length !== 1 ? 's' : ''}</span>
-              </div>
-              {grupo.itens.map(p => {
-                const selecionado = selecionados.includes(p.id)
-                return (
-                  <div key={p.id} className={`motoboy-card${selecionado ? ' motoboy-card-checked' : ''}`} onClick={() => toggleSelecionado(p.id)}>
-                    <div className="motoboy-prio-badge">#{p._prio}</div>
-                    <div className="motoboy-check"><div className={`cb${selecionado ? ' on' : ''}`}>{selecionado ? '✓' : ''}</div></div>
-                    <div className="motoboy-card-corpo">
-                      <div className="motoboy-card-linha">
-                        <strong className="motoboy-card-nome">{p.cliente?.nome}</strong>
-                        <span className="motoboy-card-valor">R$ {p.total?.toFixed(2)}</span>
-                      </div>
-                      <span className="motoboy-card-end">📍 {p.cliente?.endereco}</span>
-                      <span className="motoboy-card-tel">📞 {formatTel(p.cliente?.telefone)}</span>
-                      <div className="motoboy-card-info-rota">
-                        {p._dist < Infinity && <span className="motoboy-card-dist">📏 {p._dist.toFixed(1)} km</span>}
-                        <span className="motoboy-card-hora">🕐 {new Date(p.data).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
-                      </div>
-                      <div className="motoboy-card-itens">
-                        {p.itens?.map(item => (
-                          <span key={item.id} className="motoboy-card-item">{item.qtd}x {item.nome}</span>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                )
-              })}
+      <div className="motoboy-delivery-screen">
+        <div className="motoboy-cliente-section">
+          <div className="motoboy-cliente-avatar">{p.cliente?.nome?.charAt(0)?.toUpperCase() || '?'}</div>
+          <div className="motoboy-cliente-info">
+            <h2 className="motoboy-cliente-nome">{p.cliente?.nome || 'Cliente'}</h2>
+            <div className="motoboy-cliente-detalhes">
+              <span className="motoboy-cliente-endereco">📍 {p.cliente?.endereco || 'Endereço não informado'}</span>
+              <a href={`tel:${p.cliente?.telefone}`} className="motoboy-cliente-telefone">📞 {p.cliente?.telefone || '---'}</a>
             </div>
-          ))}
+          </div>
+        </div>
 
-          <div className="motoboy-rodape">
-            <button className="motoboy-btn-primario" disabled={selecionados.length === 0 || otimizando} onClick={organizar}>
-              {otimizando ? '🔄 Organizando...' : (selecionados.length > 0 ? `📦 Organizar mercadoria (${selecionados.length})` : '📦 Organizar mercadoria')}
+        <div className="motoboy-pedido-section">
+          <h3 className="motoboy-pedido-titulo">📋 Itens do pedido</h3>
+          <div className="motoboy-pedido-itens">
+            {p.itens?.map(item => (
+              <div key={item.id} className={`motoboy-pedido-item ${item.tipo !== 'pizza' ? 'motoboy-item-bebida' : ''}`}>
+                <span className="motoboy-pedido-qtd">{item.qtd}x</span>
+                <span className="motoboy-pedido-nome">{item.nome}</span>
+                {item.tipo !== 'pizza' && <span className="motoboy-item-badge">🥤</span>}
+              </div>
+            ))}
+          </div>
+          <div className="motoboy-pedido-total">
+            <span>Total</span>
+            <strong>R$ {p.total?.toFixed(2)}</strong>
+          </div>
+        </div>
+
+        <div className="motoboy-actions-section">
+          {!navegacaoIniciada ? (
+            <button className="motoboy-btn-navegar-grande" onClick={iniciarNavegacao}>
+              <span className="motoboy-btn-navegar-icone">🗺️</span>
+              <span className="motoboy-btn-navegar-texto">
+                <strong>Iniciar navegação</strong>
+                <small>Abrir Google Maps para esta entrega</small>
+              </span>
             </button>
-          </div>
-        </div>
-      )}
-
-      {etapa === 'organizar' && ordemOtimizada.length > 0 && (
-        <div className="motoboy-rota">
-          <div className="motoboy-progresso">
-            <div className="motoboy-progresso-texto">
-              {totalEntregasRef.current - ordemOtimizada.length} de {totalEntregasRef.current} entregas concluidas
-            </div>
-            <div className="motoboy-progresso-barra">
-              <div className="motoboy-progresso-preenchido"
-                   style={{ width: `${((totalEntregasRef.current - ordemOtimizada.length) / totalEntregasRef.current) * 100}%` }} />
-            </div>
-          </div>
-
-          <div className="motoboy-box">
-            <div className="motoboy-box-label">
-              <span>Proxima entrega</span>
-            </div>
-            {(() => {
-              const atual = ordemOtimizada[0]
-              if (!atual) return null
-              const foraDaCaixa = atual.itens?.filter(i => i.tipo !== 'pizza') || []
-              return (
-                <div className={`motoboy-box-item motoboy-box-item-atual ${chegadas[atual.id] ? 'chegou' : ''}`}>
-                  <div className="motoboy-box-ordem motoboy-box-ordem-atual">
-                    {chegadas[atual.id] ? '✓' : (totalEntregasRef.current - ordemOtimizada.length + 1)}
-                  </div>
-                  <div className="motoboy-box-conteudo">
-                    <div className="motoboy-box-cabecalho">
-                      <strong className="motoboy-box-nome">{atual.cliente?.nome}</strong>
-                      <span className="motoboy-box-valor">R$ {atual.total?.toFixed(2)}</span>
-                    </div>
-                    <div className="motoboy-box-detalhes">
-                      <span>{atual.cliente?.endereco}</span>
-                      <span>{formatTel(atual.cliente?.telefone)}</span>
-                    </div>
-                    <div className="motoboy-box-info-row">
-                      {atual.distKm && <span>{atual.distKm.toFixed(1)} km - {atual.durMin} min</span>}
-                      <span className="motoboy-box-hora">{new Date(atual.data).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
-                    </div>
-                    <div className="motoboy-box-itens">
-                      {atual.itens?.map(i => (
-                        <span key={i.id} className={`motoboy-box-item-tag ${i.tipo !== 'pizza' ? 'tag-fora-caixa' : ''}`}>
-                          {i.qtd}x {i.nome}
-                        </span>
-                      ))}
-                    </div>
-                    {foraDaCaixa.length > 0 && (
-                      <div className="motoboy-box-aviso-fora-caixa">
-                        Esta entrega tem itens fora da caixa de pizza
-                      </div>
-                    )}
-                  </div>
-                  <div className="motoboy-box-acoes">
-                    <button className="motoboy-btn-navegar" onClick={() => {
-                      const lat = getLat(atual); const lng = getLng(atual)
-                      if (lat && lng) window.location.href = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving&dir_action=navigate`
-                      else if (atual.cliente?.endereco) window.location.href = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(atual.cliente.endereco)}&travelmode=driving&dir_action=navigate`
-                    }}>
-                      Navegar
-                    </button>
-                    <button className={`motoboy-btn-entregar${chegadas[atual.id] ? ' pulse' : ''}`}
-                            onClick={() => iniciarConfirmacao(atual.id)}>
-                      {chegadas[atual.id] ? 'Chegou - Marcar entregue' : 'Marcar como entregue'}
-                    </button>
-                  </div>
-                </div>
-              )
-            })()}
-          </div>
-
-          {ordemOtimizada.length > 1 && (
-            <div className="motoboy-proximas">
-              <div className="motoboy-proximas-label">
-                Proximas entregas ({ordemOtimizada.length - 1})
-              </div>
-              {ordemOtimizada.slice(1).map((p, idx) => (
-                <div key={p.id} className="motoboy-box-item motoboy-box-item-proxima">
-                  <div className="motoboy-box-ordem">{totalEntregasRef.current - ordemOtimizada.length + idx + 2}</div>
-                  <div className="motoboy-box-conteudo">
-                    <div className="motoboy-box-cabecalho">
-                      <strong className="motoboy-box-nome">{p.cliente?.nome}</strong>
-                      <span className="motoboy-box-valor">R$ {p.total?.toFixed(2)}</span>
-                    </div>
-                    <div className="motoboy-box-detalhes">
-                      <span>{p.cliente?.endereco}</span>
-                      <span>{p.cliente?.telefone}</span>
-                    </div>
-                    {p.distKm && <div className="motoboy-box-dist">{p.distKm.toFixed(1)} km</div>}
-                  </div>
-                </div>
-              ))}
-              {voltaPizzaria && (
-                <div className="motoboy-box-volta">
-                  <div className="motoboy-box-ordem">R</div>
-                  <div className="motoboy-box-conteudo">
-                    <strong>Retorno a pizzaria</strong>
-                    <span>{pizzariaConfig ? `${pizzariaConfig.rua}, ${pizzariaConfig.numero} - ${pizzariaConfig.bairro}` : PIZZARIA_ADDR}</span>
-                    <span className="motoboy-box-dist">{voltaPizzaria.distKm.toFixed(1)} km - {voltaPizzaria.durMin} min</span>
-                  </div>
-                </div>
+          ) : (
+            <div className="motoboy-actions-row">
+              <button className="motoboy-btn-navegar-pequeno" onClick={reiniciarNavegacao}>
+                🗺️ Navegar
+              </button>
+              <button
+                className={`motoboy-btn-concluir ${chegou ? 'motoboy-btn-chamativo' : ''}`}
+                onClick={() => { if (chegou) { setConfirmarModal(p) } }}
+                disabled={!chegou}
+              >
+                {chegou ? '✅ Concluir entrega' : '📦 Entregar'}
+              </button>
+              {!chegou && (
+                <button className="motoboy-btn-pular" onClick={pularProxima}>
+                  ⏭️ Pular
+                </button>
               )}
             </div>
           )}
         </div>
-      )}
+      </div>
 
-      {confirmarItens && (
-        <div className="modal-overlay" onClick={() => setConfirmarItens(null)}>
-          <div className="modal-content motoboy-confirm-modal" onClick={e => e.stopPropagation()}>
-            <h3>Confirmar entrega</h3>
-            <p className="motoboy-confirm-cliente">
-              <strong>{confirmarItens.pedido.cliente?.nome}</strong>
-            </p>
-            <p>Este pedido tem itens que nao estao na caixa de pizza:</p>
-            <ul className="motoboy-confirm-lista">
-              {confirmarItens.itensFora.map((i, idx) => (
-                <li key={idx}>{i.qtd}x {i.nome}</li>
+      {confirmarModal && (
+        <div className="modal-overlay" onClick={() => setConfirmarModal(null)}>
+          <div className="motoboy-confirm-modal" onClick={e => e.stopPropagation()}>
+            <div className="motoboy-confirm-header">
+              <div className="motoboy-confirm-avatar">{p.cliente?.nome?.charAt(0)?.toUpperCase() || '?'}</div>
+              <div>
+                <h3>Confirmar entrega</h3>
+                <p className="motoboy-confirm-cliente">{p.cliente?.nome}</p>
+              </div>
+            </div>
+            <div className="motoboy-confirm-itens">
+              {p.itens?.map(item => (
+                <div key={item.id} className="motoboy-confirm-item">
+                  <span>{item.qtd}x {item.nome}</span>
+                  {item.tipo !== 'pizza' && <span className="motoboy-item-badge">🥤</span>}
+                </div>
               ))}
-            </ul>
-            <label className="motoboy-confirm-check">
-              <input type="checkbox" checked={confirmCheck} onChange={e => setConfirmCheck(e.target.checked)} />
-              <span>Sim, entreguei todos esses itens</span>
-            </label>
-            <div className="motoboy-confirm-acoes">
-              <button className="btn-recusar" onClick={() => setConfirmarItens(null)}>Voltar</button>
-              <button className="btn-aceitar" disabled={!confirmCheck} onClick={() => marcarEntregueEfetivo(confirmarItens.pedido.id)}>
-                Confirmar entrega
+            </div>
+            {temBebidas && (
+              <p className="motoboy-confirm-aviso">Verifique se as bebidas foram entregues</p>
+            )}
+            <div className="motoboy-confirm-actions">
+              <button className="motoboy-btn-cancelar" onClick={() => setConfirmarModal(null)}>Voltar</button>
+              <button className="motoboy-btn-confirmar" onClick={() => confirmarEntrega(p.id)}>
+                ✅ Confirmar
               </button>
             </div>
           </div>
@@ -3512,116 +3091,6 @@ function AdminPermissoes({ user, token }) {
   )
 }
 
-const MOTOSTYLES = {
-  container: {
-    width: '100vw',
-    height: '100vh',
-    overflow: 'hidden',
-    background: '#0D0D0D',
-    color: '#fff',
-    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-    display: 'flex',
-    flexDirection: 'column'
-  },
-  loginContainer: {
-    flex: 1,
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: '24px',
-    gap: '20px'
-  },
-  logo: {
-    fontSize: '64px',
-    marginBottom: '8px'
-  },
-  title: {
-    fontSize: '24px',
-    fontWeight: 700,
-    margin: 0,
-    textAlign: 'center'
-  },
-  subtitle: {
-    fontSize: '14px',
-    color: '#888',
-    margin: 0,
-    textAlign: 'center',
-    marginBottom: '8px'
-  },
-  input: {
-    width: '100%',
-    maxWidth: '320px',
-    padding: '14px 16px',
-    borderRadius: '12px',
-    border: '1px solid #333',
-    background: '#1A1A1A',
-    color: '#fff',
-    fontSize: '16px',
-    outline: 'none',
-    boxSizing: 'border-box'
-  },
-  button: {
-    width: '100%',
-    maxWidth: '320px',
-    padding: '14px',
-    borderRadius: '12px',
-    border: 'none',
-    fontSize: '16px',
-    fontWeight: 600,
-    cursor: 'pointer',
-    background: '#FF8F00',
-    color: '#fff'
-  },
-  googleBtn: {
-    width: '100%',
-    maxWidth: '320px',
-    padding: '14px',
-    borderRadius: '12px',
-    border: '1px solid #333',
-    fontSize: '16px',
-    fontWeight: 600,
-    cursor: 'pointer',
-    background: '#1A1A1A',
-    color: '#fff',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: '10px'
-  },
-  divider: {
-    width: '100%',
-    maxWidth: '320px',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '12px',
-    color: '#555',
-    fontSize: '13px'
-  },
-  dividerLine: {
-    flex: 1,
-    height: '1px',
-    background: '#333'
-  },
-  toggleText: {
-    fontSize: '13px',
-    color: '#888'
-  },
-  toggleLink: {
-    color: '#FF8F00',
-    cursor: 'pointer',
-    background: 'none',
-    border: 'none',
-    fontSize: '13px',
-    fontWeight: 600
-  },
-  error: {
-    color: '#FF5252',
-    fontSize: '13px',
-    margin: 0
-  }
-}
-
 function MotoboyStandalone() {
   const [user, setUser] = useState(() => {
     const saved = localStorage.getItem('motoboy_user')
@@ -3636,6 +3105,15 @@ function MotoboyStandalone() {
   const [loading, setLoading] = useState(false)
   const [verificando, setVerificando] = useState(true)
   const [semPermissao, setSemPermissao] = useState(false)
+
+  useEffect(() => {
+    document.body.style.overflow = 'hidden'
+    document.body.style.background = '#0D0D0D'
+    return () => {
+      document.body.style.overflow = ''
+      document.body.style.background = ''
+    }
+  }, [])
 
   useEffect(() => {
     if (!user || !token) { setVerificando(false); return }
@@ -3752,25 +3230,25 @@ function MotoboyStandalone() {
 
   if (verificando) {
     return (
-      <div style={{...MOTOSTYLES.container, alignItems: 'center', justifyContent: 'center', display: 'flex'}}>
-        <div style={{fontSize: '48px', marginBottom: '16px'}}>🛵</div>
-        <p style={{color: '#888'}}>Verificando...</p>
+      <div style={{position:'fixed',top:0,left:0,right:0,bottom:0,background:'#0D0D0D',display:'flex',alignItems:'center',justifyContent:'center',flexDirection:'column',gap:16}}>
+        <div style={{fontSize:48}}>🛵</div>
+        <p style={{color:'#888',fontSize:14,margin:0}}>Verificando...</p>
       </div>
     )
   }
 
   if (user && token && semPermissao) {
     return (
-      <div style={{...MOTOSTYLES.container, alignItems: 'center', justifyContent: 'center', display: 'flex'}}>
-        <div style={{textAlign: 'center', padding: '24px', maxWidth: '320px'}}>
-          <div style={{fontSize: '64px', marginBottom: '16px'}}>🔒</div>
-          <h2 style={{color: '#fff', margin: '0 0 8px'}}>Sem permissão</h2>
-          <p style={{color: '#888', fontSize: '14px', lineHeight: '1.5'}}>
+      <div style={{position:'fixed',top:0,left:0,right:0,bottom:0,background:'#0D0D0D',display:'flex',alignItems:'center',justifyContent:'center',padding:24}}>
+        <div style={{textAlign:'center',maxWidth:320}}>
+          <div style={{fontSize:64,marginBottom:16}}>🔒</div>
+          <h2 style={{color:'#fff',fontSize:22,margin:'0 0 8px'}}>Sem permissão</h2>
+          <p style={{color:'#888',fontSize:14,lineHeight:1.5,margin:'0 0 24px'}}>
             Sua conta ainda não foi liberada para usar o painel do motoboy.
             Entre em contato com o administrador.
           </p>
           <button onClick={handleLogout}
-            style={{...MOTOSTYLES.button, marginTop: '16px', background: '#E53935'}}>
+            style={{width:'100%',padding:'14px',borderRadius:12,border:'none',fontSize:16,fontWeight:600,cursor:'pointer',background:'#E53935',color:'#fff'}}>
             Sair
           </button>
         </div>
@@ -3779,53 +3257,53 @@ function MotoboyStandalone() {
   }
 
   if (user && token) {
-    return <MotoboyPage onVoltar={handleLogout} />
+    return <MotoboyPage onVoltar={handleLogout} userNome={user.nome} />
   }
 
   return (
-    <div style={MOTOSTYLES.container}>
-      <div style={MOTOSTYLES.loginContainer}>
-        <div style={MOTOSTYLES.logo}>🛵</div>
-        <h1 style={MOTOSTYLES.title}>Israelita Entregas</h1>
-        <p style={MOTOSTYLES.subtitle}>Faça login para começar suas entregas</p>
+    <div style={{position:'fixed',top:0,left:0,right:0,bottom:0,background:'#0D0D0D',color:'#fff',display:'flex',flexDirection:'column',overflow:'hidden',fontFamily:'-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'}}>
+      <div style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'24px 24px 48px',gap:16}}>
+        <div style={{fontSize:64,marginBottom:4}}>🛵</div>
+        <h1 style={{fontSize:24,fontWeight:700,margin:0,textAlign:'center'}}>Israelita Entregas</h1>
+        <p style={{fontSize:14,color:'#888',margin:0,textAlign:'center',marginBottom:8}}>Faça login para começar suas entregas</p>
 
-        {erro && <p style={MOTOSTYLES.error}>{erro}</p>}
+        {erro && <p style={{color:'#FF5252',fontSize:13,margin:0}}>{erro}</p>}
 
         {modo === 'login' ? (
-          <form onSubmit={handleLogin} style={{width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px'}}>
-            <input style={MOTOSTYLES.input} type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} required />
-            <input style={MOTOSTYLES.input} type="password" placeholder="Senha" value={senha} onChange={e => setSenha(e.target.value)} required />
-            <button style={MOTOSTYLES.button} type="submit" disabled={loading}>
+          <form onSubmit={handleLogin} style={{width:'100%',maxWidth:320,display:'flex',flexDirection:'column',gap:12}}>
+            <input style={{width:'100%',padding:'14px 16px',borderRadius:12,border:'1px solid #333',background:'#1A1A1A',color:'#fff',fontSize:16,outline:'none',boxSizing:'border-box'}} type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} required />
+            <input style={{width:'100%',padding:'14px 16px',borderRadius:12,border:'1px solid #333',background:'#1A1A1A',color:'#fff',fontSize:16,outline:'none',boxSizing:'border-box'}} type="password" placeholder="Senha" value={senha} onChange={e => setSenha(e.target.value)} required />
+            <button style={{width:'100%',padding:'14px',borderRadius:12,border:'none',fontSize:16,fontWeight:600,cursor:'pointer',background:'linear-gradient(135deg,#FF8F00,#FF6D00)',color:'#fff'}} type="submit" disabled={loading}>
               {loading ? 'Entrando...' : 'Entrar'}
             </button>
           </form>
         ) : (
-          <form onSubmit={handleSignup} style={{width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px'}}>
-            <input style={MOTOSTYLES.input} placeholder="Nome" value={nome} onChange={e => setNome(e.target.value)} required />
-            <input style={MOTOSTYLES.input} type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} required />
-            <input style={MOTOSTYLES.input} type="password" placeholder="Senha" value={senha} onChange={e => setSenha(e.target.value)} required />
-            <button style={MOTOSTYLES.button} type="submit" disabled={loading}>
+          <form onSubmit={handleSignup} style={{width:'100%',maxWidth:320,display:'flex',flexDirection:'column',gap:12}}>
+            <input style={{width:'100%',padding:'14px 16px',borderRadius:12,border:'1px solid #333',background:'#1A1A1A',color:'#fff',fontSize:16,outline:'none',boxSizing:'border-box'}} placeholder="Nome" value={nome} onChange={e => setNome(e.target.value)} required />
+            <input style={{width:'100%',padding:'14px 16px',borderRadius:12,border:'1px solid #333',background:'#1A1A1A',color:'#fff',fontSize:16,outline:'none',boxSizing:'border-box'}} type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} required />
+            <input style={{width:'100%',padding:'14px 16px',borderRadius:12,border:'1px solid #333',background:'#1A1A1A',color:'#fff',fontSize:16,outline:'none',boxSizing:'border-box'}} type="password" placeholder="Senha" value={senha} onChange={e => setSenha(e.target.value)} required />
+            <button style={{width:'100%',padding:'14px',borderRadius:12,border:'none',fontSize:16,fontWeight:600,cursor:'pointer',background:'linear-gradient(135deg,#FF8F00,#FF6D00)',color:'#fff'}} type="submit" disabled={loading}>
               {loading ? 'Cadastrando...' : 'Criar conta'}
             </button>
           </form>
         )}
 
-        <div style={MOTOSTYLES.divider}>
-          <div style={MOTOSTYLES.dividerLine}></div>
+        <div style={{width:'100%',maxWidth:320,display:'flex',alignItems:'center',gap:12,color:'#555',fontSize:13}}>
+          <div style={{flex:1,height:1,background:'#333'}}></div>
           <span>ou</span>
-          <div style={MOTOSTYLES.dividerLine}></div>
+          <div style={{flex:1,height:1,background:'#333'}}></div>
         </div>
 
-        <button style={MOTOSTYLES.googleBtn} onClick={handleGoogleLogin} disabled={loading || !window.google?.accounts?.oauth2}>
+        <button style={{width:'100%',maxWidth:320,padding:'14px',borderRadius:12,border:'1px solid #333',fontSize:16,fontWeight:600,cursor:'pointer',background:'#1A1A1A',color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',gap:10}} onClick={handleGoogleLogin} disabled={loading || !window.google?.accounts?.oauth2}>
           <svg width="20" height="20" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
           <span>Entrar com Google</span>
         </button>
 
-        <p style={MOTOSTYLES.toggleText}>
+        <p style={{fontSize:13,color:'#888',margin:0}}>
           {modo === 'login' ? (
-            <>Não tem conta? <button style={MOTOSTYLES.toggleLink} onClick={() => { setModo('signup'); setErro('') }}>Cadastre-se</button></>
+            <>Não tem conta? <button style={{color:'#FF8F00',cursor:'pointer',background:'none',border:'none',fontSize:13,fontWeight:600}} onClick={() => { setModo('signup'); setErro('') }}>Cadastre-se</button></>
           ) : (
-            <>Já tem conta? <button style={MOTOSTYLES.toggleLink} onClick={() => { setModo('login'); setErro('') }}>Faça login</button></>
+            <>Já tem conta? <button style={{color:'#FF8F00',cursor:'pointer',background:'none',border:'none',fontSize:13,fontWeight:600}} onClick={() => { setModo('login'); setErro('') }}>Faça login</button></>
           )}
         </p>
       </div>
