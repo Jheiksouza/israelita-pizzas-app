@@ -4626,6 +4626,7 @@ html.pedidos-open {
 .pedido-card {
   position: relative;
   overflow-y: auto;
+  overflow-x: hidden;
   border-radius: 16px;
   border: 1.5px solid var(--secondary);
   background: var(--bg-card);

@@ -81,6 +81,47 @@ function checkSupabase(res) {
 
 app.use(authMiddleware)
 
+// ===== AUTO-EXPIRAÇÃO DE PEDIDOS ANTIGOS =====
+const EXPIRY_MS = {
+  entregador_proximo: 3 * 60 * 60 * 1000,
+  em_rota: 6 * 60 * 60 * 1000,
+  liberado: 8 * 60 * 60 * 1000,
+  aceito: 12 * 60 * 60 * 1000,
+  pendente: 24 * 60 * 60 * 1000,
+}
+const FINAL_STATUS = {
+  entregador_proximo: 'entregue',
+  em_rota: 'entregue',
+  liberado: 'entregue',
+  aceito: 'entregue',
+  pendente: 'recusado',
+}
+
+async function autoExpireOrders(orders) {
+  if (!orders || !orders.length) return orders
+  const now = Date.now()
+  const updates = []
+  for (const order of orders) {
+    const threshold = EXPIRY_MS[order.status]
+    if (!threshold) continue
+    const orderTime = new Date(order.updatedAt || order.data).getTime()
+    if (isNaN(orderTime)) continue
+    if (now - orderTime > threshold) {
+      const newStatus = FINAL_STATUS[order.status]
+      if (newStatus) {
+        updates.push({ id: order.id, status: newStatus })
+        order.status = newStatus
+      }
+    }
+  }
+  if (updates.length > 0) {
+    await Promise.all(updates.map(u =>
+      supabase.from('orders').update({ status: u.status, updatedAt: new Date().toISOString() }).eq('id', u.id)
+    ))
+  }
+  return orders
+}
+
 // ===== AUTH =====
 app.post('/auth/signup', async (req, res) => {
   if (!checkSupabase(res)) return
@@ -299,9 +340,10 @@ app.get('/orders/mine', async (req, res) => {
   if (!req.user) return res.status(401).json({ erro: 'Não autenticado' })
   if (!checkSupabase(res)) return
   try {
-    const { data, error } = await supabase.from('orders').select('*').eq('user_id', req.user.id).order('id', { ascending: false })
+    let { data, error } = await supabase.from('orders').select('*').eq('user_id', req.user.id).order('id', { ascending: false })
     if (error) throw error
-    res.json(data || [])
+    data = await autoExpireOrders(data || [])
+    res.json(data)
   } catch (err) {
     res.status(500).json({ erro: 'Erro ao buscar pedidos' })
   }
@@ -393,8 +435,9 @@ app.delete('/menu/:id', async (req, res) => {
 app.get('/orders', async (req, res) => {
   if (!checkSupabase(res)) return
   try {
-    const { data, error } = await supabase.from('orders').select('*').order('id')
+    let { data, error } = await supabase.from('orders').select('*').order('id')
     if (error) throw error
+    data = await autoExpireOrders(data || [])
     res.json(data)
   } catch (err) {
     console.error('Erro ao buscar pedidos:', err)
