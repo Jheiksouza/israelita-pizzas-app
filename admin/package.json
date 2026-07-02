@@ -1,0 +1,19 @@
+{
+  "name": "israelita-admin",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "leaflet": "^1.9.4",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "react-leaflet": "^5.0.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^6.0.3"
+  }
+}
