@@ -563,8 +563,14 @@ body {
 }
 
 .login-logo {
-  font-size: 3.5rem;
-  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 12px;
+}
+
+.login-logo .i {
+  color: var(--primary);
 }
 
 .login-desc {
@@ -618,6 +624,54 @@ body {
 .google-btn:disabled {
   opacity: 0.5;
   cursor: default;
+}
+
+.i {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  vertical-align: middle;
+  color: currentColor;
+}
+.i svg {
+  width: 100%;
+  height: 100%;
+}
+
+.admin-header-logo .i {
+  color: var(--primary);
+  margin-right: 4px;
+}
+
+.tab-btn .i {
+  margin-right: 2px;
+}
+
+.pedido-endereco .i,
+.pedido-data .i,
+.pedido-timer .i {
+  width: 16px;
+  height: 16px;
+  margin-right: 2px;
+  color: var(--text-muted);
+}
+
+.btn-aceitar .i,
+.btn-liberar .i {
+  color: rgba(255,255,255,0.9);
+}
+
+.btn-recusar .i {
+  color: #E53935;
+}
+
+.btn-recusar:hover .i {
+  color: #fff;
+}
+
+.endereco-mapa-btn .i {
+  margin-right: 4px;
 }
 
 .erro {
@@ -806,6 +860,9 @@ body {
 }
 
 .btn-aceitar {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   background: linear-gradient(135deg, #43A047, #2E7D32);
   color: #fff;
   border: none;
@@ -825,6 +882,9 @@ body {
 }
 
 .btn-recusar {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   background: transparent;
   color: #E53935;
   border: 1.5px solid #E53935;
@@ -845,6 +905,9 @@ body {
 }
 
 .btn-liberar {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   background: linear-gradient(135deg, #7B1FA2, #4A148C);
   color: #fff;
   border: none;
@@ -1145,8 +1208,11 @@ body {
 }
 
 .mapa-loading-icon {
-  font-size: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   margin-bottom: 12px;
+  color: var(--text-muted);
 }
 
 .mapa-search {

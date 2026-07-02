@@ -2,6 +2,43 @@ import React, { useState, useEffect, useRef, useMemo } from 'react'
 import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet'
 import L from 'leaflet'
 
+function IconPizza({ size = 20 }) {
+  return <span className="i" style={{ width: size, height: size }}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M12 2 22 20H2Z"/><circle cx={12} cy={15} r={1.5}/><circle cx={9} cy={11} r={1}/><circle cx={15} cy={11} r={1}/></svg></span>
+}
+function IconPin({ size = 20 }) {
+  return <span className="i" style={{ width: size, height: size }}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M12 2C7 2 3 6 3 11c0 7 9 11 9 11s9-4 9-11c0-5-4-9-9-9z"/><circle cx={12} cy={11} r={3}/></svg></span>
+}
+function IconStore({ size = 20 }) {
+  return <span className="i" style={{ width: size, height: size }}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></span>
+}
+function IconLock({ size = 20 }) {
+  return <span className="i" style={{ width: size, height: size }}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span>
+}
+function IconClock({ size = 20 }) {
+  return <span className="i" style={{ width: size, height: size }}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></span>
+}
+function IconTimer({ size = 20 }) {
+  return <span className="i" style={{ width: size, height: size }}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="13" r="8"/><line x1="12" y1="9" x2="12" y2="13"/><polyline points="10 2 14 2 12 4"/></svg></span>
+}
+function IconCheck({ size = 20 }) {
+  return <span className="i" style={{ width: size, height: size }}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
+}
+function IconClose({ size = 20 }) {
+  return <span className="i" style={{ width: size, height: size }}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span>
+}
+function IconTruck({ size = 20 }) {
+  return <span className="i" style={{ width: size, height: size }}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="3" width="15" height="13"/><rect x="16" y="5" width="7" height="11" rx="1"/><line x1="16" y1="9" x2="22" y2="9"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg></span>
+}
+function IconCheckCircle({ size = 20 }) {
+  return <span className="i" style={{ width: size, height: size }}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></span>
+}
+function IconScooter({ size = 20 }) {
+  return <span className="i" style={{ width: size, height: size }}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/><path d="M16 8l-3 7H6"/><path d="M19 5c-1.5 0-4 1-4 4v4"/></svg></span>
+}
+function IconSearch({ size = 20 }) {
+  return <span className="i" style={{ width: size, height: size }}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span>
+}
+
 const API = '/api'
 const GOOGLE_CLIENT_ID = '433687511785-95t4n2nulpja1aotvq6rfo74oui708im.apps.googleusercontent.com'
 
@@ -64,7 +101,7 @@ function App() {
     <div className="admin-app">
       <header className="admin-header-bar">
         <div className="admin-header-left">
-          <span className="admin-header-logo">🍕 Israelita</span>
+          <span className="admin-header-logo"><IconPizza /> Israelita</span>
           <span className="admin-header-role">{role === 'admin' ? 'Admin' : role === 'atendente' ? 'Atendente' : 'Financeiro'}</span>
         </div>
         <div className="admin-header-right">
@@ -85,9 +122,9 @@ function App() {
           )}
           {role === 'admin' && (
             <>
-              <button className={`tab-btn ${aba === 'rastreio' ? 'active' : ''}`} onClick={() => setAba('rastreio')}>📍 Rastreio</button>
-              <button className={`tab-btn ${aba === 'pizzaria' ? 'active' : ''}`} onClick={() => setAba('pizzaria')}>🏪 Pizzaria</button>
-              <button className={`tab-btn ${aba === 'permissoes' ? 'active' : ''}`} onClick={() => setAba('permissoes')}>🔐 Permissões</button>
+              <button className={`tab-btn ${aba === 'rastreio' ? 'active' : ''}`} onClick={() => setAba('rastreio')}><IconPin /> Rastreio</button>
+              <button className={`tab-btn ${aba === 'pizzaria' ? 'active' : ''}`} onClick={() => setAba('pizzaria')}><IconStore /> Pizzaria</button>
+              <button className={`tab-btn ${aba === 'permissoes' ? 'active' : ''}`} onClick={() => setAba('permissoes')}><IconLock /> Permissões</button>
             </>
           )}
         </div>
@@ -163,7 +200,7 @@ function AdminLogin({ onLogin, user, token }) {
   return (
     <div className="login-page">
       <div className="login-card">
-        <div className="login-logo">🍕</div>
+        <div className="login-logo"><IconPizza size={48} /></div>
         <h2>Admin Israelita Pizzas</h2>
         <p className="login-desc">Faça login para acessar o painel administrativo</p>
         <form onSubmit={handleLogin}>
@@ -428,12 +465,12 @@ function AdminOrders() {
                   <span className="pedido-cliente-nome">{pedido.cliente?.nome}</span>
                   <span className="pedido-cliente-tel">{pedido.cliente?.telefone}</span>
                 </div>
-                <div className="pedido-endereco">📍 {pedido.cliente?.endereco || 'Não informado'}</div>
+                <div className="pedido-endereco"><IconPin /> {pedido.cliente?.endereco || 'Não informado'}</div>
                 <div className="pedido-meta">
-                  <span className="pedido-data">🕐 {new Date(pedido.data).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
+                  <span className="pedido-data"><IconClock /> {new Date(pedido.data).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
                   <span className="pedido-valor">R$ {pedido.total?.toFixed(2)}</span>
                   {pedido.status === 'pendente' && pedido.data && (
-                    <span className={`pedido-timer ${tempoRestante(pedido.data) === 'Cancelado' ? 'timer-expirado' : ''}`}>⏱ {tempoRestante(pedido.data)}</span>
+                    <span className={`pedido-timer ${tempoRestante(pedido.data) === 'Cancelado' ? 'timer-expirado' : ''}`}><IconTimer /> {tempoRestante(pedido.data)}</span>
                   )}
                 </div>
                 <div className="pedido-itens">
@@ -445,26 +482,26 @@ function AdminOrders() {
               <div className="pedido-actions">
                 {pedido.status === 'pendente' && (
                   <>
-                    <button className="btn-aceitar" onClick={() => atualizarStatus(pedido.id, 'aceito')}>✓ Aceitar</button>
-                    <button className="btn-recusar" onClick={() => atualizarStatus(pedido.id, 'recusado')}>✕ Recusar</button>
+                    <button className="btn-aceitar" onClick={() => atualizarStatus(pedido.id, 'aceito')}><IconCheck /> Aceitar</button>
+                    <button className="btn-recusar" onClick={() => atualizarStatus(pedido.id, 'recusado')}><IconClose /> Recusar</button>
                   </>
                 )}
                 {pedido.status === 'aceito' && (
                   <>
-                    <button className="btn-liberar" onClick={() => atualizarStatus(pedido.id, 'liberado')}>🚚 Liberar</button>
-                    <button className="btn-recusar" onClick={() => atualizarStatus(pedido.id, 'recusado')}>✕ Recusar</button>
+                    <button className="btn-liberar" onClick={() => atualizarStatus(pedido.id, 'liberado')}><IconTruck /> Liberar</button>
+                    <button className="btn-recusar" onClick={() => atualizarStatus(pedido.id, 'recusado')}><IconClose /> Recusar</button>
                   </>
                 )}
                 {pedido.status === 'liberado' && (
                   <>
-                    <button className="btn-aceitar" onClick={() => atualizarStatus(pedido.id, 'entregue')}>✅ Entregue</button>
-                    <button className="btn-recusar" onClick={() => atualizarStatus(pedido.id, 'recusado')}>✕ Recusar</button>
+                    <button className="btn-aceitar" onClick={() => atualizarStatus(pedido.id, 'entregue')}><IconCheckCircle /> Entregue</button>
+                    <button className="btn-recusar" onClick={() => atualizarStatus(pedido.id, 'recusado')}><IconClose /> Recusar</button>
                   </>
                 )}
                 {pedido.status === 'entregador_proximo' && (
                   <>
-                    <button className="btn-aceitar" onClick={() => atualizarStatus(pedido.id, 'entregue')}>✅ Entregue</button>
-                    <button className="btn-recusar" onClick={() => atualizarStatus(pedido.id, 'recusado')}>✕ Recusar</button>
+                    <button className="btn-aceitar" onClick={() => atualizarStatus(pedido.id, 'entregue')}><IconCheckCircle /> Entregue</button>
+                    <button className="btn-recusar" onClick={() => atualizarStatus(pedido.id, 'recusado')}><IconClose /> Recusar</button>
                   </>
                 )}
               </div>
@@ -567,11 +604,11 @@ function RastreioPage() {
   const center = pos || { lat: -25.4290, lng: -49.2671 }
 
   const getStatusText = () => {
-    if (status === 'conectado') return '🟢 Online'
-    if (!ultimaAtualizacao) return '🔴 Offline'
+    if (status === 'conectado') return 'Online'
+    if (!ultimaAtualizacao) return 'Offline'
     const diffMin = Math.floor((Date.now() - ultimaAtualizacao) / 60000)
-    if (diffMin < 1) return '🟡 Online'
-    return `🟡 ${diffMin} min offline`
+    if (diffMin < 1) return 'Online'
+    return `${diffMin} min offline`
   }
 
   const statusColor = { conectado: '#43A047', perdendo_sinal: '#FF8F00', desconectado: '#E53935' }
@@ -579,7 +616,7 @@ function RastreioPage() {
   return (
     <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-        <h2 style={{ margin: 0, fontSize: '1.15rem', flex: 1 }}>📍 Rastreio do Motoboy</h2>
+        <h2 style={{ margin: 0, fontSize: '1.15rem', flex: 1 }}><IconPin /> Rastreio do Motoboy</h2>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 14px', borderRadius: '50px', background: `${statusColor[status]}15`, border: `2px solid ${statusColor[status]}` }}>
           <div style={{ width: 10, height: 10, borderRadius: '50%', background: statusColor[status], animation: status === 'conectado' ? 'motoboyBtnPulse 1s infinite alternate' : 'none' }} />
           <span style={{ fontSize: '0.82rem', fontWeight: 600, color: statusColor[status] }}>{getStatusText()}</span>
@@ -587,7 +624,7 @@ function RastreioPage() {
       </div>
       {!pos && status === 'desconectado' && (
         <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--text-muted)' }}>
-          <div style={{ fontSize: '3rem', marginBottom: 12 }}>🛵</div>
+          <div style={{ marginBottom: 12 }}><IconScooter size={48} /></div>
           <p style={{ margin: 0, fontWeight: 600, fontSize: '1rem' }}>Motoboy desconectado</p>
           <p style={{ margin: '4px 0 0', fontSize: '0.85rem' }}>Aguardando sinal do motoboy...</p>
         </div>
@@ -729,7 +766,7 @@ function AdminPizzariaConfig() {
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
             <input placeholder="Latitude" value={form.lat || ''} onChange={e => setForm(f => ({ ...f, lat: e.target.value }))} style={{width:160}} />
             <input placeholder="Longitude" value={form.lng || ''} onChange={e => setForm(f => ({ ...f, lng: e.target.value }))} style={{width:160}} />
-            <button className="endereco-mapa-btn" type="button" onClick={() => setMostrarMapaPizzaria(true)}>📍 Marcar no mapa</button>
+            <button className="endereco-mapa-btn" type="button" onClick={() => setMostrarMapaPizzaria(true)}><IconPin /> Marcar no mapa</button>
           </div>
         </div>
         {msg && <p className={`pizzaria-msg ${msg.includes('sucesso') ? 'pizzaria-msg-ok' : ''}`}>{msg}</p>}
@@ -803,7 +840,7 @@ function AdminPermissoes({ user, token }) {
   return (
     <div className="permissoes-page">
       <div className="admin-header">
-        <h2>🔐 Gerenciar Permissões</h2>
+        <h2><IconLock /> Gerenciar Permissões</h2>
         <div className="filtro-status">
           {['todas', 'cliente', 'motoboy', 'atendente', 'financeiro', 'admin'].map(r => (
             <button key={r} className={`cat-btn ${filtroRole === r ? 'active' : ''}`} onClick={() => setFiltroRole(r)}>
@@ -924,11 +961,11 @@ function MapaEntregaModal({ isOpen, onClose, onConfirm, enderecoInicial, initial
     <div className="modal-overlay">
       <div className="modal modal-mapa" onClick={e => e.stopPropagation()}>
         <div className="modal-header">
-          <h3>📍 Marcar Local Exato</h3>
-          <button className="modal-close" onClick={onClose}>✕</button>
+          <h3><IconPin /> Marcar Local Exato</h3>
+          <button className="modal-close" onClick={onClose}><IconClose /></button>
         </div>
         {buscando ? (
-          <div className="mapa-loading"><div className="mapa-loading-icon">🔍</div><p>Localizando...</p></div>
+          <div className="mapa-loading"><div className="mapa-loading-icon"><IconSearch size={32} /></div><p>Localizando...</p></div>
         ) : !pronto ? null : (
           <>
             <div className="mapa-search">
@@ -948,7 +985,7 @@ function MapaEntregaModal({ isOpen, onClose, onConfirm, enderecoInicial, initial
             <div className="mapa-coords">Lat: {lat.toFixed(6)}, Lng: {lng.toFixed(6)}</div>
             <div className="form-actions">
               <button className="btn-del" onClick={onClose}>Cancelar</button>
-              <button className="btn-add" onClick={() => { onConfirm({ lat, lng }); onClose() }}>✅ Confirmar</button>
+              <button className="btn-add" onClick={() => { onConfirm({ lat, lng }); onClose() }}><IconCheckCircle /> Confirmar</button>
             </div>
           </>
         )}
