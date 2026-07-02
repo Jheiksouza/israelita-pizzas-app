@@ -799,21 +799,22 @@ function MeusPedidos({ token, onVoltar }) {
   const stepIndex = s => pedidoSteps.findIndex(st => st.key === s)
 
   const PedidoProgresso = ({ status }) => {
-    const idx = stepIndex(status)
+    let idx = stepIndex(status)
+    if (status === 'recusado') idx = -2
     if (idx === -1) return null
-    const pct = (idx / (pedidoSteps.length - 1)) * 100
+    const isRecusado = idx === -2
+    const pct = isRecusado ? 0 : (idx / (pedidoSteps.length - 1)) * 100
+    const circleIdx = isRecusado ? 0 : idx
     return (
       <div className="pedido-steps">
-        <div className="pedido-steps-track">
+        <div className={`pedido-steps-track${isRecusado ? ' recusado' : ''}`}>
           <div className="pedido-steps-fill" style={{ width: `${pct}%` }} />
           {pedidoSteps.map((st, i) => (
-            <span key={`l${st.key}`} className={`pedido-step-label${i < idx ? ' done' : ''}${i === idx ? ' active' : ''}`} style={{ left: `${(i / (pedidoSteps.length - 1)) * 100}%` }}>
-              {st.label}
+            <span key={`l${st.key}`} className={`pedido-step-label${isRecusado && i === 0 ? ' active recusado' : ''}${!isRecusado && i < idx ? ' done' : ''}${!isRecusado && i === idx ? ' active' : ''}`} style={{ left: `${(i / (pedidoSteps.length - 1)) * 100}%` }}>
+              {isRecusado && i === 0 ? 'Cancelado' : st.label}
             </span>
           ))}
-          {pedidoSteps.map((st, i) => i === idx ? (
-            <div key={`c${st.key}`} className="pedido-step-circle active" style={{ left: `${(i / (pedidoSteps.length - 1)) * 100}%` }} />
-          ) : null)}
+          <div className="pedido-step-circle active" style={{ left: `${(circleIdx / (pedidoSteps.length - 1)) * 100}%` }} />
         </div>
       </div>
     )

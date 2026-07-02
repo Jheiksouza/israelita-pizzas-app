@@ -4876,6 +4876,14 @@ body {
   font-size: 0.63rem;
 }
 
+.pedido-step-label.active.recusado {
+  color: var(--text-muted);
+}
+
+.pedido-steps-track.recusado::before {
+  opacity: 0.3;
+}
+
 /* Circles on the line */
 .pedido-step-circle {
   position: absolute;
