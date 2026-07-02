@@ -811,9 +811,9 @@ function MeusPedidos({ token, onVoltar }) {
               {st.label}
             </span>
           ))}
-          {pedidoSteps.map((st, i) => (
-            <div key={`c${st.key}`} className={`pedido-step-circle${i < idx ? ' done' : ''}${i === idx ? ' active' : ''}`} style={{ left: `${(i / (pedidoSteps.length - 1)) * 100}%` }} />
-          ))}
+          {pedidoSteps.map((st, i) => i === idx ? (
+            <div key={`c${st.key}`} className="pedido-step-circle active" style={{ left: `${(i / (pedidoSteps.length - 1)) * 100}%` }} />
+          ) : null)}
         </div>
       </div>
     )
