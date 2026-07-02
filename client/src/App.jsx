@@ -799,6 +799,7 @@ function MeusPedidos({ token, onVoltar }) {
   const stepIndex = s => pedidoSteps.findIndex(st => st.key === s)
 
   const PedidoProgresso = ({ status }) => {
+    if (!status) return null
     let idx = stepIndex(status)
     if (status === 'recusado') idx = -2
     if (idx === -1) return null
