@@ -811,9 +811,9 @@ function MeusPedidos({ token, onVoltar }) {
               {st.label}
             </span>
           ))}
-          {pedidoSteps.map((st, i) => (
-            <div key={`c${st.key}`} className={`pedido-step-circle${i < idx ? ' done' : ''}${i === idx ? ' active' : ''}`} style={{ left: `${(i / (pedidoSteps.length - 1)) * 100}%` }} />
-          ))}
+          {pedidoSteps.map((st, i) => i === idx ? (
+            <div key={`c${st.key}`} className="pedido-step-circle active" style={{ left: `${(i / (pedidoSteps.length - 1)) * 100}%` }} />
+          ) : null)}
         </div>
       </div>
     )
@@ -847,7 +847,6 @@ function MeusPedidos({ token, onVoltar }) {
             <div className={`pedido-card${pedidoBuscado.status === 'pendente' ? ' pedido-pendente-destaque' : ''}`}>
               <div className="pedido-header">
                 <strong>Pedido #{pedidoBuscado.id}</strong>
-                <span className={`status-badge ${statusClass[pedidoBuscado.status]}`}>{statusLabel[pedidoBuscado.status]}</span>
               </div>
               {pedidoBuscado.status === 'entregador_proximo' && (
                 <div className="entregador-proximo-aviso">O entregador chegou! Por favor, dirija-se ao local da entrega para receber o pedido.</div>
@@ -894,7 +893,6 @@ function MeusPedidos({ token, onVoltar }) {
             <div key={pedido.id} className={`pedido-card${pedido.status === 'pendente' ? ' pedido-pendente-destaque' : ''}`}>
               <div className="pedido-header">
                 <strong>Pedido #{pedido.id}</strong>
-                <span className={`status-badge ${statusClass[pedido.status]}`}>{statusLabel[pedido.status]}</span>
               </div>
               {pedido.status === 'entregador_proximo' && (
                 <div className="entregador-proximo-aviso">O entregador chegou! Por favor, dirija-se ao local da entrega para receber o pedido.</div>
