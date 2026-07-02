@@ -4629,12 +4629,12 @@ body {
 .pedido-card::after {
   content: '';
   position: absolute;
-  right: -160px;
-  top: -160px;
-  width: 500px;
-  height: 500px;
+  right: -240px;
+  top: -240px;
+  width: 600px;
+  height: 600px;
   border-radius: 50%;
-  background: rgba(52,46,42,0.3);
+  background: rgba(52,46,42,0.25);
   pointer-events: none;
   z-index: 0;
 }
