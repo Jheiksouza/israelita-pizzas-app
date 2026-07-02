@@ -4813,9 +4813,97 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
-  margin-top: 8px;
+  margin-top: 4px;
   padding-top: 16px;
   border-top: 1px solid var(--border);
+}
+
+/* ===== Progress steps ===== */
+.pedido-steps {
+  padding: 24px 0 8px;
+}
+
+.pedido-steps-track {
+  position: relative;
+  height: 28px;
+  margin: 0 6px;
+}
+
+.pedido-steps-track::before {
+  content: '';
+  position: absolute;
+  top: 18px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--border);
+  border-radius: 2px;
+}
+
+.pedido-steps-fill {
+  position: absolute;
+  top: 18px;
+  left: 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--secondary), var(--primary));
+  border-radius: 2px;
+  transition: width 0.6s ease;
+  z-index: 1;
+}
+
+.pedido-step {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.pedido-step-label {
+  font-size: 0.62rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  white-space: nowrap;
+  transition: color 0.4s;
+  font-family: 'Inter', sans-serif !important;
+}
+
+.pedido-step.done .pedido-step-label {
+  color: var(--text-secondary);
+}
+
+.pedido-step.active .pedido-step-label {
+  color: var(--primary);
+  font-weight: 700;
+  font-size: 0.65rem;
+}
+
+.pedido-step-circle {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--border);
+  border: 2px solid var(--bg-card);
+  transition: all 0.4s;
+  z-index: 2;
+  box-sizing: content-box;
+}
+
+.pedido-step.done .pedido-step-circle {
+  background: var(--secondary);
+  border-color: var(--secondary);
+}
+
+.pedido-step.active .pedido-step-circle {
+  width: 14px;
+  height: 14px;
+  background: var(--primary);
+  border-color: var(--primary);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary) 20%, transparent);
 }
 
 .pedido-total-valor {

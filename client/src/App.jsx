@@ -789,6 +789,33 @@ function MeusPedidos({ token, onVoltar }) {
 
   const statusLabel = { pendente: 'Pendente', aceito: 'Em preparo', liberado: 'À caminho', entregador_proximo: 'Entregador chegou!', entregue: 'Entregue', recusado: 'Recusado' }
   const statusClass = { pendente: 'status-pendente', aceito: 'status-aceito', liberado: 'status-liberado', entregador_proximo: 'status-entregador_proximo', entregue: 'status-entregue', recusado: 'status-recusado' }
+  const pedidoSteps = [
+    { key: 'pendente', label: 'Pendente' },
+    { key: 'aceito', label: 'Preparo' },
+    { key: 'liberado', label: 'Rota' },
+    { key: 'entregador_proximo', label: 'Chegou!' },
+    { key: 'entregue', label: 'Entregue' },
+  ]
+  const stepIndex = s => pedidoSteps.findIndex(st => st.key === s)
+
+  const PedidoProgresso = ({ status }) => {
+    const idx = stepIndex(status)
+    if (idx === -1) return null
+    const pct = (idx / (pedidoSteps.length - 1)) * 100
+    return (
+      <div className="pedido-steps">
+        <div className="pedido-steps-track">
+          <div className="pedido-steps-fill" style={{ width: `${pct}%` }} />
+          {pedidoSteps.map((st, i) => (
+            <div key={st.key} className={`pedido-step${i < idx ? ' done' : ''}${i === idx ? ' active' : ''}`} style={{ left: `${(i / (pedidoSteps.length - 1)) * 100}%` }}>
+              <span className="pedido-step-label">{st.label}</span>
+              <div className="pedido-step-circle" />
+            </div>
+          ))}
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="carrinho-page">
@@ -840,6 +867,7 @@ function MeusPedidos({ token, onVoltar }) {
                     ))}
                   </div>
                 </div>
+                <PedidoProgresso status={pedidoBuscado.status} />
                 <div className="pedido-total">
                   <span className="pedido-field-label">Total</span>
                   <span className="pedido-total-valor">R$ {pedidoBuscado.total?.toFixed(2)}</span>
@@ -886,6 +914,7 @@ function MeusPedidos({ token, onVoltar }) {
                     ))}
                   </div>
                 </div>
+                <PedidoProgresso status={pedido.status} />
                 <div className="pedido-total">
                   <span className="pedido-field-label">Total</span>
                   <span className="pedido-total-valor">R$ {pedido.total?.toFixed(2)}</span>
