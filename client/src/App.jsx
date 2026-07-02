@@ -688,7 +688,8 @@ function AuthModal({ onLogin, onClose }) {
 const pedidoSteps = [
   { key: 'pendente', label: 'Pendente' },
   { key: 'aceito', label: 'Preparo' },
-  { key: 'liberado', label: 'Rota' },
+  { key: 'liberado', label: 'Pronto' },
+  { key: 'em_rota', label: 'Saiu' },
   { key: 'entregador_proximo', label: 'Chegou!' },
   { key: 'entregue', label: 'Entregue' },
 ]
