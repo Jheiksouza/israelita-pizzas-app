@@ -824,15 +824,26 @@ function MeusPedidos({ token, onVoltar }) {
                 <div className="entregador-proximo-aviso">O entregador chegou! Por favor, dirija-se ao local da entrega para receber o pedido.</div>
               )}
               <div className="pedido-body">
-                <p><strong>Cliente:</strong> {pedidoBuscado.cliente?.nome}</p>
-                <p><strong>Data:</strong> {new Date(pedidoBuscado.data).toLocaleString('pt-BR')}</p>
-                <div className="pedido-itens">
-                  <strong>Itens:</strong>
-                  {pedidoBuscado.itens?.map(item => (
-                    <span key={item.id} className="pedido-item">{item.qtd}x {item.nome} - R$ {(item.preco * item.qtd).toFixed(2)}</span>
-                  ))}
+                <div className="pedido-field">
+                  <span className="pedido-field-label">Cliente</span>
+                  <span className="pedido-field-value">{pedidoBuscado.cliente?.nome}</span>
                 </div>
-                <p className="pedido-total"><strong>Total: R$ {pedidoBuscado.total?.toFixed(2)}</strong></p>
+                <div className="pedido-field">
+                  <span className="pedido-field-label">Data</span>
+                  <span className="pedido-field-value">{new Date(pedidoBuscado.data).toLocaleString('pt-BR')}</span>
+                </div>
+                <div className="pedido-itens">
+                  <span className="pedido-field-label">Itens</span>
+                  <div className="pedido-itens-tags">
+                    {pedidoBuscado.itens?.map(item => (
+                      <span key={item.id} className="pedido-item">{item.qtd}x {item.nome}</span>
+                    ))}
+                  </div>
+                </div>
+                <div className="pedido-total">
+                  <span className="pedido-field-label">Total</span>
+                  <span className="pedido-total-valor">R$ {pedidoBuscado.total?.toFixed(2)}</span>
+                </div>
               </div>
             </div>
           )}
@@ -859,15 +870,26 @@ function MeusPedidos({ token, onVoltar }) {
                 <div className="entregador-proximo-aviso">O entregador chegou! Por favor, dirija-se ao local da entrega para receber o pedido.</div>
               )}
               <div className="pedido-body">
-                <p><strong>Cliente:</strong> {pedido.cliente?.nome}</p>
-                <p><strong>Data:</strong> {new Date(pedido.data).toLocaleString('pt-BR')}</p>
-                <div className="pedido-itens">
-                  <strong>Itens:</strong>
-                  {pedido.itens?.map(item => (
-                    <span key={item.id} className="pedido-item">{item.qtd}x {item.nome} - R$ {(item.preco * item.qtd).toFixed(2)}</span>
-                  ))}
+                <div className="pedido-field">
+                  <span className="pedido-field-label">Cliente</span>
+                  <span className="pedido-field-value">{pedido.cliente?.nome}</span>
                 </div>
-                <p className="pedido-total"><strong>Total: R$ {pedido.total?.toFixed(2)}</strong></p>
+                <div className="pedido-field">
+                  <span className="pedido-field-label">Data</span>
+                  <span className="pedido-field-value">{new Date(pedido.data).toLocaleString('pt-BR')}</span>
+                </div>
+                <div className="pedido-itens">
+                  <span className="pedido-field-label">Itens</span>
+                  <div className="pedido-itens-tags">
+                    {pedido.itens?.map(item => (
+                      <span key={item.id} className="pedido-item">{item.qtd}x {item.nome}</span>
+                    ))}
+                  </div>
+                </div>
+                <div className="pedido-total">
+                  <span className="pedido-field-label">Total</span>
+                  <span className="pedido-total-valor">R$ {pedido.total?.toFixed(2)}</span>
+                </div>
               </div>
             </div>
           ))}
