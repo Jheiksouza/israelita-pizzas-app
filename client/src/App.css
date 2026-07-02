@@ -4820,49 +4820,42 @@ body {
 
 /* ===== Progress steps ===== */
 .pedido-steps {
-  padding: 24px 0 8px;
+  padding: 28px 0 12px;
 }
 
 .pedido-steps-track {
   position: relative;
-  height: 28px;
-  margin: 0 6px;
+  height: 48px;
+  margin: 0 14px;
 }
 
+/* Background track line */
 .pedido-steps-track::before {
   content: '';
   position: absolute;
-  top: 18px;
-  left: 0;
-  right: 0;
-  height: 2px;
+  top: 30px; left: 0; right: 0;
+  height: 10px;
   background: var(--border);
-  border-radius: 2px;
+  border-radius: 5px;
 }
 
+/* Filled progress line */
 .pedido-steps-fill {
   position: absolute;
-  top: 18px;
-  left: 0;
-  height: 2px;
+  top: 30px; left: 0;
+  height: 10px;
   background: linear-gradient(90deg, var(--secondary), var(--primary));
-  border-radius: 2px;
-  transition: width 0.6s ease;
+  border-radius: 5px;
   z-index: 1;
+  transition: width 0.6s ease;
 }
 
-.pedido-step {
+/* Labels above circles */
+.pedido-step-label {
   position: absolute;
   top: 0;
   transform: translateX(-50%);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-}
-
-.pedido-step-label {
-  font-size: 0.62rem;
+  font-size: 0.6rem;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -4872,37 +4865,42 @@ body {
   font-family: 'Inter', sans-serif !important;
 }
 
-.pedido-step.done .pedido-step-label {
+.pedido-step-label.done {
   color: var(--text-secondary);
 }
 
-.pedido-step.active .pedido-step-label {
+.pedido-step-label.active {
   color: var(--primary);
   font-weight: 700;
-  font-size: 0.65rem;
+  font-size: 0.63rem;
 }
 
+/* Circles on the line */
 .pedido-step-circle {
+  position: absolute;
+  top: 27px; /* line center 35 - half of total height (16/2) */
+  transform: translateX(-50%);
   width: 10px;
   height: 10px;
   border-radius: 50%;
   background: var(--border);
-  border: 2px solid var(--bg-card);
+  border: 3px solid var(--bg-card);
+  box-sizing: content-box;
   transition: all 0.4s;
   z-index: 2;
-  box-sizing: content-box;
 }
 
-.pedido-step.done .pedido-step-circle {
+.pedido-step-circle.done {
   background: var(--secondary);
   border-color: var(--secondary);
 }
 
-.pedido-step.active .pedido-step-circle {
+.pedido-step-circle.active {
   width: 14px;
   height: 14px;
   background: var(--primary);
   border-color: var(--primary);
+  top: 25px; /* line center 35 - half of total height (20/2) */
   box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary) 20%, transparent);
 }
 

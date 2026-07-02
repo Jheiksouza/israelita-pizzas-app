@@ -807,10 +807,12 @@ function MeusPedidos({ token, onVoltar }) {
         <div className="pedido-steps-track">
           <div className="pedido-steps-fill" style={{ width: `${pct}%` }} />
           {pedidoSteps.map((st, i) => (
-            <div key={st.key} className={`pedido-step${i < idx ? ' done' : ''}${i === idx ? ' active' : ''}`} style={{ left: `${(i / (pedidoSteps.length - 1)) * 100}%` }}>
-              <span className="pedido-step-label">{st.label}</span>
-              <div className="pedido-step-circle" />
-            </div>
+            <span key={`l${st.key}`} className={`pedido-step-label${i < idx ? ' done' : ''}${i === idx ? ' active' : ''}`} style={{ left: `${(i / (pedidoSteps.length - 1)) * 100}%` }}>
+              {st.label}
+            </span>
+          ))}
+          {pedidoSteps.map((st, i) => (
+            <div key={`c${st.key}`} className={`pedido-step-circle${i < idx ? ' done' : ''}${i === idx ? ' active' : ''}`} style={{ left: `${(i / (pedidoSteps.length - 1)) * 100}%` }} />
           ))}
         </div>
       </div>
