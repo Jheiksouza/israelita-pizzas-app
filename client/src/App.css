@@ -4617,13 +4617,12 @@ body {
 
 .pedido-card {
   position: relative;
-  overflow: hidden;
+  overflow-y: auto;
   border-radius: 16px;
-  border: 1px solid var(--secondary);
-  background: linear-gradient(135deg, var(--bg-card), color-mix(in srgb, var(--bg-card) 90%, var(--secondary)));
+  border: 1.5px solid var(--secondary);
+  background: var(--bg-card);
   padding: 24px;
   margin-bottom: 16px;
-  transition: border-color 0.3s;
 }
 
 .pedido-card::after {
@@ -4639,12 +4638,71 @@ body {
   z-index: 0;
 }
 
-.pedido-card.pendente { border-color: #F57F17; }
-.pedido-card.aceito { border-color: #90CAF9; }
-.pedido-card.liberado { border-color: #CE93D8; }
-.pedido-card.entregador_proximo { border-color: #D4A574; }
-.pedido-card.entregue { border-color: #A5D6A7; }
-.pedido-card.recusado { border-color: #EF9A9A; opacity: 0.65; }
+.pedido-card.recusado { opacity: 0.65; }
+
+@media (max-width: 768px) {
+  .pedidos-lista {
+    position: fixed;
+    inset: 0;
+    top: 0;
+    z-index: 100;
+    background: var(--bg);
+    overflow: hidden;
+    touch-action: pan-y;
+  }
+  .pedidos-lista .pedido-card {
+    position: absolute;
+    inset: 0;
+    margin: 0;
+    border-radius: 0;
+    border: none;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 80px 24px 100px;
+    transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+    will-change: transform;
+    background: var(--bg);
+  }
+  .pedidos-lista .pedido-back-btn {
+    position: fixed;
+    top: 12px;
+    left: 12px;
+    z-index: 120;
+    width: 40px; height: 40px;
+    border: none;
+    border-radius: 50%;
+    background: var(--bg-card);
+    color: var(--text-primary);
+    font-size: 1.3rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: var(--shadow-md);
+  }
+  .pedido-dots {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 10px;
+    z-index: 110;
+  }
+  .pedido-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--text-muted);
+    opacity: 0.4;
+    transition: opacity 0.3s;
+  }
+  .pedido-dot.active {
+    opacity: 1;
+    background: var(--secondary);
+    width: 24px;
+    border-radius: 4px;
+  }
+}
 
 .pedido-header {
   display: flex;

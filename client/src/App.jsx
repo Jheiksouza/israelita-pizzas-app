@@ -724,7 +724,19 @@ function MeusPedidos({ token, onVoltar }) {
   const [buscaId, setBuscaId] = useState('')
   const [pedidoBuscado, setPedidoBuscado] = useState(null)
   const [notificacaoLiberado, setNotificacaoLiberado] = useState(null)
+  const [activeIdx, setActiveIdx] = useState(0)
   const prevStatusRef = useRef({})
+  const touchStartY = useRef(null)
+  const MOBILE = window.innerWidth <= 768
+  const handleTouchStart = e => { touchStartY.current = e.touches[0].clientY }
+  const handleTouchEnd = e => {
+    if (touchStartY.current === null) return
+    const dy = e.changedTouches[0].clientY - touchStartY.current
+    touchStartY.current = null
+    if (Math.abs(dy) < 50) return
+    if (dy < 0 && activeIdx < pedidos.length - 1) setActiveIdx(i => i + 1)
+    if (dy > 0 && activeIdx > 0) setActiveIdx(i => i - 1)
+  }
 
   useEffect(() => {
     if (!token) { setLoading(false); return }
@@ -890,9 +902,10 @@ function MeusPedidos({ token, onVoltar }) {
       )}
 
       {token && pedidos.length > 0 && (
-        <div className="pedidos-lista">
-          {pedidos.map(pedido => (
-            <div key={pedido.id} className={`pedido-card${pedido.status === 'pendente' ? ' pedido-pendente-destaque' : ''}`}>
+        <div className="pedidos-lista" onTouchStart={MOBILE ? handleTouchStart : undefined} onTouchEnd={MOBILE ? handleTouchEnd : undefined}>
+          {MOBILE && <button className="pedido-back-btn" onClick={onVoltar}>←</button>}
+          {pedidos.map((pedido, i) => (
+            <div key={pedido.id} className={`pedido-card${pedido.status === 'pendente' ? ' pedido-pendente-destaque' : ''}`} style={MOBILE ? { transform: `translateY(${(i - activeIdx) * 100}%)` } : {}}>
               <div className="pedido-header">
                 <strong>Pedido #{pedido.id}</strong>
               </div>
@@ -924,6 +937,13 @@ function MeusPedidos({ token, onVoltar }) {
               </div>
             </div>
           ))}
+          {MOBILE && (
+            <div className="pedido-dots">
+              {pedidos.map((_, i) => (
+                <div key={i} className={`pedido-dot${i === activeIdx ? ' active' : ''}`} />
+              ))}
+            </div>
+          )}
         </div>
       )}
 
