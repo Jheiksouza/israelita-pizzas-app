@@ -50,6 +50,7 @@ function App() {
   const [adminAutenticado, setAdminAutenticado] = useState(false)
   const [theme, setTheme] = useState(() => localStorage.getItem('appTheme') || 'classic')
   const [font, setFont] = useState(() => localStorage.getItem('appFont') || 'classico')
+  const isMobile = window.innerWidth <= 768
   const [pizzaEditando, setPizzaEditando] = useState(null)
   const [bannerApp, setBannerApp] = useState({ texto: '', key: 0 })
   const [cartOpen, setCartOpen] = useState(false)
@@ -340,7 +341,7 @@ function App() {
         <div className="classic-orb orb-right"></div>
       </div>
       {bannerApp.texto && <div className="banner-max-sabores" role="alert">{bannerApp.texto}</div>}
-      {pagina !== 'motoboy' && (
+      {pagina !== 'motoboy' && !(pagina === 'meus-pedidos' && isMobile) && (
       <header className="header">
           <div className="header-content">
             <div className="logo" onClick={() => setPagina('cardapio')}>
@@ -441,7 +442,7 @@ function App() {
         />
       )}
       
-      {pagina !== 'motoboy' && (
+      {pagina !== 'motoboy' && !(pagina === 'meus-pedidos' && isMobile) && (
         <nav className="bottom-nav">
           <button className={`bottom-nav-btn ${pagina === 'cardapio' ? 'active' : ''}`} onClick={() => setPagina('cardapio')}>
             <span className="bottom-nav-icon">🍕</span>
@@ -749,34 +750,76 @@ function MeusPedidos({ token, onVoltar, qtdCarrinho, onCartOpen, onPagina }) {
     headerTimer.current = setTimeout(() => setHeaderShow(false), 3000)
   }
 
-  /* ----- touch drag (only on .pedido-card-fixo) ----- */
-  const handleTouchStart = e => {
-    if (!MOBILE) return
-    touchRef.current = { startY: e.touches[0].clientY, startIdx: activeIdx }
-  }
+  /* ----- refs for closure safety ----- */
+  const activeIdxRef = useRef(0)
+  const headerShowRef = useRef(true)
+  useEffect(() => { activeIdxRef.current = activeIdx }, [activeIdx])
+  useEffect(() => { headerShowRef.current = headerShow }, [headerShow])
 
-  const handleTouchMove = e => {
-    if (!MOBILE) return
-    const dy = e.touches[0].clientY - touchRef.current.startY
-    const pct = -touchRef.current.startIdx * 100 + dy / window.innerHeight * 100
-    if (wrapperRef.current) {
-      wrapperRef.current.style.transition = 'none'
-      wrapperRef.current.style.transform = `translateY(${pct}%)`
+  /* ----- lock body scroll on mobile ----- */
+  useEffect(() => {
+    if (!MOBILE || pedidos.length === 0) return
+    document.body.classList.add('pedidos-open')
+    document.documentElement.classList.add('pedidos-open')
+    return () => {
+      document.body.classList.remove('pedidos-open')
+      document.documentElement.classList.remove('pedidos-open')
     }
-    if (dy > 40 && touchRef.current.startIdx === 0 && !headerShow) showHeaderTemp()
-  }
+  }, [MOBILE, pedidos.length > 0])
 
-  const handleTouchEnd = e => {
-    if (!MOBILE) return
-    const dy = e.changedTouches[0].clientY - touchRef.current.startY
-    if (Math.abs(dy) >= 60) {
-      setActiveIdx(prev => {
-        if (dy < 0 && prev < pedidosLenRef.current - 1) return prev + 1
-        if (dy > 0 && prev > 0) return prev - 1
-        return prev
-      })
+  /* ----- native touch listeners (passive:false for preventDefault) ----- */
+  useEffect(() => {
+    if (!MOBILE || pedidos.length === 0) return
+    const el = document.querySelector('.pedidos-lista')
+    if (!el) return
+
+    const onStart = e => {
+      if (e.touches.length !== 1) return
+      touchRef.current = { startY: e.touches[0].clientY, startIdx: activeIdxRef.current }
     }
-  }
+
+    const onMove = e => {
+      if (!touchRef.current) return
+      const dy = e.touches[0].clientY - touchRef.current.startY
+      /* if touch is in scrollable area and it has room to scroll, let browser handle it */
+      const scrollEl = e.target.closest('.pedido-card-scroll')
+      if (scrollEl) {
+        const canScrollDown = dy < 0 && scrollEl.scrollTop < scrollEl.scrollHeight - scrollEl.clientHeight - 1
+        const canScrollUp = dy > 0 && scrollEl.scrollTop > 1
+        if (canScrollDown || canScrollUp) return
+      }
+      e.preventDefault()
+      const pct = -touchRef.current.startIdx * 100 + dy / window.innerHeight * 100
+      if (wrapperRef.current) {
+        wrapperRef.current.classList.add('dragging')
+        wrapperRef.current.style.transform = `translateY(${pct}%)`
+      }
+      if (dy > 40 && touchRef.current.startIdx === 0 && !headerShowRef.current) showHeaderTemp()
+    }
+
+    const onEnd = e => {
+      if (!touchRef.current) return
+      const dy = e.changedTouches[0].clientY - touchRef.current.startY
+      touchRef.current = null
+      if (wrapperRef.current) wrapperRef.current.classList.remove('dragging')
+      if (Math.abs(dy) >= 60) {
+        setActiveIdx(prev => {
+          if (dy < 0 && prev < pedidosLenRef.current - 1) return prev + 1
+          if (dy > 0 && prev > 0) return prev - 1
+          return prev
+        })
+      }
+    }
+
+    el.addEventListener('touchstart', onStart, { passive: true })
+    el.addEventListener('touchmove', onMove, { passive: false })
+    el.addEventListener('touchend', onEnd, { passive: true })
+    return () => {
+      el.removeEventListener('touchstart', onStart)
+      el.removeEventListener('touchmove', onMove)
+      el.removeEventListener('touchend', onEnd)
+    }
+  }, [MOBILE, pedidos.length])
 
   /* ----- polling ----- */
   useEffect(() => {
@@ -1007,10 +1050,7 @@ function MeusPedidos({ token, onVoltar, qtdCarrinho, onCartOpen, onPagina }) {
                     </div>
                   </div>
                 </div>
-                <div className="pedido-card-fixo"
-                  onTouchStart={MOBILE ? handleTouchStart : undefined}
-                  onTouchMove={MOBILE ? handleTouchMove : undefined}
-                  onTouchEnd={MOBILE ? handleTouchEnd : undefined}>
+                <div className="pedido-card-fixo">
                   <PedidoProgresso status={pedido.status} />
                   <div className="pedido-total">
                     <span className="pedido-field-label">Total</span>

@@ -3005,6 +3005,14 @@ body {
   line-height: 1.6;
 }
 
+body.pedidos-open,
+html.pedidos-open {
+  overflow: hidden !important;
+  position: fixed;
+  width: 100%;
+  height: 100%;
+}
+
 ::-webkit-scrollbar {
   width: 6px;
 }
@@ -4650,6 +4658,9 @@ body {
     overscroll-behavior: none;
   }
   .pedidos-cards-wrapper {
+    position: relative;
+    width: 100%;
+    height: 100%;
     will-change: transform;
     transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
   }
@@ -4657,6 +4668,8 @@ body {
     transition: none !important;
   }
   .pedidos-lista .pedido-card {
+    position: absolute;
+    inset: 0;
     height: 100vh;
     width: 100%;
     margin: 0;
@@ -4665,19 +4678,23 @@ body {
     background: var(--bg);
     display: flex;
     flex-direction: column;
+    will-change: transform;
+    overflow: hidden;
+  }
+  .pedido-card.dragging {
+    transition: none !important;
   }
   .pedido-card-scroll {
     flex: 1;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
-    padding: 80px 24px 20px;
+    padding: 72px 20px 12px;
   }
   .pedido-card-fixo {
     flex-shrink: 0;
     border-top: 1px solid var(--border);
     background: var(--bg);
-    padding: 12px 24px calc(12px + env(safe-area-inset-bottom, 0px));
-    z-index: 2;
+    padding: 12px 20px calc(12px + env(safe-area-inset-bottom, 0px));
   }
   .pedido-card-fixo .pedido-steps {
     margin-bottom: 8px;
