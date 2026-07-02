@@ -4701,30 +4701,56 @@ body {
   border: 1px solid #CE93D8;
 }
 .status-entregador_proximo {
-  background: #FFF3E0;
-  color: #E65100;
-  border: 1px solid #FFB74D;
+  background: #1A0F08;
+  color: #FFD9A8;
+  border: 1px solid #D4A574;
   animation: statusProximoPulse 2s ease-in-out infinite;
 }
 @keyframes statusProximoPulse {
   0%, 100% { box-shadow: 0 0 0 0 rgba(230, 81, 0, 0.3); }
   50% { box-shadow: 0 0 0 6px rgba(230, 81, 0, 0.1); }
 }
+
+.theme-classic .status-pendente {
+  background: #3A2E0A;
+  color: #FFD54F;
+  border: 1px solid #665A1A;
+}
+.theme-classic .status-aceito {
+  background: #0A1E3A;
+  color: #90CAF9;
+  border: 1px solid #1A3A5A;
+}
+.theme-classic .status-entregue {
+  background: #0A2E1A;
+  color: #A5D6A7;
+  border: 1px solid #1A4A2A;
+}
+.theme-classic .status-recusado {
+  background: #3A0A0A;
+  color: #EF9A9A;
+  border: 1px solid #5A1A1A;
+}
+.theme-classic .status-liberado {
+  background: #1A0A2E;
+  color: #CE93D8;
+  border: 1px solid #3A1A5A;
+}
 .entregador-proximo-aviso {
-  background: linear-gradient(135deg, #FFF3E0, #FFE0B2);
-  border: 2px solid #FFB74D;
+  background: linear-gradient(135deg, #1A0F08, #2A1A10);
+  border: 2px solid #D4A574;
   border-radius: var(--radius-md);
   padding: 14px 18px;
   margin: 12px 16px 0;
   font-size: 0.95rem;
   font-weight: 600;
-  color: #BF360C;
+  color: #FFD9A8;
   text-align: center;
   animation: avisoProximoPulse 1.5s ease-in-out infinite;
 }
 @keyframes avisoProximoPulse {
-  0%, 100% { transform: scale(1); box-shadow: 0 2px 8px rgba(230, 81, 0, 0.15); }
-  50% { transform: scale(1.02); box-shadow: 0 4px 16px rgba(230, 81, 0, 0.3); }
+  0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(212, 165, 116, 0.3); }
+  50% { transform: scale(1.02); box-shadow: 0 0 24px 6px rgba(212, 165, 116, 0.15); }
 }
 .btn-liberar {
   background: linear-gradient(135deg, #7B1FA2, #4A148C);
@@ -5423,6 +5449,11 @@ body {
   overflow: hidden;
   animation: modalIn 0.4s ease;
 }
+
+.theme-classic .liberado-notificacao {
+  background: linear-gradient(135deg, #1A0A2E 0%, #2A1A4A 100%);
+  border: 1.5px solid #7B4A9A;
+}
 .liberado-notificacao-conteudo {
   display: flex;
   align-items: center;
@@ -5466,7 +5497,7 @@ body {
   position: fixed;
   top: 0; left: 0; right: 0; bottom: 0;
   z-index: 99999;
-  background: var(--bg);
+  background: #0D0D0D;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -5896,6 +5927,24 @@ body {
   font-size: 13px;
   cursor: pointer;
   flex-shrink: 0;
+}
+
+.motoboy-btn-voltar-pizzaria {
+  padding: 14px 12px;
+  border-radius: 14px;
+  border: 1px solid #8B5E3C;
+  background: #1A0F08;
+  color: #D4A574;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.motoboy-btn-voltar-pizzaria:active {
+  background: #2A1A10;
 }
 
 @keyframes motoboyBtnPulse {

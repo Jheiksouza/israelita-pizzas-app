@@ -708,16 +708,16 @@ function MeusPedidos({ token, onVoltar }) {
                 tocarSomLiberado()
                 setNotificacaoLiberado(p)
               }
-              if (p.status === 'entregador_proximo') {
-                try { navigator.vibrate?.([200, 100, 200]) } catch (_) {}
-                try {
-                  if ('Notification' in window && Notification.permission === 'granted') {
-                    new Notification('🛵 Entregador próximo!', {
-                      body: 'Pedido #' + p.id + ' - O entregador está chegando!'
-                    })
-                  }
-                } catch (_) {}
-              }
+    if (p.status === 'entregador_proximo') {
+      try { navigator.vibrate?.([200, 100, 200]) } catch (_) {}
+      try {
+        if ('Notification' in window && Notification.permission === 'granted') {
+          new Notification('Entregador chegou!', {
+            body: 'Pedido #' + p.id + ' - O entregador chegou!'
+          })
+        }
+      } catch (_) {}
+    }
               if (p.status === 'entregue' && prev === 'entregador_proximo') {
                 try { navigator.vibrate?.([300, 200, 300, 200, 300]) } catch (_) {}
                 try {
@@ -787,7 +787,7 @@ function MeusPedidos({ token, onVoltar }) {
     } catch (_) { alert('Erro ao buscar pedido') }
   }
 
-  const statusLabel = { pendente: 'Pendente', aceito: 'Em preparo', liberado: 'À caminho', entregador_proximo: 'Entregador Próximo', entregue: 'Entregue', recusado: 'Recusado' }
+  const statusLabel = { pendente: 'Pendente', aceito: 'Em preparo', liberado: 'À caminho', entregador_proximo: 'Entregador chegou!', entregue: 'Entregue', recusado: 'Recusado' }
   const statusClass = { pendente: 'status-pendente', aceito: 'status-aceito', liberado: 'status-liberado', entregador_proximo: 'status-entregador_proximo', entregue: 'status-entregue', recusado: 'status-recusado' }
 
   return (
@@ -821,7 +821,7 @@ function MeusPedidos({ token, onVoltar }) {
                 <span className={`status-badge ${statusClass[pedidoBuscado.status]}`}>{statusLabel[pedidoBuscado.status]}</span>
               </div>
               {pedidoBuscado.status === 'entregador_proximo' && (
-                <div className="entregador-proximo-aviso">🛵 O entregador está próximo! Por favor, dirija-se ao local da entrega para receber o pedido.</div>
+                <div className="entregador-proximo-aviso">O entregador chegou! Por favor, dirija-se ao local da entrega para receber o pedido.</div>
               )}
               <div className="pedido-body">
                 <p><strong>Cliente:</strong> {pedidoBuscado.cliente?.nome}</p>
@@ -856,7 +856,7 @@ function MeusPedidos({ token, onVoltar }) {
                 <span className={`status-badge ${statusClass[pedido.status]}`}>{statusLabel[pedido.status]}</span>
               </div>
               {pedido.status === 'entregador_proximo' && (
-                <div className="entregador-proximo-aviso">🛵 O entregador está próximo! Por favor, dirija-se ao local da entrega para receber o pedido.</div>
+                <div className="entregador-proximo-aviso">O entregador chegou! Por favor, dirija-se ao local da entrega para receber o pedido.</div>
               )}
               <div className="pedido-body">
                 <p><strong>Cliente:</strong> {pedido.cliente?.nome}</p>
@@ -3144,6 +3144,11 @@ function MotoboyPage({ onVoltar, userNome }) {
               <button className="motoboy-btn-navegar-pequeno" onClick={reiniciarNavegacao}>
                 🗺️ Navegar
               </button>
+              {pizzariaCoords && (
+                <button className="motoboy-btn-voltar-pizzaria" onClick={() => window.open(`https://www.google.com/maps/dir/?api=1&destination=${pizzariaCoords.lat},${pizzariaCoords.lng}&travelmode=driving&dir_action=navigate`, '_blank')}>
+                  ↩ Voltar
+                </button>
+              )}
               <button
                 className={`motoboy-btn-concluir ${chegou ? 'motoboy-btn-chamativo' : ''}`}
                 onClick={() => { if (chegou) setConfirmarModal(p) }}
