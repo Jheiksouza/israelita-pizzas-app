@@ -389,7 +389,7 @@ function App() {
             onFontChange={setFont}
           />
         )}
-        {pagina === 'meus-pedidos' && <MeusPedidos token={token} onVoltar={() => setPagina('cardapio')} />}
+        {pagina === 'meus-pedidos' && <MeusPedidos token={token} onVoltar={() => setPagina('cardapio')} qtdCarrinho={qtdCarrinho} onCartOpen={() => setCartOpen(true)} onPagina={setPagina} />}
       </main>
 
       {mostrarAuth && (
@@ -718,26 +718,67 @@ function PedidoProgresso({ status }) {
   )
 }
 
-function MeusPedidos({ token, onVoltar }) {
+function MeusPedidos({ token, onVoltar, qtdCarrinho, onCartOpen, onPagina }) {
   const [pedidos, setPedidos] = useState([])
   const [loading, setLoading] = useState(true)
   const [buscaId, setBuscaId] = useState('')
   const [pedidoBuscado, setPedidoBuscado] = useState(null)
   const [notificacaoLiberado, setNotificacaoLiberado] = useState(null)
   const [activeIdx, setActiveIdx] = useState(0)
+  const [headerShow, setHeaderShow] = useState(true)
+  const [menuOpen, setMenuOpen] = useState(false)
   const prevStatusRef = useRef({})
-  const touchStartY = useRef(null)
+  const wrapperRef = useRef(null)
+  const touchRef = useRef({ startY: 0, startIdx: 0 })
+  const headerTimer = useRef(null)
+  const pedidosLenRef = useRef(0)
   const MOBILE = window.innerWidth <= 768
-  const handleTouchStart = e => { touchStartY.current = e.touches[0].clientY }
-  const handleTouchEnd = e => {
-    if (touchStartY.current === null) return
-    const dy = e.changedTouches[0].clientY - touchStartY.current
-    touchStartY.current = null
-    if (Math.abs(dy) < 50) return
-    if (dy < 0 && activeIdx < pedidos.length - 1) setActiveIdx(i => i + 1)
-    if (dy > 0 && activeIdx > 0) setActiveIdx(i => i - 1)
+
+  useEffect(() => { pedidosLenRef.current = pedidos.length }, [pedidos])
+
+  /* ----- header auto-hide ----- */
+  useEffect(() => {
+    if (!MOBILE) return
+    headerTimer.current = setTimeout(() => setHeaderShow(false), 1000)
+    return () => clearTimeout(headerTimer.current)
+  }, [])
+
+  const showHeaderTemp = () => {
+    setHeaderShow(true)
+    clearTimeout(headerTimer.current)
+    headerTimer.current = setTimeout(() => setHeaderShow(false), 3000)
   }
 
+  /* ----- touch drag (only on .pedido-card-fixo) ----- */
+  const handleTouchStart = e => {
+    if (!MOBILE) return
+    touchRef.current = { startY: e.touches[0].clientY, startIdx: activeIdx }
+  }
+
+  const handleTouchMove = e => {
+    if (!MOBILE) return
+    const dy = e.touches[0].clientY - touchRef.current.startY
+    const pct = -touchRef.current.startIdx * 100 + dy / window.innerHeight * 100
+    if (wrapperRef.current) {
+      wrapperRef.current.style.transition = 'none'
+      wrapperRef.current.style.transform = `translateY(${pct}%)`
+    }
+    if (dy > 40 && touchRef.current.startIdx === 0 && !headerShow) showHeaderTemp()
+  }
+
+  const handleTouchEnd = e => {
+    if (!MOBILE) return
+    const dy = e.changedTouches[0].clientY - touchRef.current.startY
+    if (Math.abs(dy) >= 60) {
+      setActiveIdx(prev => {
+        if (dy < 0 && prev < pedidosLenRef.current - 1) return prev + 1
+        if (dy > 0 && prev > 0) return prev - 1
+        return prev
+      })
+    }
+  }
+
+  /* ----- polling ----- */
   useEffect(() => {
     if (!token) { setLoading(false); return }
     const carregar = () => {
@@ -835,8 +876,42 @@ function MeusPedidos({ token, onVoltar }) {
   const statusLabel = { pendente: 'Pendente', aceito: 'Em preparo', liberado: 'À caminho', entregador_proximo: 'Entregador chegou!', entregue: 'Entregue', recusado: 'Recusado' }
   const statusClass = { pendente: 'status-pendente', aceito: 'status-aceito', liberado: 'status-liberado', entregador_proximo: 'status-entregador_proximo', entregue: 'status-entregue', recusado: 'status-recusado' }
 
+  const fecharMenu = () => setMenuOpen(false)
+
   return (
     <div className="carrinho-page">
+      {/* ----- mobile header ----- */}
+      {MOBILE && (
+        <>
+          <div className="mobile-pedido-header" style={{ transform: `translateY(${headerShow ? '0' : '-100%'})` }}>
+            <span className="mobile-pedido-logo">🍕 Pizzaria Israelita</span>
+            <div className="mobile-pedido-header-right">
+              <button className="mobile-pedido-cart" onClick={onCartOpen}>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/>
+                  <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
+                </svg>
+                {qtdCarrinho > 0 && <span className="mobile-pedido-cart-badge">{qtdCarrinho}</span>}
+              </button>
+              <button className="mobile-pedido-hamburger" onClick={() => setMenuOpen(o => !o)}>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                  <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+          {menuOpen && (
+            <div className="mobile-pedido-menu-overlay" onClick={fecharMenu}>
+              <div className="mobile-pedido-menu" onClick={e => e.stopPropagation()}>
+                <button onClick={() => { fecharMenu(); onPagina('cardapio') }}>🍕 Cardápio</button>
+                <button onClick={() => { fecharMenu(); onPagina('meus-pedidos') }}>📋 Meus Pedidos</button>
+              </div>
+            </div>
+          )}
+        </>
+      )}
+
+      {/* ----- notificação liberado ----- */}
       {notificacaoLiberado && (
         <div className="liberado-notificacao">
           <div className="liberado-notificacao-conteudo">
@@ -850,6 +925,7 @@ function MeusPedidos({ token, onVoltar }) {
         </div>
       )}
 
+      {/* ----- guest tracking ----- */}
       {!token && (
         <div className="guest-tracking">
           <p>Faça login para ver seus pedidos, ou busque pelo número do pedido:</p>
@@ -893,63 +969,75 @@ function MeusPedidos({ token, onVoltar }) {
         </div>
       )}
 
+      {/* ----- loading / empty ----- */}
       {token && loading && <p>Carregando...</p>}
-
       {token && !loading && pedidos.length === 0 && (
         <div className="empty-state">
           <p>Nenhum pedido encontrado</p>
         </div>
       )}
 
+      {/* ----- card list ----- */}
       {token && pedidos.length > 0 && (
-        <div className="pedidos-lista" onTouchStart={MOBILE ? handleTouchStart : undefined} onTouchEnd={MOBILE ? handleTouchEnd : undefined}>
-          {MOBILE && <button className="pedido-back-btn" onClick={onVoltar}>←</button>}
-          {pedidos.map((pedido, i) => (
-            <div key={pedido.id} className={`pedido-card${pedido.status === 'pendente' ? ' pedido-pendente-destaque' : ''}`} style={MOBILE ? { transform: `translateY(${(i - activeIdx) * 100}%)` } : {}}>
-              <div className="pedido-header">
-                <strong>Pedido #{pedido.id}</strong>
-              </div>
-              {pedido.status === 'entregador_proximo' && (
-                <div className="entregador-proximo-aviso">O entregador chegou! Por favor, dirija-se ao local da entrega para receber o pedido.</div>
-              )}
-              <div className="pedido-body">
-                <div className="pedido-field">
-                  <span className="pedido-field-label">Cliente</span>
-                  <span className="pedido-field-value">{pedido.cliente?.nome}</span>
-                </div>
-                <div className="pedido-field">
-                  <span className="pedido-field-label">Data</span>
-                  <span className="pedido-field-value">{new Date(pedido.data).toLocaleString('pt-BR')}</span>
-                </div>
-                <div className="pedido-itens">
-                  <span className="pedido-field-label">Itens</span>
-                  <div className="pedido-itens-tags">
-                    {pedido.itens?.map(item => (
-                      <span key={item.id} className="pedido-item">{item.qtd}x {item.nome}</span>
-                    ))}
+        <div className="pedidos-lista">
+          <div className="pedidos-cards-wrapper" ref={wrapperRef} style={MOBILE ? { transform: `translateY(${-activeIdx * 100}%)` } : {}}>
+            {pedidos.map((pedido, i) => (
+              <div key={pedido.id} className={`pedido-card${pedido.status === 'pendente' ? ' pedido-pendente-destaque' : ''}`}>
+                <div className="pedido-card-scroll">
+                  <div className="pedido-header">
+                    <strong>Pedido #{pedido.id}</strong>
+                  </div>
+                  {pedido.status === 'entregador_proximo' && (
+                    <div className="entregador-proximo-aviso">O entregador chegou! Por favor, dirija-se ao local da entrega para receber o pedido.</div>
+                  )}
+                  <div className="pedido-field">
+                    <span className="pedido-field-label">Cliente</span>
+                    <span className="pedido-field-value">{pedido.cliente?.nome}</span>
+                  </div>
+                  <div className="pedido-field">
+                    <span className="pedido-field-label">Data</span>
+                    <span className="pedido-field-value">{new Date(pedido.data).toLocaleString('pt-BR')}</span>
+                  </div>
+                  <div className="pedido-itens">
+                    <span className="pedido-field-label">Itens</span>
+                    <div className="pedido-itens-tags">
+                      {pedido.itens?.map(item => (
+                        <span key={item.id} className="pedido-item">{item.qtd}x {item.nome}</span>
+                      ))}
+                    </div>
                   </div>
                 </div>
-                <PedidoProgresso status={pedido.status} />
-                <div className="pedido-total">
-                  <span className="pedido-field-label">Total</span>
-                  <span className="pedido-total-valor">R$ {pedido.total?.toFixed(2)}</span>
+                <div className="pedido-card-fixo"
+                  onTouchStart={MOBILE ? handleTouchStart : undefined}
+                  onTouchMove={MOBILE ? handleTouchMove : undefined}
+                  onTouchEnd={MOBILE ? handleTouchEnd : undefined}>
+                  <PedidoProgresso status={pedido.status} />
+                  <div className="pedido-total">
+                    <span className="pedido-field-label">Total</span>
+                    <span className="pedido-total-valor">R$ {pedido.total?.toFixed(2)}</span>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
+          {/* ----- right side pagination ----- */}
           {MOBILE && (
-            <div className="pedido-dots">
+            <div className="pedido-nav-lateral">
               {pedidos.map((_, i) => (
-                <div key={i} className={`pedido-dot${i === activeIdx ? ' active' : ''}`} />
+                <div key={i} className={`pedido-nav-lateral-dot${i === activeIdx ? ' active' : ''}`} />
               ))}
+              <div className="pedido-nav-lateral-count">{activeIdx + 1}/{pedidos.length}</div>
             </div>
           )}
         </div>
       )}
 
-      <div className="carrinho-actions" style={{ marginTop: 24 }}>
-        <button className="btn-add" onClick={onVoltar}>← Voltar ao Cardápio</button>
-      </div>
+      {/* ----- back button (desktop only) ----- */}
+      {!MOBILE && (
+        <div className="carrinho-actions" style={{ marginTop: 24 }}>
+          <button className="btn-add" onClick={onVoltar}>← Voltar ao Cardápio</button>
+        </div>
+      )}
     </div>
   )
 }
