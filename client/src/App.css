@@ -4619,8 +4619,8 @@ body {
   position: relative;
   overflow: hidden;
   border-radius: 16px;
-  border: 1px solid var(--border);
-  background: var(--bg-card);
+  border: 1px solid var(--secondary);
+  background: linear-gradient(135deg, var(--bg-card), color-mix(in srgb, var(--bg-card) 90%, var(--secondary)));
   padding: 24px;
   margin-bottom: 16px;
   transition: border-color 0.3s;
@@ -4657,6 +4657,7 @@ body {
   font-size: 1.5rem;
   font-weight: 700;
   color: var(--text-primary);
+  font-family: var(--font-heading);
 }
 
 .status-badge {

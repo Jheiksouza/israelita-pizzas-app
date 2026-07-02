@@ -824,8 +824,6 @@ function MeusPedidos({ token, onVoltar }) {
 
   return (
     <div className="carrinho-page">
-      <h2>Meus Pedidos</h2>
-
       {notificacaoLiberado && (
         <div className="liberado-notificacao">
           <div className="liberado-notificacao-conteudo">
