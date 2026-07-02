@@ -61,6 +61,7 @@ function App() {
   })
   const [autenticado, setAutenticado] = useState(false)
   const [aba, setAba] = useState(() => localStorage.getItem('adminAba') || 'pedidos')
+  const [tema, setTema] = useState(() => localStorage.getItem('adminTema') || 'classic')
 
   useEffect(() => {
     localStorage.setItem('adminAba', aba)
@@ -98,7 +99,7 @@ function App() {
   const role = user?.role || 'admin'
 
   return (
-    <div className="admin-app">
+    <div className={`admin-app theme-${tema}`}>
       <header className="admin-header-bar">
         <div className="admin-header-left">
           <span className="admin-header-logo"><IconPizza /> Israelita</span>
@@ -106,6 +107,14 @@ function App() {
         </div>
         <div className="admin-header-right">
           <span className="admin-header-user">{user?.nome}</span>
+          <select className="theme-selector" value={tema} onChange={e => { setTema(e.target.value); localStorage.setItem('adminTema', e.target.value) }}>
+            <option value="classic">Clássico</option>
+            <option value="elegance">Elegance</option>
+            <option value="vibrant">Vibrante</option>
+            <option value="minimal">Minimal</option>
+            <option value="noturno">Noturno</option>
+            <option value="neon">Neon</option>
+          </select>
           <button className="admin-header-sair" onClick={handleLogout}>Sair</button>
         </div>
       </header>

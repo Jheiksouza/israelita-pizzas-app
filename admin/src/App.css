@@ -27,6 +27,141 @@
   --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   --font-heading: 'Montserrat', -apple-system, BlinkMacSystemFont, sans-serif;
   --font-body: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --success: #43A047;
+  --warning: #F57F17;
+  --error: #E53935;
+  --info: #1565C0;
+  --neutral: #78909C;
+}
+
+.theme-classic {
+  --primary: #E53935;
+  --primary-dark: #C62828;
+  --primary-light: #FF6F60;
+  --primary-soft: #FFEBEE;
+  --secondary: #FF8F00;
+  --accent: #FFB300;
+  --accent-soft: #FFF8E1;
+  --bg: #FAF8F5;
+  --bg-card: #FFFFFF;
+  --bg-surface: #F5F2ED;
+  --bg-elevated: #FFFFFF;
+  --text-primary: #1D1D1D;
+  --text-secondary: #5F5F5F;
+  --text-muted: #9E9E9E;
+  --border: #E8E3DC;
+  --border-light: #F0EDE8;
+}
+
+.theme-elegance {
+  --primary: #D4AF37;
+  --primary-dark: #B8960F;
+  --primary-light: #F5D76E;
+  --primary-soft: #3D3224;
+  --secondary: #C4A97D;
+  --accent: #F5D76E;
+  --accent-soft: #3D3224;
+  --bg: #1A1410;
+  --bg-card: #221C14;
+  --bg-surface: #1E1812;
+  --bg-elevated: #2A2218;
+  --text-primary: #F5E6C8;
+  --text-secondary: #C4A97D;
+  --text-muted: #8B7D5E;
+  --border: #3D3224;
+  --border-light: #2D2418;
+}
+
+.theme-elegance .btn-add,
+.theme-elegance .cat-btn.active {
+  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+}
+
+.theme-vibrant {
+  --primary: #7B1FA2;
+  --primary-dark: #4A148C;
+  --primary-light: #CE93D8;
+  --primary-soft: #F3E5F5;
+  --secondary: #00897B;
+  --accent: #26A69A;
+  --accent-soft: #E0F2F1;
+  --bg: #FAFAFA;
+  --bg-card: #FFFFFF;
+  --bg-surface: #F5F0F7;
+  --bg-elevated: #FFFFFF;
+  --text-primary: #1D1D1D;
+  --text-secondary: #5F5F5F;
+  --text-muted: #9E9E9E;
+  --border: #E0D6E8;
+  --border-light: #F0EAF2;
+}
+
+.theme-minimal {
+  --primary: #546E7A;
+  --primary-dark: #37474F;
+  --primary-light: #90A4AE;
+  --primary-soft: #ECEFF1;
+  --secondary: #8D6E63;
+  --accent: #A1887F;
+  --accent-soft: #EFEBE9;
+  --bg: #F5F5F5;
+  --bg-card: #FFFFFF;
+  --bg-surface: #EEEEEE;
+  --bg-elevated: #FFFFFF;
+  --text-primary: #212121;
+  --text-secondary: #616161;
+  --text-muted: #9E9E9E;
+  --border: #E0E0E0;
+  --border-light: #EEEEEE;
+}
+
+.theme-minimal .btn-add,
+.theme-minimal .cat-btn.active {
+  background: var(--primary);
+  background-image: none;
+}
+
+.theme-minimal .btn-add:hover,
+.theme-minimal .cat-btn.active:hover {
+  background: var(--primary-dark);
+}
+
+.theme-noturno {
+  --primary: #00BCD4;
+  --primary-dark: #0097A7;
+  --primary-light: #4DD0E1;
+  --primary-soft: #0A2A2E;
+  --secondary: #E040FB;
+  --accent: #7C4DFF;
+  --accent-soft: #1A0A2E;
+  --bg: #0A0A12;
+  --bg-card: #12121E;
+  --bg-surface: #0E0E18;
+  --bg-elevated: #16162A;
+  --text-primary: #E8E8F0;
+  --text-secondary: #A0A0B8;
+  --text-muted: #6A6A82;
+  --border: #1E1E32;
+  --border-light: #161628;
+}
+
+.theme-neon {
+  --primary: #BD00FF;
+  --primary-dark: #8C00CC;
+  --primary-light: #E040FB;
+  --primary-soft: #1A002E;
+  --secondary: #00EEFC;
+  --accent: #00FFAA;
+  --accent-soft: #002E1A;
+  --bg: #05050A;
+  --bg-card: #0D0D18;
+  --bg-surface: #090914;
+  --bg-elevated: #111122;
+  --text-primary: #F0F0FF;
+  --text-secondary: #B0B0D0;
+  --text-muted: #707090;
+  --border: #1A1A30;
+  --border-light: #121224;
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -109,6 +244,24 @@ body {
 .admin-header-sair:hover {
   background: var(--primary);
   color: #fff;
+}
+
+.theme-selector {
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  border: 1.5px solid var(--border);
+  padding: 5px 10px;
+  border-radius: var(--radius-xs);
+  font-family: var(--font-body);
+  font-size: 0.78rem;
+  font-weight: 500;
+  cursor: pointer;
+  outline: none;
+  transition: var(--transition);
+}
+
+.theme-selector:focus {
+  border-color: var(--primary);
 }
 
 .admin-page {
@@ -527,6 +680,7 @@ body {
   border: 1.5px solid var(--border);
   box-shadow: var(--shadow-md);
   text-align: center;
+  transition: var(--transition);
 }
 
 .login-card h2 {
@@ -691,9 +845,16 @@ body {
 .pedido-card {
   position: relative;
   overflow: hidden;
-  border-radius: 16px;
+  border-radius: var(--radius-lg);
   border: 1.5px solid var(--secondary);
   background: var(--bg-card);
+  box-shadow: var(--shadow-sm);
+  transition: var(--transition);
+}
+
+.pedido-card:not(.recusado):hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
 }
 
 .pedido-card.recusado {
@@ -827,7 +988,7 @@ body {
 }
 
 .timer-expirado {
-  color: #C62828;
+  color: var(--error);
   animation: timerUrgencia 0.5s ease-in-out infinite alternate;
 }
 
@@ -1085,12 +1246,12 @@ body {
 .pizzaria-msg {
   text-align: center;
   font-size: 0.85rem;
-  color: #E53935;
+  color: var(--error);
   margin: 0;
 }
 
 .pizzaria-msg-ok {
-  color: #43A047;
+  color: var(--success);
 }
 
 .endereco-loading {
