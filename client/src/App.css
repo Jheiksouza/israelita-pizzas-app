@@ -3030,6 +3030,7 @@ body {
   flex-direction: column;
   position: relative;
   background: var(--bg);
+  color: var(--text-primary);
 }
 
 .bg-decoration {
