@@ -534,11 +534,13 @@ app.post('/login', async (req, res) => {
       try {
         const { data } = await supabase.from('users').select('id,nome,email,telefone,role,status,endereco,enderecos,enderecoselecionado').eq('id', parseInt(userId)).maybeSingle()
         if (data) {
-          return res.json({ autenticado: true, user: { ...data, enderecoSelecionado: data.enderecoselecionado } })
+          const token = jwt.sign({ id: data.id, email: data.email, nome: data.nome, role: data.role }, JWT_SECRET, { expiresIn: '7d' })
+          return res.json({ autenticado: true, token, user: { ...data, enderecoSelecionado: data.enderecoselecionado } })
         }
       } catch (_) {}
     }
-    return res.json({ autenticado: true })
+    const token = jwt.sign({ id: 0, email: 'admin@israelita', nome: 'Admin', role: 'admin' }, JWT_SECRET, { expiresIn: '7d' })
+    return res.json({ autenticado: true, token, user: { nome: 'Admin', role: 'admin' } })
   }
   res.status(401).json({ autenticado: false, erro: 'Senha incorreta' })
 })
