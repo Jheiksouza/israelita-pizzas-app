@@ -148,6 +148,8 @@ function App() {
             <option value="minimal">Minimal</option>
             <option value="noturno">Noturno</option>
             <option value="neon">Neon</option>
+            <option value="pedra">Pedra</option>
+            <option value="basalto">Basalto</option>
           </select>
           <button className="admin-header-sair" onClick={handleLogout}>Sair</button>
         </div>

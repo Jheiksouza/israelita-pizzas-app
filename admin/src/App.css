@@ -164,6 +164,68 @@
   --border-light: #10101E;
 }
 
+.theme-pedra {
+  --primary: oklch(0.214 0.009 43.1);
+  --primary-dark: oklch(0.147 0.004 49.3);
+  --primary-light: oklch(0.547 0.021 43.1);
+  --primary-soft: oklch(0.96 0.002 17.2);
+  --secondary: oklch(0.547 0.021 43.1);
+  --accent: oklch(0.96 0.002 17.2);
+  --accent-soft: oklch(0.986 0.002 67.8);
+  --bg: oklch(1 0 0);
+  --bg-card: oklch(1 0 0);
+  --bg-surface: oklch(0.96 0.002 17.2);
+  --bg-elevated: oklch(1 0 0);
+  --text-primary: oklch(0.147 0.004 49.3);
+  --text-secondary: oklch(0.547 0.021 43.1);
+  --text-muted: oklch(0.714 0.014 41.2);
+  --border: oklch(0.922 0.005 34.3);
+  --border-light: oklch(0.96 0.002 17.2);
+  --success: oklch(0.6 0.14 150);
+  --warning: oklch(0.75 0.14 80);
+  --error: oklch(0.577 0.245 27.325);
+  --info: oklch(0.5 0.12 250);
+  --neutral: oklch(0.714 0.014 41.2);
+}
+
+.theme-basalto {
+  --primary: oklch(0.922 0.005 34.3);
+  --primary-dark: oklch(0.8 0.005 34.3);
+  --primary-light: oklch(0.986 0.002 67.8);
+  --primary-soft: oklch(0.268 0.011 36.5);
+  --secondary: oklch(0.714 0.014 41.2);
+  --accent: oklch(0.268 0.011 36.5);
+  --accent-soft: oklch(0.214 0.009 43.1);
+  --bg: oklch(0.147 0.004 49.3);
+  --bg-card: oklch(0.214 0.009 43.1);
+  --bg-surface: oklch(0.268 0.011 36.5);
+  --bg-elevated: oklch(0.3 0.01 38);
+  --text-primary: oklch(0.986 0.002 67.8);
+  --text-secondary: oklch(0.714 0.014 41.2);
+  --text-muted: oklch(0.547 0.021 43.1);
+  --border: oklch(1 0 0 / 10%);
+  --border-light: oklch(1 0 0 / 6%);
+  --success: oklch(0.6 0.14 150);
+  --warning: oklch(0.75 0.14 80);
+  --error: oklch(0.704 0.191 22.216);
+  --info: oklch(0.5 0.12 250);
+  --neutral: oklch(0.547 0.021 43.1);
+}
+
+.theme-basalto .btn-add,
+.theme-basalto .cat-btn.active {
+  background: var(--text-primary);
+  color: var(--bg);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+
+.theme-basalto .btn-add:hover,
+.theme-basalto .cat-btn.active:hover {
+  background: var(--primary-light);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+}
+
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
 body {
