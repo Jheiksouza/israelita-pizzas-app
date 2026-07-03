@@ -436,16 +436,20 @@ body {
 /* === FILTER GROUP === */
 .filter-group {
   display: inline-flex;
+  align-items: center;
   gap: 0;
   padding: 3px;
   background: var(--muted);
-  border-radius: var(--radius-4xl);
+  border-radius: 9999px;
   flex-wrap: wrap;
 }
 
 .filter-btn {
-  padding: 6px 14px;
-  border-radius: var(--radius-4xl);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 12px;
+  border-radius: 9999px;
   border: none;
   background: transparent;
   color: var(--muted-foreground);
@@ -455,12 +459,13 @@ body {
   cursor: pointer;
   transition: var(--transition);
   white-space: nowrap;
+  line-height: 1;
 }
 
 .filter-btn:hover { color: var(--foreground); }
 
 .filter-btn.active {
-  background: var(--card);
+  background: var(--background);
   color: var(--foreground);
   box-shadow: var(--shadow-sm);
 }
@@ -469,20 +474,19 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 18px;
-  height: 18px;
-  padding: 0 5px;
-  border-radius: 9999px;
-  font-size: 0.65rem;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: var(--radius-3xl);
+  font-size: 0.7rem;
   font-weight: 600;
-  margin-left: 6px;
   background: color-mix(in oklch, var(--foreground) 8%, transparent);
   color: inherit;
   line-height: 1;
 }
 
 .filter-btn.active .filter-count {
-  background: color-mix(in oklch, var(--primary-foreground) 15%, transparent);
+  background: color-mix(in oklch, var(--foreground) 10%, transparent);
 }
 
 .filter-count.zero { opacity: 0.3; }
@@ -583,8 +587,8 @@ body {
 
 /* === PEDIDOS === */
 .pedidos-list {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
   gap: 20px;
 }
 
@@ -611,8 +615,7 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 20px 24px;
-  border-bottom: 1px solid var(--border);
+  padding: 20px 24px 0;
 }
 
 .pedido-id {
@@ -624,7 +627,7 @@ body {
 }
 
 .pedido-card-body {
-  padding: 20px 24px;
+  padding: 16px 24px;
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -682,7 +685,6 @@ body {
   align-items: center;
   flex-wrap: wrap;
   padding-top: 8px;
-  border-top: 1px solid var(--border);
 }
 
 .pedido-meta-item {
@@ -721,9 +723,7 @@ body {
 .pedido-card-footer {
   display: flex;
   gap: 8px;
-  padding: 16px 24px;
-  border-top: 1px solid var(--border);
-  background: color-mix(in oklch, var(--muted) 30%, transparent);
+  padding: 0 24px 20px;
 }
 
 /* === LOGIN === */
@@ -1358,4 +1358,12 @@ body {
   .permissoes-card { flex-direction: column; align-items: stretch; }
   .permissoes-edit-form { width: 100%; }
   .permissoes-edit-form select { flex: 1; }
+}
+
+@media (max-width: 900px) {
+  .pedidos-list { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 600px) {
+  .pedidos-list { grid-template-columns: 1fr; }
 }
