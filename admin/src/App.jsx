@@ -38,6 +38,15 @@ function IconScooter({ size = 20 }) {
 function IconSearch({ size = 20 }) {
   return <span className="i" style={{ width: size, height: size }}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span>
 }
+function IconPlus({ size = 20 }) {
+  return <span className="i" style={{ width: size, height: size }}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>
+}
+function IconEdit({ size = 20 }) {
+  return <span className="i" style={{ width: size, height: size }}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></span>
+}
+function IconDollar({ size = 20 }) {
+  return <span className="i" style={{ width: size, height: size }}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></span>
+}
 
 window.__googleCallback = (response) => {
   const s = window.__adminAuthSetters
@@ -143,13 +152,13 @@ function App() {
       <div className="admin-page">
         <div className="admin-tabs">
           {role === 'admin' && (
-            <button className={`tab-btn ${aba === 'cardapio' ? 'active' : ''}`} onClick={() => setAba('cardapio')}>Cardápio</button>
+            <button className={`tab-btn ${aba === 'cardapio' ? 'active' : ''}`} onClick={() => setAba('cardapio')}><IconPizza /> Cardápio</button>
           )}
           {(role === 'admin' || role === 'atendente') && (
             <button className={`tab-btn ${aba === 'pedidos' ? 'active' : ''}`} onClick={() => setAba('pedidos')}>Pedidos</button>
           )}
           {(role === 'admin' || role === 'financeiro') && (
-            <button className={`tab-btn ${aba === 'financeiro' ? 'active' : ''}`} onClick={() => setAba('financeiro')}>Financeiro</button>
+            <button className={`tab-btn ${aba === 'financeiro' ? 'active' : ''}`} onClick={() => setAba('financeiro')}><IconDollar /> Financeiro</button>
           )}
           {role === 'admin' && (
             <>
@@ -258,9 +267,9 @@ function AdminMenu() {
   return (
     <>
       <div className="admin-header">
-        <h2>Gerenciar Cardápio</h2>
+        <h2><IconPizza /> Gerenciar Cardápio</h2>
         <div className="admin-header-actions">
-          <button className="btn-add" onClick={() => { setEditando(null); setMostrarForm(true) }}>+ Novo Item</button>
+          <button className="btn-add" onClick={() => { setEditando(null); setMostrarForm(true) }}><IconPlus /> Novo Item</button>
         </div>
       </div>
       {mostrarForm && (
@@ -312,8 +321,8 @@ function AdminMenu() {
                 ) : `R$ ${item.preco?.toFixed(2)}`}
               </td>
               <td className="acoes">
-                <button className="btn-edit" onClick={() => { setEditando(item); setMostrarForm(true) }}>Editar</button>
-                <button className="btn-del" onClick={() => deletar(item.id)}>Excluir</button>
+                <button className="btn-edit" onClick={() => { setEditando(item); setMostrarForm(true) }}><IconEdit /> Editar</button>
+                <button className="btn-del" onClick={() => deletar(item.id)}><IconClose /> Excluir</button>
               </td>
             </tr>
           ))}
@@ -385,8 +394,8 @@ function MenuItemForm({ item, onSalvar, onCancelar }) {
           </select>
           <input placeholder="URL da imagem (opcional)" value={form.imagem} onChange={e => setForm({ ...form, imagem: e.target.value })} />
           <div className="form-actions">
-            <button type="submit" className="btn-add">Salvar</button>
-            <button type="button" className="btn-del" onClick={onCancelar}>Cancelar</button>
+            <button type="submit" className="btn-add"><IconCheck /> Salvar</button>
+            <button type="button" className="btn-del" onClick={onCancelar}><IconClose /> Cancelar</button>
           </div>
         </form>
       </div>
@@ -540,7 +549,7 @@ function AdminFinanceiro() {
   return (
     <>
       <div className="admin-header">
-        <h2>Resumo Financeiro</h2>
+        <h2><IconDollar /> Resumo Financeiro</h2>
       </div>
       <div className="financeiro-grid">
         <div className="fin-card">
@@ -723,7 +732,7 @@ function AdminPizzariaConfig() {
 
   return (
     <div className="pizzaria-config">
-      <div className="admin-header"><h2>Dados da Pizzaria</h2></div>
+      <div className="admin-header"><h2><IconStore /> Dados da Pizzaria</h2></div>
       <div className="pizzaria-form">
         <div className="pizzaria-form-row">
           <label>CNPJ</label>
@@ -905,12 +914,12 @@ function AdminPermissoes({ user, token }) {
                     {Object.entries(STATUS_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
                   </select>
                   <div className="permissoes-edit-actions">
-                    <button className="btn-add" onClick={() => alterarRole(u.id)}>Salvar</button>
-                    <button className="btn-del" onClick={() => setEditandoId(null)}>Cancelar</button>
+                    <button className="btn-add" onClick={() => alterarRole(u.id)}><IconCheck /> Salvar</button>
+                    <button className="btn-del" onClick={() => setEditandoId(null)}><IconClose /> Cancelar</button>
                   </div>
                 </div>
               ) : (
-                <button className="btn-edit" onClick={() => { setEditandoId(u.id); setNovaRole(''); setNovoStatus('') }}>Editar permissão</button>
+                <button className="btn-edit" onClick={() => { setEditandoId(u.id); setNovaRole(''); setNovoStatus('') }}><IconEdit /> Editar permissão</button>
               )}
             </div>
           ))}

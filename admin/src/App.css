@@ -825,6 +825,23 @@ body {
   color: #fff;
 }
 
+.btn-del .i {
+  color: var(--primary);
+}
+
+.btn-del:hover .i {
+  color: #fff;
+}
+
+.btn-edit .i {
+  color: var(--text-secondary);
+}
+
+.admin-header h2 .i {
+  margin-right: 6px;
+  color: var(--primary);
+}
+
 .endereco-mapa-btn .i {
   margin-right: 4px;
 }
