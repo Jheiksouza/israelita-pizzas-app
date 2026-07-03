@@ -1,55 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react'
 import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet'
 import L from 'leaflet'
-
-function IconPizza({ size = 20 }) {
-  return <span className="i" style={{ width: size, height: size }}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M12 2 22 20H2Z"/><circle cx={12} cy={15} r={1.5}/><circle cx={9} cy={11} r={1}/><circle cx={15} cy={11} r={1}/></svg></span>
-}
-function IconPin({ size = 20 }) {
-  return <span className="i" style={{ width: size, height: size }}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M12 2C7 2 3 6 3 11c0 7 9 11 9 11s9-4 9-11c0-5-4-9-9-9z"/><circle cx={12} cy={11} r={3}/></svg></span>
-}
-function IconStore({ size = 20 }) {
-  return <span className="i" style={{ width: size, height: size }}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></span>
-}
-function IconLock({ size = 20 }) {
-  return <span className="i" style={{ width: size, height: size }}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span>
-}
-function IconClock({ size = 20 }) {
-  return <span className="i" style={{ width: size, height: size }}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></span>
-}
-function IconTimer({ size = 20 }) {
-  return <span className="i" style={{ width: size, height: size }}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="13" r="8"/><line x1="12" y1="9" x2="12" y2="13"/><polyline points="10 2 14 2 12 4"/></svg></span>
-}
-function IconCheck({ size = 20 }) {
-  return <span className="i" style={{ width: size, height: size }}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
-}
-function IconClose({ size = 20 }) {
-  return <span className="i" style={{ width: size, height: size }}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span>
-}
-function IconTruck({ size = 20 }) {
-  return <span className="i" style={{ width: size, height: size }}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="3" width="15" height="13"/><rect x="16" y="5" width="7" height="11" rx="1"/><line x1="16" y1="9" x2="22" y2="9"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg></span>
-}
-function IconCheckCircle({ size = 20 }) {
-  return <span className="i" style={{ width: size, height: size }}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></span>
-}
-function IconScooter({ size = 20 }) {
-  return <span className="i" style={{ width: size, height: size }}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/><path d="M16 8l-3 7H6"/><path d="M19 5c-1.5 0-4 1-4 4v4"/></svg></span>
-}
-function IconSearch({ size = 20 }) {
-  return <span className="i" style={{ width: size, height: size }}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span>
-}
-function IconPlus({ size = 20 }) {
-  return <span className="i" style={{ width: size, height: size }}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>
-}
-function IconEdit({ size = 20 }) {
-  return <span className="i" style={{ width: size, height: size }}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></span>
-}
-function IconList({ size = 20 }) {
-  return <span className="i" style={{ width: size, height: size }}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg></span>
-}
-function IconDollar({ size = 20 }) {
-  return <span className="i" style={{ width: size, height: size }}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></span>
-}
+import { Pizza, MapPin, Store, Lock, Clock, Timer, Check, X, Truck, CheckCircle, Bike, Search, Plus, Pencil, DollarSign, List, Sun, Moon } from 'lucide-react'
 
 window.__googleCallback = (response) => {
   const s = window.__adminAuthSetters
@@ -95,7 +47,7 @@ function App() {
   })
   const [autenticado, setAutenticado] = useState(false)
   const [aba, setAba] = useState(() => localStorage.getItem('adminAba') || 'pedidos')
-  const [tema, setTema] = useState(() => localStorage.getItem('adminTema') || 'classic')
+  const [darkMode, setDarkMode] = useState(() => localStorage.getItem('adminDark') === 'true')
 
   useEffect(() => {
     localStorage.setItem('adminAba', aba)
@@ -133,43 +85,36 @@ function App() {
   const role = user?.role || 'admin'
 
   return (
-    <div className={`admin-app theme-${tema}`}>
+    <div className={`admin-app${darkMode ? ' dark' : ''}`}>
       <header className="admin-header-bar">
         <div className="admin-header-left">
-          <span className="admin-header-logo"><IconPizza /> Israelita</span>
+          <span className="admin-header-logo"><Pizza size={20} /> Israelita</span>
           <span className="admin-header-role">{role === 'admin' ? 'Admin' : role === 'atendente' ? 'Atendente' : 'Financeiro'}</span>
         </div>
         <div className="admin-header-right">
           <span className="admin-header-user">{user?.nome}</span>
-          <select className="theme-selector" value={tema} onChange={e => { setTema(e.target.value); localStorage.setItem('adminTema', e.target.value) }}>
-            <option value="classic">Clássico</option>
-            <option value="elegance">Elegance</option>
-            <option value="vibrant">Vibrante</option>
-            <option value="minimal">Minimal</option>
-            <option value="noturno">Noturno</option>
-            <option value="neon">Neon</option>
-            <option value="pedra">Pedra</option>
-            <option value="basalto">Basalto</option>
-          </select>
+          <button className="admin-header-dark-toggle" onClick={() => { setDarkMode(!darkMode); localStorage.setItem('adminDark', !darkMode) }}>
+            {darkMode ? <Sun size={16} /> : <Moon size={16} />}
+          </button>
           <button className="admin-header-sair" onClick={handleLogout}>Sair</button>
         </div>
       </header>
       <div className="admin-page">
         <div className="admin-tabs">
           {role === 'admin' && (
-            <button className={`tab-btn ${aba === 'cardapio' ? 'active' : ''}`} onClick={() => setAba('cardapio')}><IconPizza /> Cardápio</button>
+            <button className={`tab-btn ${aba === 'cardapio' ? 'active' : ''}`} onClick={() => setAba('cardapio')}><Pizza size={18} /> Cardápio</button>
           )}
           {(role === 'admin' || role === 'atendente') && (
-            <button className={`tab-btn ${aba === 'pedidos' ? 'active' : ''}`} onClick={() => setAba('pedidos')}><IconList /> Pedidos</button>
+            <button className={`tab-btn ${aba === 'pedidos' ? 'active' : ''}`} onClick={() => setAba('pedidos')}><List size={18} /> Pedidos</button>
           )}
           {(role === 'admin' || role === 'financeiro') && (
-            <button className={`tab-btn ${aba === 'financeiro' ? 'active' : ''}`} onClick={() => setAba('financeiro')}><IconDollar /> Financeiro</button>
+            <button className={`tab-btn ${aba === 'financeiro' ? 'active' : ''}`} onClick={() => setAba('financeiro')}><DollarSign size={18} /> Financeiro</button>
           )}
           {role === 'admin' && (
             <>
-              <button className={`tab-btn ${aba === 'rastreio' ? 'active' : ''}`} onClick={() => setAba('rastreio')}><IconPin /> Rastreio</button>
-              <button className={`tab-btn ${aba === 'pizzaria' ? 'active' : ''}`} onClick={() => setAba('pizzaria')}><IconStore /> Pizzaria</button>
-              <button className={`tab-btn ${aba === 'permissoes' ? 'active' : ''}`} onClick={() => setAba('permissoes')}><IconLock /> Permissões</button>
+              <button className={`tab-btn ${aba === 'rastreio' ? 'active' : ''}`} onClick={() => setAba('rastreio')}><MapPin size={18} /> Rastreio</button>
+              <button className={`tab-btn ${aba === 'pizzaria' ? 'active' : ''}`} onClick={() => setAba('pizzaria')}><Store size={18} /> Pizzaria</button>
+              <button className={`tab-btn ${aba === 'permissoes' ? 'active' : ''}`} onClick={() => setAba('permissoes')}><Lock size={18} /> Permissões</button>
             </>
           )}
         </div>
@@ -229,7 +174,7 @@ function AdminLogin({ onLogin, user, token }) {
   return (
     <div className="login-page">
       <div className="login-card">
-        <div className="login-logo"><IconPizza size={48} /></div>
+        <div className="login-logo"><Pizza size={48} /></div>
         <h2>Admin Israelita Pizzas</h2>
         <p className="login-desc">Faça login para acessar o painel administrativo</p>
         <form onSubmit={handleLogin}>
@@ -272,9 +217,9 @@ function AdminMenu() {
   return (
     <>
       <div className="admin-header">
-        <h2><IconPizza /> Gerenciar Cardápio</h2>
+        <h2><Pizza size={22} /> Gerenciar Cardápio</h2>
         <div className="admin-header-actions">
-          <button className="btn-add" onClick={() => { setEditando(null); setMostrarForm(true) }}><IconPlus /> Novo Item</button>
+          <button className="btn-add" onClick={() => { setEditando(null); setMostrarForm(true) }}><Plus size={18} /> Novo Item</button>
         </div>
       </div>
       {mostrarForm && (
@@ -317,7 +262,7 @@ function AdminMenu() {
               <td>{item.categoria}</td>
               <td>
                 {item.tipo === 'sabor' ? '-' : item.tipo === 'tamanho' ? (
-                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--muted-foreground)' }}>
                     {['Tradicional', 'Especial', 'Nobre'].map(t => {
                       const key = 'preco_' + t.toLowerCase()
                       return item[key] ? `${t[0]}: R$${item[key].toFixed(2)}` : ''
@@ -326,8 +271,8 @@ function AdminMenu() {
                 ) : `R$ ${item.preco?.toFixed(2)}`}
               </td>
               <td className="acoes">
-                <button className="btn-edit" onClick={() => { setEditando(item); setMostrarForm(true) }}><IconEdit /> Editar</button>
-                <button className="btn-del" onClick={() => deletar(item.id)}><IconClose /> Excluir</button>
+                <button className="btn-edit" onClick={() => { setEditando(item); setMostrarForm(true) }}><Pencil size={14} /> Editar</button>
+                <button className="btn-del" onClick={() => deletar(item.id)}><X size={14} /> Excluir</button>
               </td>
             </tr>
           ))}
@@ -399,8 +344,8 @@ function MenuItemForm({ item, onSalvar, onCancelar }) {
           </select>
           <input placeholder="URL da imagem (opcional)" value={form.imagem} onChange={e => setForm({ ...form, imagem: e.target.value })} />
           <div className="form-actions">
-            <button type="submit" className="btn-add"><IconCheck /> Salvar</button>
-            <button type="button" className="btn-del" onClick={onCancelar}><IconClose /> Cancelar</button>
+            <button type="submit" className="btn-add"><Check size={18} /> Salvar</button>
+            <button type="button" className="btn-del" onClick={onCancelar}><X size={18} /> Cancelar</button>
           </div>
         </form>
       </div>
@@ -466,7 +411,7 @@ function AdminOrders() {
   return (
     <>
       <div className="admin-header">
-        <h2><IconList /> Pedidos Recebidos</h2>
+        <h2><List size={22} /> Pedidos Recebidos</h2>
         <div className="filtro-status">
           {FILTROS.map(s => {
             const count = s === 'todos' ? ordenados.length : ordenados.filter(p => p.status === s).length
@@ -494,12 +439,12 @@ function AdminOrders() {
                   <span className="pedido-cliente-nome">{pedido.cliente?.nome}</span>
                   <span className="pedido-cliente-tel">{pedido.cliente?.telefone}</span>
                 </div>
-                <div className="pedido-endereco"><IconPin /> {pedido.cliente?.endereco || 'Não informado'}</div>
+                <div className="pedido-endereco"><MapPin size={14} /> {pedido.cliente?.endereco || 'Não informado'}</div>
                 <div className="pedido-meta">
-                  <span className="pedido-data"><IconClock /> {new Date(pedido.data).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
+                  <span className="pedido-data"><Clock size={14} /> {new Date(pedido.data).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
                   <span className="pedido-valor">R$ {pedido.total?.toFixed(2)}</span>
                   {pedido.status === 'pendente' && pedido.data && (
-                    <span className={`pedido-timer ${tempoRestante(pedido.data) === 'Cancelado' ? 'timer-expirado' : ''}`}><IconTimer /> {tempoRestante(pedido.data)}</span>
+                    <span className={`pedido-timer ${tempoRestante(pedido.data) === 'Cancelado' ? 'timer-expirado' : ''}`}><Timer size={14} /> {tempoRestante(pedido.data)}</span>
                   )}
                 </div>
                 <div className="pedido-itens">
@@ -511,26 +456,26 @@ function AdminOrders() {
               <div className="pedido-actions">
                 {pedido.status === 'pendente' && (
                   <>
-                    <button className="btn-aceitar" onClick={() => atualizarStatus(pedido.id, 'aceito')}><IconCheck /> Aceitar</button>
-                    <button className="btn-recusar" onClick={() => atualizarStatus(pedido.id, 'recusado')}><IconClose /> Recusar</button>
+                    <button className="btn-aceitar" onClick={() => atualizarStatus(pedido.id, 'aceito')}><Check size={16} /> Aceitar</button>
+                    <button className="btn-recusar" onClick={() => atualizarStatus(pedido.id, 'recusado')}><X size={16} /> Recusar</button>
                   </>
                 )}
                 {pedido.status === 'aceito' && (
                   <>
-                    <button className="btn-liberar" onClick={() => atualizarStatus(pedido.id, 'liberado')}><IconTruck /> Liberar</button>
-                    <button className="btn-recusar" onClick={() => atualizarStatus(pedido.id, 'recusado')}><IconClose /> Recusar</button>
+                    <button className="btn-liberar" onClick={() => atualizarStatus(pedido.id, 'liberado')}><Truck size={16} /> Liberar</button>
+                    <button className="btn-recusar" onClick={() => atualizarStatus(pedido.id, 'recusado')}><X size={16} /> Recusar</button>
                   </>
                 )}
                 {pedido.status === 'liberado' && (
                   <>
-                    <button className="btn-aceitar" onClick={() => atualizarStatus(pedido.id, 'entregue')}><IconCheckCircle /> Entregue</button>
-                    <button className="btn-recusar" onClick={() => atualizarStatus(pedido.id, 'recusado')}><IconClose /> Recusar</button>
+                    <button className="btn-aceitar" onClick={() => atualizarStatus(pedido.id, 'entregue')}><CheckCircle size={16} /> Entregue</button>
+                    <button className="btn-recusar" onClick={() => atualizarStatus(pedido.id, 'recusado')}><X size={16} /> Recusar</button>
                   </>
                 )}
                 {pedido.status === 'entregador_proximo' && (
                   <>
-                    <button className="btn-aceitar" onClick={() => atualizarStatus(pedido.id, 'entregue')}><IconCheckCircle /> Entregue</button>
-                    <button className="btn-recusar" onClick={() => atualizarStatus(pedido.id, 'recusado')}><IconClose /> Recusar</button>
+                    <button className="btn-aceitar" onClick={() => atualizarStatus(pedido.id, 'entregue')}><CheckCircle size={16} /> Entregue</button>
+                    <button className="btn-recusar" onClick={() => atualizarStatus(pedido.id, 'recusado')}><X size={16} /> Recusar</button>
                   </>
                 )}
               </div>
@@ -554,7 +499,7 @@ function AdminFinanceiro() {
   return (
     <>
       <div className="admin-header">
-        <h2><IconDollar /> Resumo Financeiro</h2>
+        <h2><DollarSign size={22} /> Resumo Financeiro</h2>
       </div>
       <div className="financeiro-grid">
         <div className="fin-card">
@@ -640,32 +585,30 @@ function RastreioPage() {
     return `${diffMin} min offline`
   }
 
-  const statusColor = { conectado: '#43A047', perdendo_sinal: '#FF8F00', desconectado: '#E53935' }
-
   return (
     <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-        <h2 style={{ margin: 0, fontSize: '1.15rem', flex: 1 }}><IconPin /> Rastreio do Motoboy</h2>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 14px', borderRadius: '50px', background: `${statusColor[status]}15`, border: `2px solid ${statusColor[status]}` }}>
-          <div style={{ width: 10, height: 10, borderRadius: '50%', background: statusColor[status], animation: status === 'conectado' ? 'motoboyBtnPulse 1s infinite alternate' : 'none' }} />
-          <span style={{ fontSize: '0.82rem', fontWeight: 600, color: statusColor[status] }}>{getStatusText()}</span>
+        <h2 style={{ margin: 0, fontSize: '1.15rem', flex: 1 }}><MapPin size={20} /> Rastreio do Motoboy</h2>
+        <div className={`motoboy-status-pill motoboy-status-${status}`}>
+          <div className="status-dot" />
+          <span className="motoboy-status-label">{getStatusText()}</span>
         </div>
       </div>
       {!pos && status === 'desconectado' && (
-        <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--text-muted)' }}>
-          <div style={{ marginBottom: 12 }}><IconScooter size={48} /></div>
+        <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--muted-foreground)' }}>
+          <div style={{ marginBottom: 12 }}><Bike size={48} /></div>
           <p style={{ margin: 0, fontWeight: 600, fontSize: '1rem' }}>Motoboy desconectado</p>
           <p style={{ margin: '4px 0 0', fontSize: '0.85rem' }}>Aguardando sinal do motoboy...</p>
         </div>
       )}
       {pos && (
-        <div style={{ height: 'calc(100vh - 220px)', minHeight: 300, borderRadius: 'var(--radius-md)', overflow: 'hidden', boxShadow: 'var(--shadow-sm)' }}>
+        <div style={{ height: 'calc(100vh - 220px)', minHeight: 300, borderRadius: 'var(--radius)', overflow: 'hidden' }}>
           <MapContainer center={[center.lat, center.lng]} zoom={15} scrollWheelZoom={true} style={{ width: '100%', height: '100%' }}>
             <TileLayer attribution='&copy; OpenStreetMap' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
             {pos && (
               <Marker position={[pos.lat, pos.lng]} icon={L.divIcon({
                 className: '',
-                html: `<div class="motoboy-marker-info"><div class="motoboy-marker-nome">${motoboyNome || 'Motoboy'}</div><div class="motoboy-marker-status" style="border-color:${statusColor[status]};color:${statusColor[status]}">${getStatusText()}</div><svg viewBox="0 0 24 36" width="28" height="42"><path d="M12 0C5.4 0 0 5.4 0 12c0 9 12 24 12 24s12-15 12-24C24 5.4 18.6 0 12 0z" fill="${statusColor[status]}"/><circle cx="12" cy="12" r="5" fill="#fff"/></svg><div class="motoboy-marker-pulse"></div></div>`,
+                html: `<div class="motoboy-marker-info"><div class="motoboy-marker-nome">${motoboyNome || 'Motoboy'}</div><div class="motoboy-marker-status" style="border-color:var(--motoboy-${status});color:var(--motoboy-${status})">${getStatusText()}</div><svg viewBox="0 0 24 36" width="28" height="42"><path d="M12 0C5.4 0 0 5.4 0 12c0 9 12 24 12 24s12-15 12-24C24 5.4 18.6 0 12 0z" fill="var(--motoboy-${status})"/><circle cx="12" cy="12" r="5" fill="#fff"/></svg><div class="motoboy-marker-pulse"></div></div>`,
                 iconSize: [28, 42],
                 iconAnchor: [14, 42],
               })}>
@@ -675,7 +618,7 @@ function RastreioPage() {
         </div>
       )}
       {(pos || ultimaAtualizacao) && (
-        <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textAlign: 'center' }}>
+        <div style={{ fontSize: '0.8rem', color: 'var(--muted-foreground)', textAlign: 'center' }}>
           {motoboyNome && <span style={{ fontWeight: 600 }}>{motoboyNome}</span>} · Última atualização: {ultimaAtualizacao ? new Date(ultimaAtualizacao).toLocaleTimeString('pt-BR') : '—'}
         </div>
       )}
@@ -737,7 +680,7 @@ function AdminPizzariaConfig() {
 
   return (
     <div className="pizzaria-config">
-      <div className="admin-header"><h2><IconStore /> Dados da Pizzaria</h2></div>
+      <div className="admin-header"><h2><Store size={22} /> Dados da Pizzaria</h2></div>
       <div className="pizzaria-form">
         <div className="pizzaria-form-row">
           <label>CNPJ</label>
@@ -795,7 +738,7 @@ function AdminPizzariaConfig() {
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
             <input placeholder="Latitude" value={form.lat || ''} onChange={e => setForm(f => ({ ...f, lat: e.target.value }))} style={{width:160}} />
             <input placeholder="Longitude" value={form.lng || ''} onChange={e => setForm(f => ({ ...f, lng: e.target.value }))} style={{width:160}} />
-            <button className="endereco-mapa-btn" type="button" onClick={() => setMostrarMapaPizzaria(true)}><IconPin /> Marcar no mapa</button>
+            <button className="endereco-mapa-btn" type="button" onClick={() => setMostrarMapaPizzaria(true)}><MapPin size={16} /> Marcar no mapa</button>
           </div>
         </div>
         {msg && <p className={`pizzaria-msg ${msg.includes('sucesso') ? 'pizzaria-msg-ok' : ''}`}>{msg}</p>}
@@ -878,7 +821,7 @@ function AdminPermissoes({ user, token }) {
   return (
     <div className="permissoes-page">
       <div className="admin-header">
-        <h2><IconLock /> Gerenciar Permissões</h2>
+        <h2><Lock size={22} /> Gerenciar Permissões</h2>
         <div className="filtro-status">
           {['todas', 'cliente', 'motoboy', 'atendente', 'financeiro', 'admin'].map(r => (
             <button key={r} className={`cat-btn ${filtroRole === r ? 'active' : ''}`} onClick={() => setFiltroRole(r)}>
@@ -919,12 +862,12 @@ function AdminPermissoes({ user, token }) {
                     {Object.entries(STATUS_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
                   </select>
                   <div className="permissoes-edit-actions">
-                    <button className="btn-add" onClick={() => alterarRole(u.id)}><IconCheck /> Salvar</button>
-                    <button className="btn-del" onClick={() => setEditandoId(null)}><IconClose /> Cancelar</button>
+                    <button className="btn-add" onClick={() => alterarRole(u.id)}><Check size={14} /> Salvar</button>
+                    <button className="btn-del" onClick={() => setEditandoId(null)}><X size={14} /> Cancelar</button>
                   </div>
                 </div>
               ) : (
-                <button className="btn-edit" onClick={() => { setEditandoId(u.id); setNovaRole(''); setNovoStatus('') }}><IconEdit /> Editar permissão</button>
+                <button className="btn-edit" onClick={() => { setEditandoId(u.id); setNovaRole(''); setNovoStatus('') }}><Pencil size={14} /> Editar permissão</button>
               )}
             </div>
           ))}
@@ -980,7 +923,7 @@ function MapaEntregaModal({ isOpen, onClose, onConfirm, enderecoInicial, initial
       const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(buscaEndereco)}&limit=1`, { headers: { 'User-Agent': 'IsraelitaPizzasApp/1.0' } })
       const data = await res.json()
       if (!mountedRef.current) return
-      if (data[0]) { setLat(parseFloat(data[0].lat)); setLng(parseFloat(data[0].lon)); if (mapRef.current) mapRef.current.flyTo([parseFloat(data[0].lat), parseFloat(data[0].lon)], 17) }
+      if (data[0]) { setLat(parseFloat(data[0].lat)); setLng(parseFloat(data[0].lng)); if (mapRef.current) mapRef.current.flyTo([parseFloat(data[0].lat), parseFloat(data[0].lng)], 17) }
       else setErroBusca('Endereço não encontrado.')
     } catch { setErroBusca('Erro ao buscar.') }
     setBuscandoEndereco(false)
@@ -999,11 +942,11 @@ function MapaEntregaModal({ isOpen, onClose, onConfirm, enderecoInicial, initial
     <div className="modal-overlay">
       <div className="modal modal-mapa" onClick={e => e.stopPropagation()}>
         <div className="modal-header">
-          <h3><IconPin /> Marcar Local Exato</h3>
-          <button className="modal-close" onClick={onClose}><IconClose /></button>
+          <h3><MapPin size={20} /> Marcar Local Exato</h3>
+          <button className="modal-close" onClick={onClose}><X size={16} /></button>
         </div>
         {buscando ? (
-          <div className="mapa-loading"><div className="mapa-loading-icon"><IconSearch size={32} /></div><p>Localizando...</p></div>
+          <div className="mapa-loading"><div className="mapa-loading-icon"><Search size={32} /></div><p>Localizando...</p></div>
         ) : !pronto ? null : (
           <>
             <div className="mapa-search">
@@ -1023,7 +966,7 @@ function MapaEntregaModal({ isOpen, onClose, onConfirm, enderecoInicial, initial
             <div className="mapa-coords">Lat: {lat.toFixed(6)}, Lng: {lng.toFixed(6)}</div>
             <div className="form-actions">
               <button className="btn-del" onClick={onClose}>Cancelar</button>
-              <button className="btn-add" onClick={() => { onConfirm({ lat, lng }); onClose() }}><IconCheckCircle /> Confirmar</button>
+              <button className="btn-add" onClick={() => { onConfirm({ lat, lng }); onClose() }}><CheckCircle size={18} /> Confirmar</button>
             </div>
           </>
         )}
