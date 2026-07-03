@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react'
 import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet'
 import L from 'leaflet'
-import { Pizza, MapPin, Store, Lock, Clock, Timer, Check, X, Truck, CheckCircle, Bike, Search, Plus, Pencil, DollarSign, List, Sun, Moon } from 'lucide-react'
+import { Pizza, MapPin, Store, Lock, Clock, Timer, Check, X, Truck, CheckCircle, Bike, Search, Plus, Pencil, DollarSign, List, Sun, Moon, LogOut } from 'lucide-react'
 
 window.__googleCallback = (response) => {
   const s = window.__adminAuthSetters
@@ -39,6 +39,15 @@ const pedidoSteps = [
   { key: 'entregue', label: 'Entregue' },
 ]
 
+const allNavItems = [
+  { key: 'pedidos', label: 'Pedidos', icon: List, roles: ['admin', 'atendente'], section: 'Geral' },
+  { key: 'cardapio', label: 'Cardápio', icon: Pizza, roles: ['admin'], section: 'Geral' },
+  { key: 'financeiro', label: 'Financeiro', icon: DollarSign, roles: ['admin', 'financeiro'], section: 'Admin' },
+  { key: 'rastreio', label: 'Rastreio', icon: MapPin, roles: ['admin'], section: 'Admin' },
+  { key: 'pizzaria', label: 'Pizzaria', icon: Store, roles: ['admin'], section: 'Admin' },
+  { key: 'permissoes', label: 'Permissões', icon: Lock, roles: ['admin'], section: 'Admin' },
+]
+
 function App() {
   const [token, setToken] = useState(() => localStorage.getItem('token') || '')
   const [user, setUser] = useState(() => {
@@ -49,9 +58,7 @@ function App() {
   const [aba, setAba] = useState(() => localStorage.getItem('adminAba') || 'pedidos')
   const [darkMode, setDarkMode] = useState(() => localStorage.getItem('adminDark') === 'true')
 
-  useEffect(() => {
-    localStorage.setItem('adminAba', aba)
-  }, [aba])
+  useEffect(() => { localStorage.setItem('adminAba', aba) }, [aba])
 
   useEffect(() => {
     if (token && user && VALID_ROLES.includes(user.role)) {
@@ -83,47 +90,54 @@ function App() {
   }
 
   const role = user?.role || 'admin'
+  const navItems = allNavItems.filter(item => item.roles.includes(role))
+  const sections = [...new Set(navItems.map(n => n.section))]
 
   return (
     <div className={`admin-app${darkMode ? ' dark' : ''}`}>
-      <header className="admin-header-bar">
-        <div className="admin-header-left">
-          <span className="admin-header-logo"><Pizza size={20} /> Israelita</span>
-          <span className="admin-header-role">{role === 'admin' ? 'Admin' : role === 'atendente' ? 'Atendente' : 'Financeiro'}</span>
+      <aside className="admin-sidebar">
+        <div className="sidebar-header">
+          <Pizza size={22} />
+          <span>Israelita</span>
         </div>
-        <div className="admin-header-right">
-          <span className="admin-header-user">{user?.nome}</span>
-          <button className="admin-header-dark-toggle" onClick={() => { setDarkMode(!darkMode); localStorage.setItem('adminDark', !darkMode) }}>
+        <nav className="sidebar-nav">
+          {sections.map(section => (
+            <React.Fragment key={section}>
+              <div className="sidebar-nav-section">{section}</div>
+              {navItems.filter(n => n.section === section).map(item => {
+                const Icon = item.icon
+                return (
+                  <button key={item.key} className={`sidebar-nav-item ${aba === item.key ? 'active' : ''}`} onClick={() => setAba(item.key)}>
+                    <Icon size={18} />
+                    <span>{item.label}</span>
+                  </button>
+                )
+              })}
+            </React.Fragment>
+          ))}
+        </nav>
+        <div className="sidebar-footer">
+          <div className="sidebar-user-info">
+            <span className="sidebar-user-name">{user?.nome}</span>
+            <span className="sidebar-user-role">{role === 'admin' ? 'Administrador' : role === 'atendente' ? 'Atendente' : 'Financeiro'}</span>
+          </div>
+          <button className="topbar-btn" onClick={handleLogout} title="Sair"><LogOut size={16} /></button>
+        </div>
+      </aside>
+      <div className="admin-main">
+        <header className="admin-topbar">
+          <button className="topbar-btn" onClick={() => { setDarkMode(!darkMode); localStorage.setItem('adminDark', !darkMode) }} title={darkMode ? 'Modo claro' : 'Modo escuro'}>
             {darkMode ? <Sun size={16} /> : <Moon size={16} />}
           </button>
-          <button className="admin-header-sair" onClick={handleLogout}>Sair</button>
-        </div>
-      </header>
-      <div className="admin-page">
-        <div className="admin-tabs">
-          {role === 'admin' && (
-            <button className={`tab-btn ${aba === 'cardapio' ? 'active' : ''}`} onClick={() => setAba('cardapio')}><Pizza size={18} /> Cardápio</button>
-          )}
-          {(role === 'admin' || role === 'atendente') && (
-            <button className={`tab-btn ${aba === 'pedidos' ? 'active' : ''}`} onClick={() => setAba('pedidos')}><List size={18} /> Pedidos</button>
-          )}
-          {(role === 'admin' || role === 'financeiro') && (
-            <button className={`tab-btn ${aba === 'financeiro' ? 'active' : ''}`} onClick={() => setAba('financeiro')}><DollarSign size={18} /> Financeiro</button>
-          )}
-          {role === 'admin' && (
-            <>
-              <button className={`tab-btn ${aba === 'rastreio' ? 'active' : ''}`} onClick={() => setAba('rastreio')}><MapPin size={18} /> Rastreio</button>
-              <button className={`tab-btn ${aba === 'pizzaria' ? 'active' : ''}`} onClick={() => setAba('pizzaria')}><Store size={18} /> Pizzaria</button>
-              <button className={`tab-btn ${aba === 'permissoes' ? 'active' : ''}`} onClick={() => setAba('permissoes')}><Lock size={18} /> Permissões</button>
-            </>
-          )}
-        </div>
-        {aba === 'cardapio' && role === 'admin' && <AdminMenu />}
-        {aba === 'pedidos' && (role === 'admin' || role === 'atendente') && <AdminOrders />}
-        {aba === 'financeiro' && (role === 'admin' || role === 'financeiro') && <AdminFinanceiro />}
-        {aba === 'rastreio' && role === 'admin' && <RastreioPage />}
-        {aba === 'pizzaria' && role === 'admin' && <AdminPizzariaConfig />}
-        {aba === 'permissoes' && role === 'admin' && <AdminPermissoes user={user} token={token} />}
+        </header>
+        <main className="admin-content" style={{ animation: 'fadeUp 0.35s ease' }}>
+          {aba === 'cardapio' && role === 'admin' && <AdminMenu />}
+          {aba === 'pedidos' && (role === 'admin' || role === 'atendente') && <AdminOrders />}
+          {aba === 'financeiro' && (role === 'admin' || role === 'financeiro') && <AdminFinanceiro />}
+          {aba === 'rastreio' && role === 'admin' && <RastreioPage />}
+          {aba === 'pizzaria' && role === 'admin' && <AdminPizzariaConfig />}
+          {aba === 'permissoes' && role === 'admin' && <AdminPermissoes user={user} token={token} />}
+        </main>
       </div>
     </div>
   )
@@ -178,15 +192,9 @@ function AdminLogin({ onLogin, user, token }) {
         <h2>Admin Israelita Pizzas</h2>
         <p className="login-desc">Faça login para acessar o painel administrativo</p>
         <form onSubmit={handleLogin}>
-          <input
-            type="password"
-            placeholder="Senha de administrador"
-            value={senha}
-            onChange={e => { setSenha(e.target.value); setErro('') }}
-            autoFocus
-          />
+          <input type="password" placeholder="Senha de administrador" value={senha} onChange={e => { setSenha(e.target.value); setErro('') }} autoFocus />
           {erro && <p className="erro">{erro}</p>}
-          <button type="submit" className="btn-add btn-full" disabled={loading}>
+          <button type="submit" className="btn btn-primary btn-full" disabled={loading}>
             {loading ? 'Entrando...' : 'Entrar com senha'}
           </button>
         </form>
@@ -214,12 +222,18 @@ function AdminMenu() {
     carregar()
   }
 
+  const tipoClass = (t) => t === 'sabor' ? 'badge badge-success' : t === 'tamanho' ? 'badge badge-info' : 'badge'
+  const qualClass = (c) => c === 'tradicional' ? 'badge badge-info' : c === 'especial' ? 'badge badge-liberate' : c === 'nobre' ? 'badge badge-warning' : ''
+
   return (
     <>
-      <div className="admin-header">
-        <h2><Pizza size={22} /> Gerenciar Cardápio</h2>
-        <div className="admin-header-actions">
-          <button className="btn-add" onClick={() => { setEditando(null); setMostrarForm(true) }}><Plus size={18} /> Novo Item</button>
+      <div className="page-header">
+        <div className="page-header-left">
+          <h1 className="page-title">Cardápio</h1>
+          <p className="page-description">Gerencie os itens do cardápio</p>
+        </div>
+        <div className="page-header-actions">
+          <button className="btn btn-primary" onClick={() => { setEditando(null); setMostrarForm(true) }}><Plus size={18} /> Novo Item</button>
         </div>
       </div>
       {mostrarForm && (
@@ -242,42 +256,46 @@ function AdminMenu() {
           onCancelar={() => { setMostrarForm(false); setEditando(null) }}
         />
       )}
-      <table className="admin-table">
-        <thead>
-          <tr><th>ID</th><th>Nome</th><th>Tipo</th><th>Qualidade</th><th>Categoria</th><th>Preço</th><th>Ações</th></tr>
-        </thead>
-        <tbody>
-          {menu.map(item => (
-            <tr key={item.id}>
-              <td>{item.id}</td>
-              <td>{item.nome}</td>
-              <td><span className={`tipo-badge tipo-${item.tipo || 'produto'}`}>{item.tipo === 'sabor' ? 'Sabor' : item.tipo === 'tamanho' ? 'Tamanho' : 'Produto'}</span></td>
-              <td>
-                {item.tipo === 'sabor' ? (
-                  <span className={`tipo-badge ${item.classificacao === 'tradicional' ? 'tipo-tradicional' : item.classificacao === 'especial' ? 'tipo-especial' : item.classificacao === 'nobre' ? 'tipo-nobre' : ''}`}>
-                    {item.classificacao ? item.classificacao.charAt(0).toUpperCase() + item.classificacao.slice(1) : '-'}
-                  </span>
-                ) : '-'}
-              </td>
-              <td>{item.categoria}</td>
-              <td>
-                {item.tipo === 'sabor' ? '-' : item.tipo === 'tamanho' ? (
-                  <span style={{ fontSize: '0.75rem', color: 'var(--muted-foreground)' }}>
-                    {['Tradicional', 'Especial', 'Nobre'].map(t => {
-                      const key = 'preco_' + t.toLowerCase()
-                      return item[key] ? `${t[0]}: R$${item[key].toFixed(2)}` : ''
-                    }).filter(Boolean).join(' / ') || '-'}
-                  </span>
-                ) : `R$ ${item.preco?.toFixed(2)}`}
-              </td>
-              <td className="acoes">
-                <button className="btn-edit" onClick={() => { setEditando(item); setMostrarForm(true) }}><Pencil size={14} /> Editar</button>
-                <button className="btn-del" onClick={() => deletar(item.id)}><X size={14} /> Excluir</button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <div className="card">
+        <div className="table-container">
+          <table className="admin-table">
+            <thead>
+              <tr><th>ID</th><th>Nome</th><th>Tipo</th><th>Qualidade</th><th>Categoria</th><th>Preço</th><th></th></tr>
+            </thead>
+            <tbody>
+              {menu.map(item => (
+                <tr key={item.id}>
+                  <td>{item.id}</td>
+                  <td>{item.nome}</td>
+                  <td><span className={tipoClass(item.tipo)}>{item.tipo === 'sabor' ? 'Sabor' : item.tipo === 'tamanho' ? 'Tamanho' : 'Produto'}</span></td>
+                  <td>
+                    {item.tipo === 'sabor' ? (
+                      <span className={qualClass(item.classificacao)}>
+                        {item.classificacao ? item.classificacao.charAt(0).toUpperCase() + item.classificacao.slice(1) : '-'}
+                      </span>
+                    ) : '-'}
+                  </td>
+                  <td>{item.categoria}</td>
+                  <td>
+                    {item.tipo === 'sabor' ? '-' : item.tipo === 'tamanho' ? (
+                      <span style={{ fontSize: '0.78rem', color: 'var(--muted-foreground)' }}>
+                        {['Tradicional', 'Especial', 'Nobre'].map(t => {
+                          const key = 'preco_' + t.toLowerCase()
+                          return item[key] ? `${t[0]}: R$${item[key].toFixed(2)}` : ''
+                        }).filter(Boolean).join(' / ') || '-'}
+                      </span>
+                    ) : `R$ ${item.preco?.toFixed(2)}`}
+                  </td>
+                  <td className="table-actions">
+                    <button className="btn btn-ghost btn-xs" onClick={() => { setEditando(item); setMostrarForm(true) }}><Pencil size={14} /></button>
+                    <button className="btn btn-destructive btn-xs" onClick={() => deletar(item.id)}><X size={14} /></button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </>
   )
 }
@@ -307,45 +325,67 @@ function MenuItemForm({ item, onSalvar, onCancelar }) {
       <div className="modal">
         <h3>{item ? 'Editar Item' : 'Novo Item'}</h3>
         <form onSubmit={handleSubmit}>
-          <input placeholder="Nome" value={form.nome} onChange={e => setForm({ ...form, nome: e.target.value })} required />
-          <textarea placeholder="Descrição" value={form.descricao} onChange={e => setForm({ ...form, descricao: e.target.value })} />
-          <select value={form.tipo} onChange={e => setForm({ ...form, tipo: e.target.value })}>
-            <option value="produto">Produto</option>
-            <option value="sabor">Sabor de Pizza</option>
-            <option value="tamanho">Tamanho de Pizza</option>
-          </select>
+          <div className="form-group">
+            <input className="form-input" placeholder="Nome" value={form.nome} onChange={e => setForm({ ...form, nome: e.target.value })} required />
+          </div>
+          <div className="form-group">
+            <textarea className="form-input" placeholder="Descrição" value={form.descricao} onChange={e => setForm({ ...form, descricao: e.target.value })} rows={3} />
+          </div>
+          <div className="form-group">
+            <select className="form-input" value={form.tipo} onChange={e => setForm({ ...form, tipo: e.target.value })}>
+              <option value="produto">Produto</option>
+              <option value="sabor">Sabor de Pizza</option>
+              <option value="tamanho">Tamanho de Pizza</option>
+            </select>
+          </div>
           {form.tipo === 'produto' && (
-            <input type="number" step="0.01" placeholder="Preço" value={form.preco} onChange={e => setForm({ ...form, preco: e.target.value })} required />
+            <div className="form-group">
+              <input className="form-input" type="number" step="0.01" placeholder="Preço" value={form.preco} onChange={e => setForm({ ...form, preco: e.target.value })} required />
+            </div>
           )}
           {form.tipo === 'sabor' && (
-            <select value={form.classificacao} onChange={e => setForm({ ...form, classificacao: e.target.value })}>
-              <option value="">Sem classificação</option>
-              <option value="tradicional">Tradicional</option>
-              <option value="especial">Especial</option>
-              <option value="nobre">Nobre</option>
-            </select>
+            <div className="form-group">
+              <select className="form-input" value={form.classificacao} onChange={e => setForm({ ...form, classificacao: e.target.value })}>
+                <option value="">Sem classificação</option>
+                <option value="tradicional">Tradicional</option>
+                <option value="especial">Especial</option>
+                <option value="nobre">Nobre</option>
+              </select>
+            </div>
           )}
           {form.tipo === 'tamanho' && (
             <>
-              <input type="number" min="1" max="4" placeholder="Máx. de sabores" value={form.maxSabores} onChange={e => setForm({ ...form, maxSabores: parseInt(e.target.value) || '' })} required />
-              <p className="settings-label" style={{ marginTop: 8 }}>Preços por qualidade:</p>
-              <input type="number" step="0.01" placeholder="Preço Tradicional" value={form.preco_tradicional} onChange={e => setForm({ ...form, preco_tradicional: e.target.value })} />
-              <input type="number" step="0.01" placeholder="Preço Especial" value={form.preco_especial} onChange={e => setForm({ ...form, preco_especial: e.target.value })} />
-              <input type="number" step="0.01" placeholder="Preço Nobre" value={form.preco_nobre} onChange={e => setForm({ ...form, preco_nobre: e.target.value })} />
+              <div className="form-group">
+                <input className="form-input" type="number" min="1" max="4" placeholder="Máx. de sabores" value={form.maxSabores} onChange={e => setForm({ ...form, maxSabores: parseInt(e.target.value) || '' })} required />
+              </div>
+              <p className="form-label" style={{ marginTop: 4 }}>Preços por qualidade</p>
+              <div className="form-group">
+                <input className="form-input" type="number" step="0.01" placeholder="Preço Tradicional" value={form.preco_tradicional} onChange={e => setForm({ ...form, preco_tradicional: e.target.value })} />
+              </div>
+              <div className="form-group">
+                <input className="form-input" type="number" step="0.01" placeholder="Preço Especial" value={form.preco_especial} onChange={e => setForm({ ...form, preco_especial: e.target.value })} />
+              </div>
+              <div className="form-group">
+                <input className="form-input" type="number" step="0.01" placeholder="Preço Nobre" value={form.preco_nobre} onChange={e => setForm({ ...form, preco_nobre: e.target.value })} />
+              </div>
             </>
           )}
-          <select value={form.categoria} onChange={e => setForm({ ...form, categoria: e.target.value })}>
-            <option>Pizzas Salgadas</option>
-            <option>Pizzas Doces</option>
-            <option>Bebidas</option>
-            <option>Porções</option>
-            <option>Sobremesas</option>
-            <option>Tamanhos de Pizza</option>
-          </select>
-          <input placeholder="URL da imagem (opcional)" value={form.imagem} onChange={e => setForm({ ...form, imagem: e.target.value })} />
+          <div className="form-group">
+            <select className="form-input" value={form.categoria} onChange={e => setForm({ ...form, categoria: e.target.value })}>
+              <option>Pizzas Salgadas</option>
+              <option>Pizzas Doces</option>
+              <option>Bebidas</option>
+              <option>Porções</option>
+              <option>Sobremesas</option>
+              <option>Tamanhos de Pizza</option>
+            </select>
+          </div>
+          <div className="form-group">
+            <input className="form-input" placeholder="URL da imagem (opcional)" value={form.imagem} onChange={e => setForm({ ...form, imagem: e.target.value })} />
+          </div>
           <div className="form-actions">
-            <button type="submit" className="btn-add"><Check size={18} /> Salvar</button>
-            <button type="button" className="btn-del" onClick={onCancelar}><X size={18} /> Cancelar</button>
+            <button type="submit" className="btn btn-primary"><Check size={18} /> Salvar</button>
+            <button type="button" className="btn btn-destructive" onClick={onCancelar}><X size={18} /> Cancelar</button>
           </div>
         </form>
       </div>
@@ -405,20 +445,25 @@ function AdminOrders() {
   }
 
   const statusLabel = { pendente: 'Pendente', aceito: 'Em preparo', liberado: 'À caminho', entregador_proximo: 'Entregador Próximo', entregue: 'Entregue', recusado: 'Recusado' }
-  const statusClass = { pendente: 'status-pendente', aceito: 'status-aceito', liberado: 'status-liberado', entregador_proximo: 'status-entregador_proximo', entregue: 'status-entregue', recusado: 'status-recusado' }
+  const badgeClass = { pendente: 'badge badge-warning', aceito: 'badge badge-info', liberado: 'badge badge-liberate', entregador_proximo: 'badge badge-amber', entregue: 'badge badge-success', recusado: 'badge badge-destructive' }
   const FILTROS = ['pendente', 'aceito', 'liberado', 'entregador_proximo', 'entregue', 'recusado', 'todos']
 
   return (
     <>
-      <div className="admin-header">
-        <h2><List size={22} /> Pedidos Recebidos</h2>
-        <div className="filtro-status">
+      <div className="page-header">
+        <div className="page-header-left">
+          <h1 className="page-title">Pedidos</h1>
+          <p className="page-description">Acompanhe e gerencie os pedidos recebidos</p>
+        </div>
+      </div>
+      <div className="section">
+        <div className="filter-group">
           {FILTROS.map(s => {
             const count = s === 'todos' ? ordenados.length : ordenados.filter(p => p.status === s).length
             return (
-              <button key={s} className={`cat-btn ${filtro === s ? 'active' : ''}`} onClick={() => setFiltro(s)}>
+              <button key={s} className={`filter-btn ${filtro === s ? 'active' : ''}`} onClick={() => setFiltro(s)}>
                 {s === 'todos' ? 'Todos' : statusLabel[s]}
-                <span className={`status-count-badge ${count === 0 ? 'zero' : ''}`}>{count}</span>
+                <span className={`filter-count ${count === 0 ? 'zero' : ''}`}>{count}</span>
               </button>
             )
           })}
@@ -427,55 +472,74 @@ function AdminOrders() {
       {filtrados.length === 0 ? (
         <div className="empty-state"><p>Nenhum pedido hoje</p></div>
       ) : (
-        <div className="pedidos-lista">
+        <div className="pedidos-list">
           {filtrados.map(pedido => (
-            <div key={pedido.id} className={`pedido-card ${pedido.status}${pedido.status === 'pendente' ? ' pedido-pendente-destaque' : ''}`}>
-              <div className="pedido-header">
-                <strong>Pedido #{pedido.id}</strong>
-                <span className={`status-badge ${statusClass[pedido.status]}`}>{statusLabel[pedido.status]}</span>
+            <div key={pedido.id} className={`pedido-card${pedido.status === 'pendente' ? ' pedido-pendente-destaque' : ''}`}>
+              <div className="pedido-card-header">
+                <span className="pedido-id">Pedido #{pedido.id}</span>
+                <span className={badgeClass[pedido.status]}>{statusLabel[pedido.status]}</span>
               </div>
-              <div className="pedido-body">
-                <div className="pedido-cliente">
-                  <span className="pedido-cliente-nome">{pedido.cliente?.nome}</span>
-                  <span className="pedido-cliente-tel">{pedido.cliente?.telefone}</span>
+              <div className="pedido-card-body">
+                <div className="pedido-info-row">
+                  <div className="pedido-info-icon"><MapPin size={18} /></div>
+                  <div className="pedido-info-content">
+                    <div className="pedido-info-label">Cliente</div>
+                    <div className="pedido-info-value">
+                      {pedido.cliente?.nome}{pedido.cliente?.telefone ? ` · ${pedido.cliente.telefone}` : ''}
+                    </div>
+                  </div>
                 </div>
-                <div className="pedido-endereco"><MapPin size={14} /> {pedido.cliente?.endereco || 'Não informado'}</div>
+                <div className="pedido-info-row">
+                  <div className="pedido-info-icon"><MapPin size={18} /></div>
+                  <div className="pedido-info-content">
+                    <div className="pedido-info-label">Endereço</div>
+                    <div className="pedido-info-value">{pedido.cliente?.endereco || 'Não informado'}</div>
+                  </div>
+                </div>
+                {pedido.itens?.length > 0 && (
+                  <div className="pedido-info-row">
+                    <div className="pedido-info-icon"><Pizza size={18} /></div>
+                    <div className="pedido-info-content">
+                      <div className="pedido-info-label">Itens</div>
+                      <div className="pedido-itens">
+                        {pedido.itens.map(item => (
+                          <span key={item.id} className="pedido-item">{item.qtd}x {item.nome}</span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
                 <div className="pedido-meta">
-                  <span className="pedido-data"><Clock size={14} /> {new Date(pedido.data).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
-                  <span className="pedido-valor">R$ {pedido.total?.toFixed(2)}</span>
+                  <span className="pedido-meta-item"><Clock size={14} /> {new Date(pedido.data).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
+                  <span className="pedido-meta-item pedido-valor">R$ {pedido.total?.toFixed(2)}</span>
                   {pedido.status === 'pendente' && pedido.data && (
                     <span className={`pedido-timer ${tempoRestante(pedido.data) === 'Cancelado' ? 'timer-expirado' : ''}`}><Timer size={14} /> {tempoRestante(pedido.data)}</span>
                   )}
                 </div>
-                <div className="pedido-itens">
-                  {pedido.itens?.map(item => (
-                    <span key={item.id} className="pedido-item">{item.qtd}x {item.nome}</span>
-                  ))}
-                </div>
               </div>
-              <div className="pedido-actions">
+              <div className="pedido-card-footer">
                 {pedido.status === 'pendente' && (
                   <>
-                    <button className="btn-aceitar" onClick={() => atualizarStatus(pedido.id, 'aceito')}><Check size={16} /> Aceitar</button>
-                    <button className="btn-recusar" onClick={() => atualizarStatus(pedido.id, 'recusado')}><X size={16} /> Recusar</button>
+                    <button className="btn btn-approve btn-sm" onClick={() => atualizarStatus(pedido.id, 'aceito')}><Check size={16} /> Aceitar</button>
+                    <button className="btn btn-destructive btn-sm" onClick={() => atualizarStatus(pedido.id, 'recusado')}><X size={16} /> Recusar</button>
                   </>
                 )}
                 {pedido.status === 'aceito' && (
                   <>
-                    <button className="btn-liberar" onClick={() => atualizarStatus(pedido.id, 'liberado')}><Truck size={16} /> Liberar</button>
-                    <button className="btn-recusar" onClick={() => atualizarStatus(pedido.id, 'recusado')}><X size={16} /> Recusar</button>
+                    <button className="btn btn-liberar btn-sm" onClick={() => atualizarStatus(pedido.id, 'liberado')}><Truck size={16} /> Liberar</button>
+                    <button className="btn btn-destructive btn-sm" onClick={() => atualizarStatus(pedido.id, 'recusado')}><X size={16} /> Recusar</button>
                   </>
                 )}
                 {pedido.status === 'liberado' && (
                   <>
-                    <button className="btn-aceitar" onClick={() => atualizarStatus(pedido.id, 'entregue')}><CheckCircle size={16} /> Entregue</button>
-                    <button className="btn-recusar" onClick={() => atualizarStatus(pedido.id, 'recusado')}><X size={16} /> Recusar</button>
+                    <button className="btn btn-approve btn-sm" onClick={() => atualizarStatus(pedido.id, 'entregue')}><CheckCircle size={16} /> Entregue</button>
+                    <button className="btn btn-destructive btn-sm" onClick={() => atualizarStatus(pedido.id, 'recusado')}><X size={16} /> Recusar</button>
                   </>
                 )}
                 {pedido.status === 'entregador_proximo' && (
                   <>
-                    <button className="btn-aceitar" onClick={() => atualizarStatus(pedido.id, 'entregue')}><CheckCircle size={16} /> Entregue</button>
-                    <button className="btn-recusar" onClick={() => atualizarStatus(pedido.id, 'recusado')}><X size={16} /> Recusar</button>
+                    <button className="btn btn-approve btn-sm" onClick={() => atualizarStatus(pedido.id, 'entregue')}><CheckCircle size={16} /> Entregue</button>
+                    <button className="btn btn-destructive btn-sm" onClick={() => atualizarStatus(pedido.id, 'recusado')}><X size={16} /> Recusar</button>
                   </>
                 )}
               </div>
@@ -498,37 +562,40 @@ function AdminFinanceiro() {
 
   return (
     <>
-      <div className="admin-header">
-        <h2><DollarSign size={22} /> Resumo Financeiro</h2>
+      <div className="page-header">
+        <div className="page-header-left">
+          <h1 className="page-title">Financeiro</h1>
+          <p className="page-description">Resumo financeiro do dia</p>
+        </div>
       </div>
-      <div className="financeiro-grid">
-        <div className="fin-card">
-          <span className="fin-label">Total de Pedidos</span>
-          <span className="fin-value">{stats.totalPedidos}</span>
+      <div className="stats-grid">
+        <div className="stat-card">
+          <span className="stat-label">Total de Pedidos</span>
+          <span className="stat-value">{stats.totalPedidos}</span>
         </div>
-        <div className="fin-card">
-          <span className="fin-label">Receita Total (Entregues)</span>
-          <span className="fin-value">R$ {stats.totalReceita.toFixed(2)}</span>
+        <div className="stat-card">
+          <span className="stat-label">Receita (Entregues)</span>
+          <span className="stat-value">R$ {stats.totalReceita.toFixed(2)}</span>
         </div>
-        <div className="fin-card fin-pendente">
-          <span className="fin-label">Receita Pendente (Aceitos)</span>
-          <span className="fin-value">R$ {stats.receitaPendente.toFixed(2)}</span>
+        <div className="stat-card highlight">
+          <span className="stat-label">Receita Pendente</span>
+          <span className="stat-value">R$ {stats.receitaPendente.toFixed(2)}</span>
         </div>
-        <div className="fin-card">
-          <span className="fin-label">Pendentes</span>
-          <span className="fin-value">{stats.pendentes}</span>
+        <div className="stat-card">
+          <span className="stat-label">Pendentes</span>
+          <span className="stat-value">{stats.pendentes}</span>
         </div>
-        <div className="fin-card">
-          <span className="fin-label">Aceitos</span>
-          <span className="fin-value">{stats.aceitos}</span>
+        <div className="stat-card">
+          <span className="stat-label">Em Preparo</span>
+          <span className="stat-value">{stats.aceitos}</span>
         </div>
-        <div className="fin-card">
-          <span className="fin-label">Entregues</span>
-          <span className="fin-value">{stats.entregues}</span>
+        <div className="stat-card">
+          <span className="stat-label">Entregues</span>
+          <span className="stat-value">{stats.entregues}</span>
         </div>
-        <div className="fin-card">
-          <span className="fin-label">Recusados</span>
-          <span className="fin-value">{stats.recusados}</span>
+        <div className="stat-card">
+          <span className="stat-label">Recusados</span>
+          <span className="stat-value">{stats.recusados}</span>
         </div>
       </div>
     </>
@@ -586,42 +653,43 @@ function RastreioPage() {
   }
 
   return (
-    <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-        <h2 style={{ margin: 0, fontSize: '1.15rem', flex: 1 }}><MapPin size={20} /> Rastreio do Motoboy</h2>
+    <div className="rastreio-page">
+      <div className="page-header" style={{ marginBottom: 0 }}>
+        <div className="page-header-left">
+          <h1 className="page-title">Rastreio</h1>
+          <p className="page-description">Acompanhe a localização do motoboy em tempo real</p>
+        </div>
         <div className={`motoboy-status-pill motoboy-status-${status}`}>
           <div className="status-dot" />
           <span className="motoboy-status-label">{getStatusText()}</span>
         </div>
       </div>
-      {!pos && status === 'desconectado' && (
-        <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--muted-foreground)' }}>
-          <div style={{ marginBottom: 12 }}><Bike size={48} /></div>
-          <p style={{ margin: 0, fontWeight: 600, fontSize: '1rem' }}>Motoboy desconectado</p>
-          <p style={{ margin: '4px 0 0', fontSize: '0.85rem' }}>Aguardando sinal do motoboy...</p>
+      {!pos && status === 'desconectado' ? (
+        <div className="rastreio-offline">
+          <div className="rastreio-offline-icon"><Bike size={48} /></div>
+          <p>Motoboy desconectado</p>
+          <p>Aguardando sinal do motoboy...</p>
         </div>
-      )}
-      {pos && (
-        <div style={{ height: 'calc(100vh - 220px)', minHeight: 300, borderRadius: 'var(--radius)', overflow: 'hidden' }}>
-          <MapContainer center={[center.lat, center.lng]} zoom={15} scrollWheelZoom={true} style={{ width: '100%', height: '100%' }}>
-            <TileLayer attribution='&copy; OpenStreetMap' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-            {pos && (
-              <Marker position={[pos.lat, pos.lng]} icon={L.divIcon({
-                className: '',
-                html: `<div class="motoboy-marker-info"><div class="motoboy-marker-nome">${motoboyNome || 'Motoboy'}</div><div class="motoboy-marker-status" style="border-color:var(--motoboy-${status});color:var(--motoboy-${status})">${getStatusText()}</div><svg viewBox="0 0 24 36" width="28" height="42"><path d="M12 0C5.4 0 0 5.4 0 12c0 9 12 24 12 24s12-15 12-24C24 5.4 18.6 0 12 0z" fill="var(--motoboy-${status})"/><circle cx="12" cy="12" r="5" fill="#fff"/></svg><div class="motoboy-marker-pulse"></div></div>`,
-                iconSize: [28, 42],
-                iconAnchor: [14, 42],
-              })}>
-              </Marker>
-            )}
-          </MapContainer>
-        </div>
-      )}
-      {(pos || ultimaAtualizacao) && (
-        <div style={{ fontSize: '0.8rem', color: 'var(--muted-foreground)', textAlign: 'center' }}>
-          {motoboyNome && <span style={{ fontWeight: 600 }}>{motoboyNome}</span>} · Última atualização: {ultimaAtualizacao ? new Date(ultimaAtualizacao).toLocaleTimeString('pt-BR') : '—'}
-        </div>
-      )}
+      ) : pos ? (
+        <>
+          <div className="rastreio-mapa">
+            <MapContainer center={[center.lat, center.lng]} zoom={15} scrollWheelZoom={true} style={{ width: '100%', height: '100%' }}>
+              <TileLayer attribution='&copy; OpenStreetMap' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+              {pos && (
+                <Marker position={[pos.lat, pos.lng]} icon={L.divIcon({
+                  className: '',
+                  html: `<div class="motoboy-marker-info"><div class="motoboy-marker-nome">${motoboyNome || 'Motoboy'}</div><div class="motoboy-marker-status" style="border-color:var(--motoboy-${status});color:var(--motoboy-${status})">${getStatusText()}</div><svg viewBox="0 0 24 36" width="28" height="42"><path d="M12 0C5.4 0 0 5.4 0 12c0 9 12 24 12 24s12-15 12-24C24 5.4 18.6 0 12 0z" fill="var(--motoboy-${status})"/><circle cx="12" cy="12" r="5" fill="#fff"/></svg><div class="motoboy-marker-pulse"></div></div>`,
+                  iconSize: [28, 42],
+                  iconAnchor: [14, 42],
+                })} />
+              )}
+            </MapContainer>
+          </div>
+          <div className="rastreio-footer">
+            {motoboyNome && <span style={{ fontWeight: 600 }}>{motoboyNome}</span>}{motoboyNome ? ' · ' : ''}Última atualização: {ultimaAtualizacao ? new Date(ultimaAtualizacao).toLocaleTimeString('pt-BR') : '—'}
+          </div>
+        </>
+      ) : null}
     </div>
   )
 }
@@ -680,71 +748,78 @@ function AdminPizzariaConfig() {
 
   return (
     <div className="pizzaria-config">
-      <div className="admin-header"><h2><Store size={22} /> Dados da Pizzaria</h2></div>
-      <div className="pizzaria-form">
-        <div className="pizzaria-form-row">
-          <label>CNPJ</label>
-          <input placeholder="00.000.000/0000-00" value={form.cnpj} onChange={e => setForm(f => ({ ...f, cnpj: e.target.value }))} />
+      <div className="page-header">
+        <div className="page-header-left">
+          <h1 className="page-title">Pizzaria</h1>
+          <p className="page-description">Configure os dados da sua pizzaria</p>
         </div>
-        <div className="pizzaria-form-row">
-          <label>Nome Fantasia</label>
-          <input placeholder="Israelita Pizzas" value={form.nome_fantasia} onChange={e => setForm(f => ({ ...f, nome_fantasia: e.target.value }))} />
-        </div>
-        <div className="pizzaria-form-row">
-          <label>Razão Social</label>
-          <input placeholder="Razão Social" value={form.razao_social} onChange={e => setForm(f => ({ ...f, razao_social: e.target.value }))} />
-        </div>
-        <div className="pizzaria-form-row">
-          <label>Telefone</label>
-          <input placeholder="(41) 99999-9999" value={form.telefone} onChange={e => setForm(f => ({ ...f, telefone: e.target.value }))} />
-        </div>
-        <div className="pizzaria-form-row">
-          <label>CEP</label>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <input placeholder="82840-080" value={form.cep} onChange={e => handleCepChange(e.target.value)} />
-            {buscandoCep && <span className="endereco-loading">Consultando...</span>}
+      </div>
+      <div className="card">
+        <div className="pizzaria-form">
+          {msg && <p className={`form-msg ${msg.includes('sucesso') ? 'success' : ''}`}>{msg}</p>}
+          <div className="form-group">
+            <label className="form-label">CNPJ</label>
+            <input className="form-input" placeholder="00.000.000/0000-00" value={form.cnpj} onChange={e => setForm(f => ({ ...f, cnpj: e.target.value }))} />
           </div>
+          <div className="form-group">
+            <label className="form-label">Nome Fantasia</label>
+            <input className="form-input" placeholder="Israelita Pizzas" value={form.nome_fantasia} onChange={e => setForm(f => ({ ...f, nome_fantasia: e.target.value }))} />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Razão Social</label>
+            <input className="form-input" placeholder="Razão Social" value={form.razao_social} onChange={e => setForm(f => ({ ...f, razao_social: e.target.value }))} />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Telefone</label>
+            <input className="form-input" placeholder="(41) 99999-9999" value={form.telefone} onChange={e => setForm(f => ({ ...f, telefone: e.target.value }))} />
+          </div>
+          <div className="form-group">
+            <label className="form-label">CEP</label>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <input className="form-input" placeholder="82840-080" value={form.cep} onChange={e => handleCepChange(e.target.value)} />
+              {buscandoCep && <span className="endereco-loading">Consultando...</span>}
+            </div>
+          </div>
+          <div className="form-row">
+            <div className="form-group">
+              <label className="form-label">Rua</label>
+              <input className="form-input" placeholder="Rua" value={form.rua} onChange={e => setForm(f => ({ ...f, rua: e.target.value }))} />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Nº</label>
+              <input className="form-input" placeholder="Nº" value={form.numero} onChange={e => setForm(f => ({ ...f, numero: e.target.value }))} />
+            </div>
+          </div>
+          <div className="form-group">
+            <label className="form-label">Complemento</label>
+            <input className="form-input" placeholder="Complemento" value={form.complemento} onChange={e => setForm(f => ({ ...f, complemento: e.target.value }))} />
+          </div>
+          <div className="form-row-triple">
+            <div className="form-group">
+              <label className="form-label">Bairro</label>
+              <input className="form-input" placeholder="Bairro" value={form.bairro} onChange={e => setForm(f => ({ ...f, bairro: e.target.value }))} />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Cidade</label>
+              <input className="form-input" placeholder="Cidade" value={form.cidade} onChange={e => setForm(f => ({ ...f, cidade: e.target.value }))} />
+            </div>
+            <div className="form-group">
+              <label className="form-label">UF</label>
+              <input className="form-input" placeholder="UF" maxLength={2} value={form.estado} onChange={e => setForm(f => ({ ...f, estado: e.target.value }))} />
+            </div>
+          </div>
+          <div className="form-group">
+            <label className="form-label">Localização</label>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+              <input className="form-input" placeholder="Latitude" value={form.lat || ''} onChange={e => setForm(f => ({ ...f, lat: e.target.value }))} style={{width:140}} />
+              <input className="form-input" placeholder="Longitude" value={form.lng || ''} onChange={e => setForm(f => ({ ...f, lng: e.target.value }))} style={{width:140}} />
+              <button className="endereco-mapa-btn" type="button" onClick={() => setMostrarMapaPizzaria(true)}><MapPin size={16} /> Marcar no mapa</button>
+            </div>
+          </div>
+          <button className="btn btn-primary" onClick={handleSalvar} disabled={salvando} style={{ alignSelf: 'flex-start' }}>
+            {salvando ? 'Salvando...' : 'Salvar'}
+          </button>
         </div>
-        <div className="pizzaria-form-row pizzaria-form-row-duplo">
-          <div className="pizzaria-form-field">
-            <label>Rua</label>
-            <input placeholder="Rua" value={form.rua} onChange={e => setForm(f => ({ ...f, rua: e.target.value }))} />
-          </div>
-          <div className="pizzaria-form-field pizzaria-form-field-num">
-            <label>Nº</label>
-            <input placeholder="Nº" value={form.numero} onChange={e => setForm(f => ({ ...f, numero: e.target.value }))} />
-          </div>
-        </div>
-        <div className="pizzaria-form-row">
-          <label>Complemento</label>
-          <input placeholder="Complemento" value={form.complemento} onChange={e => setForm(f => ({ ...f, complemento: e.target.value }))} />
-        </div>
-        <div className="pizzaria-form-row pizzaria-form-row-triplo">
-          <div className="pizzaria-form-field">
-            <label>Bairro</label>
-            <input placeholder="Bairro" value={form.bairro} onChange={e => setForm(f => ({ ...f, bairro: e.target.value }))} />
-          </div>
-          <div className="pizzaria-form-field">
-            <label>Cidade</label>
-            <input placeholder="Cidade" value={form.cidade} onChange={e => setForm(f => ({ ...f, cidade: e.target.value }))} />
-          </div>
-          <div className="pizzaria-form-field pizzaria-form-field-uf">
-            <label>UF</label>
-            <input placeholder="UF" maxLength={2} value={form.estado} onChange={e => setForm(f => ({ ...f, estado: e.target.value }))} />
-          </div>
-        </div>
-        <div className="pizzaria-form-row">
-          <label>Localização</label>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-            <input placeholder="Latitude" value={form.lat || ''} onChange={e => setForm(f => ({ ...f, lat: e.target.value }))} style={{width:160}} />
-            <input placeholder="Longitude" value={form.lng || ''} onChange={e => setForm(f => ({ ...f, lng: e.target.value }))} style={{width:160}} />
-            <button className="endereco-mapa-btn" type="button" onClick={() => setMostrarMapaPizzaria(true)}><MapPin size={16} /> Marcar no mapa</button>
-          </div>
-        </div>
-        {msg && <p className={`pizzaria-msg ${msg.includes('sucesso') ? 'pizzaria-msg-ok' : ''}`}>{msg}</p>}
-        <button className="btn-add" onClick={handleSalvar} disabled={salvando}>
-          {salvando ? 'Salvando...' : 'Salvar'}
-        </button>
       </div>
       <MapaEntregaModal
         isOpen={mostrarMapaPizzaria}
@@ -770,16 +845,10 @@ function AdminPermissoes({ user, token }) {
     setLoading(true)
     try {
       const headers = token ? { Authorization: `Bearer ${token}` } : { 'x-admin-password': 'admin123' }
-      console.log('[Permissoes] Fetching /api/auth/users with headers:', JSON.stringify(headers))
       const res = await fetch(`${API}/auth/users`, { headers })
-      console.log('[Permissoes] Response status:', res.status)
       if (res.ok) {
         const data = await res.json()
-        console.log('[Permissoes] Users loaded:', data.length)
         setUsuarios(data)
-      } else {
-        const errText = await res.text()
-        console.log('[Permissoes] Error response:', errText)
       }
     } catch (e) { console.log('[Permissoes] Network error:', e) }
     setLoading(false)
@@ -820,17 +889,20 @@ function AdminPermissoes({ user, token }) {
 
   return (
     <div className="permissoes-page">
-      <div className="admin-header">
-        <h2><Lock size={22} /> Gerenciar Permissões</h2>
-        <div className="filtro-status">
+      <div className="page-header">
+        <div className="page-header-left">
+          <h1 className="page-title">Permissões</h1>
+          <p className="page-description">Gerencie as permissões dos usuários</p>
+        </div>
+        <div className="filter-group">
           {['todas', 'cliente', 'motoboy', 'atendente', 'financeiro', 'admin'].map(r => (
-            <button key={r} className={`cat-btn ${filtroRole === r ? 'active' : ''}`} onClick={() => setFiltroRole(r)}>
+            <button key={r} className={`filter-btn ${filtroRole === r ? 'active' : ''}`} onClick={() => setFiltroRole(r)}>
               {r === 'todas' ? 'Todas' : ROLE_LABELS[r]}
             </button>
           ))}
         </div>
       </div>
-      {msg && <p className="pizzaria-msg pizzaria-msg-ok" style={{marginBottom:12}}>{msg}</p>}
+      {msg && <p className="form-msg success" style={{ marginBottom: 16 }}>{msg}</p>}
       {loading ? (
         <div className="empty-state"><p>Carregando...</p></div>
       ) : filtrados.length === 0 ? (
@@ -844,10 +916,10 @@ function AdminPermissoes({ user, token }) {
                 <span className="permissoes-card-email">{u.email}</span>
               </div>
               <div className="permissoes-card-badges">
-                <span className="tipo-badge" style={{ color: ROLE_COLORS[u.role] }}>
+                <span className="badge" style={{ color: ROLE_COLORS[u.role], borderColor: `${ROLE_COLORS[u.role]}44`, background: `${ROLE_COLORS[u.role]}15` }}>
                   {ROLE_LABELS[u.role] || u.role}
                 </span>
-                <span className="tipo-badge" style={{ color: STATUS_COLORS[u.status] }}>
+                <span className="badge" style={{ color: STATUS_COLORS[u.status], borderColor: `${STATUS_COLORS[u.status]}44`, background: `${STATUS_COLORS[u.status]}15` }}>
                   {STATUS_LABELS[u.status] || u.status}
                 </span>
               </div>
@@ -862,12 +934,12 @@ function AdminPermissoes({ user, token }) {
                     {Object.entries(STATUS_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
                   </select>
                   <div className="permissoes-edit-actions">
-                    <button className="btn-add" onClick={() => alterarRole(u.id)}><Check size={14} /> Salvar</button>
-                    <button className="btn-del" onClick={() => setEditandoId(null)}><X size={14} /> Cancelar</button>
+                    <button className="btn btn-primary btn-xs" onClick={() => alterarRole(u.id)}><Check size={14} /> Salvar</button>
+                    <button className="btn btn-destructive btn-xs" onClick={() => setEditandoId(null)}><X size={14} /> Cancelar</button>
                   </div>
                 </div>
               ) : (
-                <button className="btn-edit" onClick={() => { setEditandoId(u.id); setNovaRole(''); setNovoStatus('') }}><Pencil size={14} /> Editar permissão</button>
+                <button className="btn btn-ghost btn-sm" onClick={() => { setEditandoId(u.id); setNovaRole(''); setNovoStatus('') }}><Pencil size={14} /> Editar</button>
               )}
             </div>
           ))}
@@ -950,8 +1022,8 @@ function MapaEntregaModal({ isOpen, onClose, onConfirm, enderecoInicial, initial
         ) : !pronto ? null : (
           <>
             <div className="mapa-search">
-              <input type="text" placeholder="Buscar endereço..." value={buscaEndereco} onChange={e => { setBuscaEndereco(e.target.value); setErroBusca('') }} onKeyDown={e => e.key === 'Enter' && handleSearch()} />
-              <button onClick={handleSearch} disabled={buscandoEndereco}>{buscandoEndereco ? '...' : 'Buscar'}</button>
+              <input className="mapa-search-input" type="text" placeholder="Buscar endereço..." value={buscaEndereco} onChange={e => { setBuscaEndereco(e.target.value); setErroBusca('') }} onKeyDown={e => e.key === 'Enter' && handleSearch()} />
+              <button className="mapa-search-btn" onClick={handleSearch} disabled={buscandoEndereco}>{buscandoEndereco ? '...' : 'Buscar'}</button>
             </div>
             {erroBusca && <p className="mapa-search-erro">{erroBusca}</p>}
             <p className="mapa-instrucao">Clique no mapa para ajustar o ponto.</p>
@@ -965,8 +1037,8 @@ function MapaEntregaModal({ isOpen, onClose, onConfirm, enderecoInicial, initial
             </div>
             <div className="mapa-coords">Lat: {lat.toFixed(6)}, Lng: {lng.toFixed(6)}</div>
             <div className="form-actions">
-              <button className="btn-del" onClick={onClose}>Cancelar</button>
-              <button className="btn-add" onClick={() => { onConfirm({ lat, lng }); onClose() }}><CheckCircle size={18} /> Confirmar</button>
+              <button className="btn btn-ghost" onClick={onClose}>Cancelar</button>
+              <button className="btn btn-primary" onClick={() => { onConfirm({ lat, lng }); onClose() }}><CheckCircle size={18} /> Confirmar</button>
             </div>
           </>
         )}
