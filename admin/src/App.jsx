@@ -44,6 +44,9 @@ function IconPlus({ size = 20 }) {
 function IconEdit({ size = 20 }) {
   return <span className="i" style={{ width: size, height: size }}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></span>
 }
+function IconList({ size = 20 }) {
+  return <span className="i" style={{ width: size, height: size }}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg></span>
+}
 function IconDollar({ size = 20 }) {
   return <span className="i" style={{ width: size, height: size }}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></span>
 }
@@ -155,7 +158,7 @@ function App() {
             <button className={`tab-btn ${aba === 'cardapio' ? 'active' : ''}`} onClick={() => setAba('cardapio')}><IconPizza /> Cardápio</button>
           )}
           {(role === 'admin' || role === 'atendente') && (
-            <button className={`tab-btn ${aba === 'pedidos' ? 'active' : ''}`} onClick={() => setAba('pedidos')}>Pedidos</button>
+            <button className={`tab-btn ${aba === 'pedidos' ? 'active' : ''}`} onClick={() => setAba('pedidos')}><IconList /> Pedidos</button>
           )}
           {(role === 'admin' || role === 'financeiro') && (
             <button className={`tab-btn ${aba === 'financeiro' ? 'active' : ''}`} onClick={() => setAba('financeiro')}><IconDollar /> Financeiro</button>
@@ -210,9 +213,9 @@ function AdminLogin({ onLogin, user, token }) {
       const data = await res.json()
       if (data.autenticado) {
         if (data.user && VALID_ROLES.includes(data.user.role)) {
-          onLogin(data.user, token || 'token-admin')
+          onLogin(data.user, data.token || token || 'token-admin')
         } else {
-          onLogin({ nome: 'Admin', role: 'admin' }, 'token-admin')
+          onLogin({ nome: 'Admin', role: 'admin' }, data.token || token || 'token-admin')
         }
       } else {
         setErro('Senha incorreta')
@@ -461,7 +464,7 @@ function AdminOrders() {
   return (
     <>
       <div className="admin-header">
-        <h2>Pedidos Recebidos</h2>
+        <h2><IconList /> Pedidos Recebidos</h2>
         <div className="filtro-status">
           {FILTROS.map(s => {
             const count = s === 'todos' ? ordenados.length : ordenados.filter(p => p.status === s).length
@@ -896,10 +899,10 @@ function AdminPermissoes({ user, token }) {
                 <span className="permissoes-card-email">{u.email}</span>
               </div>
               <div className="permissoes-card-badges">
-                <span className="tipo-badge" style={{ background: ROLE_COLORS[u.role] + '22', color: ROLE_COLORS[u.role], border: '1px solid ' + ROLE_COLORS[u.role] + '44' }}>
+                <span className="tipo-badge" style={{ color: ROLE_COLORS[u.role] }}>
                   {ROLE_LABELS[u.role] || u.role}
                 </span>
-                <span className="tipo-badge" style={{ background: STATUS_COLORS[u.status] + '22', color: STATUS_COLORS[u.status], border: '1px solid ' + STATUS_COLORS[u.status] + '44' }}>
+                <span className="tipo-badge" style={{ color: STATUS_COLORS[u.status] }}>
                   {STATUS_LABELS[u.status] || u.status}
                 </span>
               </div>

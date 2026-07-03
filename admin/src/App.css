@@ -864,39 +864,33 @@ body {
   position: relative;
   overflow: hidden;
   border-radius: var(--radius-lg);
-  border: 1.5px solid var(--border);
-  background: var(--bg-card);
-  box-shadow: var(--shadow-sm);
+  border: none;
+  background: linear-gradient(135deg, var(--bg-card) 60%, var(--bg-surface));
+  box-shadow: 4px 4px 16px rgba(0,0,0,0.04), 8px 8px 24px -4px rgba(0,0,0,0.06);
   transition: var(--transition);
 }
 
-.pedido-card.pendente {
-  border-color: var(--warning);
+.pedido-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: transparent;
+  transition: var(--transition);
 }
 
-.pedido-card.aceito {
-  border-color: var(--info);
-}
-
-.pedido-card.liberado {
-  border-color: #7B1FA2;
-}
-
-.pedido-card.entregador_proximo {
-  border-color: #D4A574;
-}
-
-.pedido-card.entregue {
-  border-color: var(--success);
-}
-
-.pedido-card.recusado {
-  border-color: var(--error);
-}
+.pedido-card.pendente::before { background: var(--warning); }
+.pedido-card.aceito::before { background: var(--info); }
+.pedido-card.liberado::before { background: #7B1FA2; }
+.pedido-card.entregador_proximo::before { background: #D4A574; }
+.pedido-card.entregue::before { background: var(--success); }
+.pedido-card.recusado::before { background: var(--error); opacity: 0.5; }
 
 .pedido-card:not(.recusado):hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-md);
+  transform: translateY(-3px);
+  box-shadow: 4px 4px 20px rgba(0,0,0,0.06), 10px 10px 30px -4px rgba(0,0,0,0.08);
 }
 
 .pedido-card.recusado {
@@ -908,8 +902,8 @@ body {
 }
 
 @keyframes pedidoGlow {
-  0%, 100% { border-color: rgba(229,57,53,0.4); box-shadow: 0 0 8px rgba(229,57,53,0.3); }
-  50% { border-color: #E53935; box-shadow: 0 0 28px rgba(229,57,53,0.6); }
+  0%, 100% { box-shadow: 4px 4px 16px rgba(229,57,53,0.08), 8px 8px 24px rgba(229,57,53,0.04); }
+  50% { box-shadow: 4px 4px 16px rgba(229,57,53,0.15), 8px 8px 24px rgba(229,57,53,0.1), 0 0 24px rgba(229,57,53,0.35); }
 }
 
 .pedido-header {
@@ -933,49 +927,16 @@ body {
   font-weight: 700;
   letter-spacing: 0.02em;
   flex-shrink: 0;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
 }
 
-.status-pendente {
-  background: #FFF8E1;
-  color: #F57F17;
-  border: 1px solid #FFE082;
-}
-
-.status-aceito {
-  background: #E3F2FD;
-  color: #1565C0;
-  border: 1px solid #90CAF9;
-}
-
-.status-entregue {
-  background: #E8F5E9;
-  color: #2E7D32;
-  border: 1px solid #A5D6A7;
-}
-
-.status-recusado {
-  background: #FFEBEE;
-  color: #C62828;
-  border: 1px solid #EF9A9A;
-}
-
-.status-liberado {
-  background: #F3E5F5;
-  color: #7B1FA2;
-  border: 1px solid #CE93D8;
-}
-
-.status-entregador_proximo {
-  background: #1A0F08;
-  color: #FFD9A8;
-  border: 1px solid #D4A574;
-  animation: statusProximoPulse 2s ease-in-out infinite;
-}
-
-@keyframes statusProximoPulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(230, 81, 0, 0.3); }
-  50% { box-shadow: 0 0 0 6px rgba(230, 81, 0, 0.1); }
-}
+.status-pendente { color: var(--warning); }
+.status-aceito { color: var(--info); }
+.status-entregue { color: var(--success); }
+.status-recusado { color: var(--error); }
+.status-liberado { color: #7B1FA2; }
+.status-entregador_proximo { color: #D4A574; }
 
 .pedido-body {
   padding: 16px 24px;
@@ -1185,43 +1146,16 @@ body {
   font-size: 0.72rem;
   font-weight: 600;
   letter-spacing: 0.02em;
-}
-
-.tipo-sabor {
-  background: #E8F5E9;
-  color: #2E7D32;
-  border: 1px solid #A5D6A7;
-}
-
-.tipo-tamanho {
-  background: #E3F2FD;
-  color: #1565C0;
-  border: 1px solid #90CAF9;
-}
-
-.tipo-produto {
   background: var(--bg-surface);
-  color: var(--text-muted);
   border: 1px solid var(--border);
 }
 
-.tipo-tradicional {
-  background: #E3F2FD;
-  color: #1565C0;
-  border: 1px solid #90CAF9;
-}
-
-.tipo-especial {
-  background: #F3E5F5;
-  color: #7B1FA2;
-  border: 1px solid #CE93D8;
-}
-
-.tipo-nobre {
-  background: #FFF8E1;
-  color: #F57F17;
-  border: 1px solid #FFE082;
-}
+.tipo-sabor { color: var(--success); }
+.tipo-tamanho { color: var(--info); }
+.tipo-produto { color: var(--text-muted); }
+.tipo-tradicional { color: var(--info); }
+.tipo-especial { color: #7B1FA2; }
+.tipo-nobre { color: var(--warning); }
 
 /* === PIZZARIA CONFIG === */
 .pizzaria-config {
