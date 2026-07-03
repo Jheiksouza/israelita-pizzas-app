@@ -813,9 +813,18 @@ function AdminPermissoes({ user, token }) {
     setLoading(true)
     try {
       const headers = token ? { Authorization: `Bearer ${token}` } : { 'x-admin-password': 'admin123' }
+      console.log('[Permissoes] Fetching /api/auth/users with headers:', JSON.stringify(headers))
       const res = await fetch(`${API}/auth/users`, { headers })
-      if (res.ok) setUsuarios(await res.json())
-    } catch {}
+      console.log('[Permissoes] Response status:', res.status)
+      if (res.ok) {
+        const data = await res.json()
+        console.log('[Permissoes] Users loaded:', data.length)
+        setUsuarios(data)
+      } else {
+        const errText = await res.text()
+        console.log('[Permissoes] Error response:', errText)
+      }
+    } catch (e) { console.log('[Permissoes] Network error:', e) }
     setLoading(false)
   }
 
