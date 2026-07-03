@@ -27,6 +27,13 @@
   --chart-4: oklch(0.367 0.016 35.7);
   --chart-5: oklch(0.268 0.011 36.5);
   --radius: 0.625rem;
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
   --sidebar: oklch(0.986 0.002 67.8);
   --sidebar-foreground: oklch(0.147 0.004 49.3);
   --sidebar-primary: oklch(0.214 0.009 43.1);
@@ -51,8 +58,8 @@
   --shadow-md: 0 4px 12px color-mix(in oklch, var(--foreground) 6%, transparent), 0 2px 6px color-mix(in oklch, var(--foreground) 4%, transparent);
   --shadow-lg: 0 12px 36px color-mix(in oklch, var(--foreground) 8%, transparent);
   --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  --font-heading: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-  --font-body: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-heading: 'Lora', Georgia, serif;
+  --font-body: 'Lora', Georgia, serif;
 }
 
 .dark {
@@ -80,6 +87,13 @@
   --chart-4: oklch(0.367 0.016 35.7);
   --chart-5: oklch(0.268 0.011 36.5);
   --radius: 0.625rem;
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
   --sidebar: oklch(0.214 0.009 43.1);
   --sidebar-foreground: oklch(0.986 0.002 67.8);
   --sidebar-primary: oklch(0.488 0.243 264.376);
@@ -104,8 +118,8 @@
   --shadow-md: 0 4px 12px color-mix(in oklch, var(--foreground) 6%, transparent), 0 2px 6px color-mix(in oklch, var(--foreground) 4%, transparent);
   --shadow-lg: 0 12px 36px color-mix(in oklch, var(--foreground) 8%, transparent);
   --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  --font-heading: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-  --font-body: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-heading: 'Lora', Georgia, serif;
+  --font-body: 'Lora', Georgia, serif;
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -130,8 +144,8 @@ body {
 .admin-sidebar {
   width: 240px;
   flex-shrink: 0;
-  background: var(--card);
-  border-right: 1px solid var(--border);
+  background: var(--sidebar);
+  border-right: 1px solid var(--sidebar-border);
   display: flex;
   flex-direction: column;
   position: fixed;
@@ -176,7 +190,7 @@ body {
   align-items: center;
   gap: 10px;
   padding: 9px 12px;
-  border-radius: calc(var(--radius) + 2px);
+  border-radius: var(--radius-xl);
   color: var(--muted-foreground);
   font-size: 0.88rem;
   font-weight: 500;
@@ -335,7 +349,7 @@ body {
   justify-content: center;
   gap: 8px;
   padding: 10px 20px;
-  border-radius: calc(var(--radius) + 2px);
+  border-radius: var(--radius-3xl);
   font-size: 0.88rem;
   font-weight: 500;
   font-family: var(--font-body);
@@ -425,13 +439,13 @@ body {
   gap: 0;
   padding: 3px;
   background: var(--muted);
-  border-radius: calc(var(--radius) + 2px);
+  border-radius: var(--radius-4xl);
   flex-wrap: wrap;
 }
 
 .filter-btn {
   padding: 6px 14px;
-  border-radius: calc(var(--radius) + 1px);
+  border-radius: var(--radius-4xl);
   border: none;
   background: transparent;
   color: var(--muted-foreground);
@@ -491,6 +505,7 @@ body {
   border-bottom: 1px solid var(--border);
   text-transform: uppercase;
   letter-spacing: 0.04em;
+  height: 48px;
 }
 
 .admin-table td {
@@ -509,8 +524,9 @@ body {
 .badge {
   display: inline-flex;
   align-items: center;
-  padding: 3px 10px;
-  border-radius: 9999px;
+  height: 22px;
+  padding: 0 10px;
+  border-radius: var(--radius-3xl);
   font-size: 0.72rem;
   font-weight: 600;
   letter-spacing: 0.01em;
@@ -537,15 +553,15 @@ body {
 .stat-card {
   background: var(--card);
   padding: 24px;
-  border-radius: var(--radius);
-  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-md);
   display: flex;
   flex-direction: column;
   gap: 8px;
   transition: var(--transition);
 }
 
-.stat-card:hover { border-color: var(--ring); }
+.stat-card:hover { box-shadow: var(--shadow-lg); }
 
 .stat-label {
   font-size: 0.78rem;
@@ -574,13 +590,13 @@ body {
 
 .pedido-card {
   background: var(--card);
-  border-radius: var(--radius);
-  border: 1px solid var(--border);
+  border-radius: var(--radius-2xl);
+  box-shadow: var(--shadow-md);
   overflow: hidden;
   transition: var(--transition);
 }
 
-.pedido-card:hover { border-color: var(--ring); }
+.pedido-card:hover { box-shadow: var(--shadow-lg); }
 
 .pedido-card.pedido-pendente-destaque {
   animation: pedidoGlow 1s ease-in-out infinite;
@@ -723,10 +739,10 @@ body {
 .login-card {
   background: var(--card);
   padding: 40px;
-  border-radius: var(--radius);
+  border-radius: var(--radius-2xl);
   width: 100%;
   max-width: 380px;
-  border: 1px solid var(--border);
+  box-shadow: var(--shadow-md);
   text-align: center;
 }
 
@@ -760,10 +776,11 @@ body {
 }
 
 .login-card input {
-  padding: 12px 16px;
-  border-radius: calc(var(--radius) + 2px);
-  border: 1px solid var(--input);
-  background: var(--muted);
+  padding: 0 16px;
+  height: 40px;
+  border-radius: var(--radius-3xl);
+  border: 1px solid transparent;
+  background: color-mix(in oklch, var(--input) 50%, transparent);
   color: var(--foreground);
   font-size: 0.92rem;
   font-family: var(--font-body);
@@ -773,7 +790,7 @@ body {
 
 .login-card input:focus {
   border-color: var(--ring);
-  box-shadow: 0 0 0 2px color-mix(in oklch, var(--ring) 15%, transparent);
+  box-shadow: 0 0 0 2px color-mix(in oklch, var(--ring) 30%, transparent);
 }
 
 .login-divider {
@@ -834,10 +851,11 @@ body {
 }
 
 .form-input {
-  padding: 10px 14px;
-  border-radius: calc(var(--radius) + 2px);
-  border: 1px solid var(--input);
-  background: var(--muted);
+  padding: 0 14px;
+  height: 40px;
+  border-radius: var(--radius-3xl);
+  border: 1px solid transparent;
+  background: color-mix(in oklch, var(--input) 50%, transparent);
   color: var(--foreground);
   font-family: var(--font-body);
   font-size: 0.9rem;
@@ -847,7 +865,7 @@ body {
 
 .form-input:focus {
   border-color: var(--ring);
-  box-shadow: 0 0 0 2px color-mix(in oklch, var(--ring) 15%, transparent);
+  box-shadow: 0 0 0 2px color-mix(in oklch, var(--ring) 30%, transparent);
 }
 
 .form-input::placeholder {
@@ -1232,10 +1250,11 @@ body {
 
 .mapa-search-input {
   flex: 1;
-  padding: 10px 14px;
-  border-radius: calc(var(--radius) + 1px);
-  border: 1px solid var(--input);
-  background: var(--muted);
+  padding: 0 14px;
+  height: 40px;
+  border-radius: var(--radius-3xl);
+  border: 1px solid transparent;
+  background: color-mix(in oklch, var(--input) 50%, transparent);
   color: var(--foreground);
   font-family: var(--font-body);
   font-size: 0.9rem;
@@ -1245,7 +1264,7 @@ body {
 
 .mapa-search-input:focus {
   border-color: var(--ring);
-  box-shadow: 0 0 0 2px color-mix(in oklch, var(--ring) 15%, transparent);
+  box-shadow: 0 0 0 2px color-mix(in oklch, var(--ring) 30%, transparent);
 }
 
 .mapa-search-btn {
