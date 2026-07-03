@@ -875,8 +875,9 @@ body {
   position: absolute;
   top: 0;
   left: 0;
-  right: 0;
-  height: 3px;
+  bottom: 0;
+  width: 5px;
+  border-radius: 0 4px 4px 0;
   background: transparent;
   transition: var(--transition);
 }
