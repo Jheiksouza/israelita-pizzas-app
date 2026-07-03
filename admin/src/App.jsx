@@ -121,15 +121,15 @@ function App() {
             <span className="sidebar-user-name">{user?.nome}</span>
             <span className="sidebar-user-role">{role === 'admin' ? 'Administrador' : role === 'atendente' ? 'Atendente' : 'Financeiro'}</span>
           </div>
-          <button className="topbar-btn" onClick={handleLogout} title="Sair"><LogOut size={16} /></button>
+          <div className="sidebar-footer-actions">
+            <button className="topbar-btn" onClick={() => { setDarkMode(!darkMode); localStorage.setItem('adminDark', !darkMode) }} title={darkMode ? 'Modo claro' : 'Modo escuro'}>
+              {darkMode ? <Sun size={16} /> : <Moon size={16} />}
+            </button>
+            <button className="topbar-btn" onClick={handleLogout} title="Sair"><LogOut size={16} /></button>
+          </div>
         </div>
       </aside>
       <div className="admin-main">
-        <header className="admin-topbar">
-          <button className="topbar-btn" onClick={() => { setDarkMode(!darkMode); localStorage.setItem('adminDark', !darkMode) }} title={darkMode ? 'Modo claro' : 'Modo escuro'}>
-            {darkMode ? <Sun size={16} /> : <Moon size={16} />}
-          </button>
-        </header>
         <main className="admin-content" style={{ animation: 'fadeUp 0.35s ease' }}>
           {aba === 'cardapio' && role === 'admin' && <AdminMenu />}
           {aba === 'pedidos' && (role === 'admin' || role === 'atendente') && <AdminOrders />}
@@ -437,11 +437,22 @@ function AdminOrders() {
 
   const tempoRestante = (data) => {
     if (!data) return ''
-    const restante = 300000 - (Date.now() - new Date(data).getTime())
+    const elapsed = Date.now() - new Date(data).getTime()
+    const restante = 300000 - elapsed
     if (restante <= 0) return 'Cancelado'
     const min = Math.floor(restante / 60000)
     const seg = Math.floor((restante % 60000) / 1000)
     return `${min}:${seg.toString().padStart(2, '0')}`
+  }
+
+  const tempoDecorrido = (data) => {
+    if (!data) return ''
+    const diff = Date.now() - new Date(data).getTime()
+    if (diff < 60000) return 'Agora'
+    const min = Math.floor(diff / 60000)
+    if (min < 60) return `${min}min`
+    const h = Math.floor(min / 60)
+    return `${h}h${min % 60}min`
   }
 
   const statusLabel = { pendente: 'Pendente', aceito: 'Em preparo', liberado: 'À caminho', entregador_proximo: 'Entregador Próximo', entregue: 'Entregue', recusado: 'Recusado' }
@@ -512,8 +523,10 @@ function AdminOrders() {
                 <div className="pedido-meta">
                   <span className="pedido-meta-item"><Clock size={14} /> {new Date(pedido.data).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
                   <span className="pedido-meta-item pedido-valor">R$ {pedido.total?.toFixed(2)}</span>
-                  {pedido.status === 'pendente' && pedido.data && (
-                    <span className={`pedido-timer ${tempoRestante(pedido.data) === 'Cancelado' ? 'timer-expirado' : ''}`}><Timer size={14} /> {tempoRestante(pedido.data)}</span>
+                  {pedido.data && (
+                    <span className={`pedido-timer ${pedido.status === 'pendente' && tempoRestante(pedido.data) === 'Cancelado' ? 'timer-expirado' : ''}`}>
+                      <Timer size={14} /> {pedido.status === 'pendente' ? tempoRestante(pedido.data) : tempoDecorrido(pedido.data)}
+                    </span>
                   )}
                 </div>
               </div>
