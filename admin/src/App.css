@@ -283,7 +283,7 @@ body {
 
 .tab-btn {
   background: transparent;
-  color: var(--text-muted);
+  color: var(--text-secondary);
   border: none;
   padding: 12px 24px;
   cursor: pointer;

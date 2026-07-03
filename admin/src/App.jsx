@@ -39,6 +39,28 @@ function IconSearch({ size = 20 }) {
   return <span className="i" style={{ width: size, height: size }}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span>
 }
 
+window.__googleCallback = (response) => {
+  const s = window.__adminAuthSetters
+  if (!s) return
+  if (response.error) { if (s.setErro) s.setErro('Erro ao autenticar com Google'); return }
+  ;(async () => {
+    try {
+      const r = await fetch(`${API}/auth/google`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ accessToken: response.access_token })
+      })
+      const data = await r.json()
+      if (data.token && data.user) {
+        if (VALID_ROLES.includes(data.user.role)) {
+          s.onLogin(data.user, data.token)
+        } else {
+          s.setErro('Sua conta não tem permissão de acesso administrativo.')
+        }
+      } else s.setErro(data.erro || 'Erro ao autenticar')
+    } catch { s.setErro('Erro de conexão') }
+  })()
+}
+
 const API = '/api'
 const GOOGLE_CLIENT_ID = '433687511785-95t4n2nulpja1aotvq6rfo74oui708im.apps.googleusercontent.com'
 
@@ -153,30 +175,14 @@ function AdminLogin({ onLogin, user, token }) {
   const [erro, setErro] = useState('')
   const [loading, setLoading] = useState(false)
 
+  window.__adminAuthSetters = { onLogin, setErro }
+
   const handleGoogleLogin = () => {
     try {
       const client = google.accounts.oauth2.initTokenClient({
         client_id: GOOGLE_CLIENT_ID,
         scope: 'openid email profile',
-        callback: async (response) => {
-          if (response.error) { setErro('Erro ao autenticar com Google'); return }
-          try {
-            const r = await fetch(`${API}/auth/google`, {
-              method: 'POST', headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ accessToken: response.access_token })
-            })
-            const data = await r.json()
-            if (data.token && data.user) {
-              if (VALID_ROLES.includes(data.user.role)) {
-                onLogin(data.user, data.token)
-              } else {
-                setErro('Sua conta não tem permissão de acesso administrativo.')
-              }
-            } else {
-              setErro(data.erro || 'Erro ao autenticar')
-            }
-          } catch { setErro('Erro de conexão') }
-        }
+        callback: window.__googleCallback
       })
       client.requestAccessToken()
     } catch { setErro('Erro ao iniciar login Google') }
