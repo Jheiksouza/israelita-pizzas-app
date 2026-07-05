@@ -2,5 +2,7 @@ node_modules/
 
 .env
 *firebase-adminsdk*.json
+GoogleService-Info.plist
+google-services.json
 
 client/dist/
