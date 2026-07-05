@@ -591,6 +591,7 @@ app.post('/motoboy/position', (req, res) => {
     timestamp: Date.now(),
     nome: nome || ultimaPosMotoboy?.nome || 'Motoboy'
   }
+  console.log('Posição motoboy:', ultimaPosMotoboy.lat, ultimaPosMotoboy.lng, 'por', ultimaPosMotoboy.nome)
   res.json({ ok: true })
 })
 
@@ -601,7 +602,7 @@ app.get('/motoboy/position', (req, res) => {
 // FCM tokens
 const fcmTokens = {}
 
-app.post('/api/fcm/token', (req, res) => {
+app.post('/fcm/token', (req, res) => {
   const { token, userId } = req.body
   if (!token || !userId) return res.status(400).json({ erro: 'token e userId obrigatórios' })
   if (!fcmTokens[userId]) fcmTokens[userId] = []
