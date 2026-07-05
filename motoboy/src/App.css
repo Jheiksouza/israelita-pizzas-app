@@ -513,6 +513,39 @@ body {
 }
 
 /* === RESPONSIVE === */
+/* === GOOGLE BTN === */
+.google-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  padding: 11px 16px;
+  border-radius: var(--radius-3xl);
+  border: 1px solid var(--border);
+  background: #fff;
+  color: #333;
+  font-size: 0.9rem;
+  font-weight: 500;
+  font-family: var(--font-body);
+  cursor: pointer;
+  transition: var(--transition);
+  margin-top: 4px;
+}
+.google-btn:hover {
+  background: #f5f5f5;
+  border-color: #dadce0;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+}
+.google-btn:disabled { opacity: 0.5; cursor: default; }
+.google-btn svg { flex-shrink: 0; }
+
+.auth-divider {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 16px 0;
+}
+
 @media (max-width: 480px) {
   .motoboy-login-card { padding: 32px 24px; }
   .motoboy-content { padding: 12px; }

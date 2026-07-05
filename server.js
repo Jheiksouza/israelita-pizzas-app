@@ -549,9 +549,9 @@ app.post('/login', async (req, res) => {
 app.post('/motoboy/login', async (req, res) => {
   if (!checkSupabase(res)) return
   try {
-    const { telefone, senha } = req.body
-    if (!telefone || !senha) return res.status(400).json({ erro: 'Telefone e senha obrigatórios' })
-    const { data: user, error } = await supabase.from('users').select('*').eq('telefone', telefone).maybeSingle()
+    const { email, senha } = req.body
+    if (!email || !senha) return res.status(400).json({ erro: 'Email e senha obrigatórios' })
+    const { data: user, error } = await supabase.from('users').select('*').eq('email', email).maybeSingle()
     if (error || !user) return res.status(401).json({ erro: 'Entregador não encontrado' })
     if (user.role !== 'motoboy') return res.status(403).json({ erro: 'Conta não autorizada como entregador' })
     if (user.status !== 'ativo') return res.status(403).json({ erro: 'Conta desativada' })
