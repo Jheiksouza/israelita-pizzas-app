@@ -640,16 +640,18 @@ function RastreioPage() {
         .then(r => r.json())
         .then(data => {
           if (!mounted) return
-          if (data?.lat && data?.lng) {
+          setUltimaAtualizacao(data?.timestamp || null)
+          if (data?.nome) setMotoboyNome(data.nome)
+          if (data?.online && data?.lat && data?.lng) {
             setPos({ lat: data.lat, lng: data.lng })
-            const diff = Date.now() - (data.timestamp || 0)
+            const diff = Date.now() - new Date(data.timestamp).getTime()
             setStatus(diff < 45000 ? 'conectado' : 'perdendo_sinal')
-            setUltimaAtualizacao(data.timestamp)
-            if (data.nome) setMotoboyNome(data.nome)
+          } else if (data?.online) {
+            setPos(null)
+            setStatus('conectado')
           } else {
             setPos(null)
             setStatus('desconectado')
-            setUltimaAtualizacao(null)
           }
         })
         .catch(() => { if (mounted) setStatus('desconectado') })
@@ -674,10 +676,11 @@ function RastreioPage() {
   const center = pos || pizzaria || { lat: -25.4290, lng: -49.2671 }
 
   const getStatusText = () => {
-    if (status === 'conectado') return 'Online'
+    if (status === 'conectado') return pos ? 'Online' : 'Online (sem GPS)'
     if (!ultimaAtualizacao) return 'Offline'
-    const diffMin = Math.floor((Date.now() - ultimaAtualizacao) / 60000)
-    if (diffMin < 1) return 'Online'
+    const ultima = new Date(ultimaAtualizacao).getTime()
+    const diffMin = Math.floor((Date.now() - ultima) / 60000)
+    if (diffMin < 1) return pos ? 'Online' : 'Online (sem GPS)'
     return `${diffMin} min offline`
   }
 
@@ -723,13 +726,13 @@ function RastreioPage() {
         </div>
       )}
 
-      {!pos && status === 'desconectado' ? (
+      {status === 'desconectado' ? (
         <div className="rastreio-offline">
           <div className="rastreio-offline-icon"><Bike size={48} /></div>
           <p>Motoboy desconectado</p>
           <p>Aguardando sinal do motoboy...</p>
         </div>
-      ) : pos ? (
+      ) : (
         <>
           <div className="rastreio-mapa">
             <MapContainer center={[center.lat, center.lng]} zoom={15} scrollWheelZoom={true} style={{ width: '100%', height: '100%' }}>
@@ -774,7 +777,7 @@ function RastreioPage() {
             {total > 0 && <> · {concluidos}/{total} entregas</>}
           </div>
         </>
-      ) : null}
+      )}
 
       {comCoords.length > 0 && (
         <div className="rastreio-lista" style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 200, overflowY: 'auto' }}>

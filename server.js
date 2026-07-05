@@ -591,22 +591,30 @@ app.post('/motoboy/login', async (req, res) => {
 // Rastreio do motoboy (persistido no Supabase)
 app.post('/motoboy/position', async (req, res) => {
   const { lat, lng, nome } = req.body
-  if (lat == null || lng == null) return res.status(400).json({ erro: 'lat e lng obrigatórios' })
-  const dados = { lat: parseFloat(lat), lng: parseFloat(lng), timestamp: new Date().toISOString(), nome: nome || 'Motoboy' }
+  const dados = {
+    online: true, lat: lat != null ? parseFloat(lat) : null, lng: lng != null ? parseFloat(lng) : null,
+    timestamp: new Date().toISOString(), nome: nome || 'Motoboy'
+  }
   try {
     await supabase.from('app_config').upsert({ chave: 'motoboy_posicao', valor: dados, updated_at: new Date().toISOString() }, { onConflict: 'chave' })
   } catch (_) {}
-  console.log('Posição motoboy:', dados.lat, dados.lng, 'por', dados.nome)
+  res.json({ ok: true })
+})
+
+app.post('/motoboy/offline', async (req, res) => {
+  const dados = { online: false, lat: null, lng: null, timestamp: new Date().toISOString(), nome: req.body?.nome || 'Motoboy' }
+  try {
+    await supabase.from('app_config').upsert({ chave: 'motoboy_posicao', valor: dados, updated_at: new Date().toISOString() }, { onConflict: 'chave' })
+  } catch (_) {}
   res.json({ ok: true })
 })
 
 app.get('/motoboy/position', async (req, res) => {
   try {
     const { data } = await supabase.from('app_config').select('valor').eq('chave', 'motoboy_posicao').maybeSingle()
-    const pos = data?.valor
-    if (pos?.lat && pos?.lng) return res.json(pos)
+    if (data?.valor) return res.json(data.valor)
   } catch (_) {}
-  res.json({ lat: null, lng: null, timestamp: null, nome: null })
+  res.json({ online: false, lat: null, lng: null, timestamp: null, nome: null })
 })
 
 // FCM tokens

@@ -160,9 +160,24 @@ function MotoboyDashboard({ user, token, onLogout }) {
     } catch {}
   }, [user])
 
+  const sendHeartbeat = useCallback(() => {
+    fetch(`${API}/motoboy/position`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ lat: posRef.current?.lat, lng: posRef.current?.lng, nome: user?.nome || 'Motoboy' })
+    }).catch(() => {})
+  }, [user])
+
+  const sendOffline = useCallback(() => {
+    fetch(`${API}/motoboy/offline`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nome: user?.nome || 'Motoboy' })
+    }).catch(() => {})
+  }, [user])
+
   useEffect(() => {
     if (online) {
       localStorage.setItem('motoboyOnline', 'true')
+      sendHeartbeat()
       const id = navigator.geolocation.watchPosition(
         (p) => {
           const { latitude: lat, longitude: lng } = p.coords
@@ -177,6 +192,7 @@ function MotoboyDashboard({ user, token, onLogout }) {
       timerRef.current = setInterval(() => setTimer(t => t + 1), 1000)
     } else {
       localStorage.setItem('motoboyOnline', 'false')
+      sendOffline()
       if (watchId != null) navigator.geolocation.clearWatch(watchId)
       setWatchId(null)
       clearInterval(timerRef.current)
