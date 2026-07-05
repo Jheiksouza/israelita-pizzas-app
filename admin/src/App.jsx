@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react'
-import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet'
+import { MapContainer, TileLayer, Marker, Polyline, useMapEvents, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import { Pizza, MapPin, Store, Lock, Clock, Timer, Check, X, Truck, CheckCircle, Bike, Search, Plus, Pencil, DollarSign, List, Sun, Moon, LogOut } from 'lucide-react'
 
@@ -620,6 +620,18 @@ function RastreioPage() {
   const [status, setStatus] = useState('desconectado')
   const [ultimaAtualizacao, setUltimaAtualizacao] = useState(null)
   const [motoboyNome, setMotoboyNome] = useState('')
+  const [pedidos, setPedidos] = useState([])
+  const [pizzaria, setPizzaria] = useState(null)
+
+  const getLat = p => parseFloat(p.entrega_lat) || parseFloat(p.cliente?.lat) || parseFloat(p.cliente?.endereco_lat) || null
+  const getLng = p => parseFloat(p.entrega_lng) || parseFloat(p.cliente?.lng) || parseFloat(p.cliente?.endereco_lng) || null
+
+  useEffect(() => {
+    fetch(`${API}/admin/config/pizzaria`)
+      .then(r => r.json())
+      .then(data => { if (data.lat && data.lng) setPizzaria(data) })
+      .catch(() => {})
+  }, [])
 
   useEffect(() => {
     let mounted = true
@@ -641,21 +653,25 @@ function RastreioPage() {
           }
         })
         .catch(() => { if (mounted) setStatus('desconectado') })
+      fetch(`${API}/orders`)
+        .then(r => r.json())
+        .then(data => {
+          if (!mounted || !Array.isArray(data)) return
+          const hoje = new Date().toLocaleDateString('pt-BR')
+          const ativos = data.filter(p => {
+            const dataPedido = p.data ? new Date(p.data).toLocaleDateString('pt-BR') : ''
+            return dataPedido === hoje && ['aceito','liberado','em_rota','entregador_proximo','entregue'].includes(p.status)
+          })
+          setPedidos(ativos)
+        })
+        .catch(() => {})
     }
     buscar()
     const id = setInterval(buscar, 5000)
     return () => { mounted = false; clearInterval(id) }
   }, [])
 
-  useEffect(() => {
-    const verificar = () => {
-      if (ultimaAtualizacao && Date.now() - ultimaAtualizacao > 45000) setStatus('perdendo_sinal')
-    }
-    const id = setInterval(verificar, 5000)
-    return () => clearInterval(id)
-  }, [ultimaAtualizacao])
-
-  const center = pos || { lat: -25.4290, lng: -49.2671 }
+  const center = pos || pizzaria || { lat: -25.4290, lng: -49.2671 }
 
   const getStatusText = () => {
     if (status === 'conectado') return 'Online'
@@ -664,6 +680,23 @@ function RastreioPage() {
     if (diffMin < 1) return 'Online'
     return `${diffMin} min offline`
   }
+
+  const comCoords = pedidos.filter(p => getLat(p) && getLng(p))
+  const entregues = comCoords.filter(p => p.status === 'entregue')
+  const pendentes = comCoords.filter(p => p.status !== 'entregue')
+  const total = comCoords.length
+  const concluidos = entregues.length
+  const progresso = total > 0 ? Math.round((concluidos / total) * 100) : 0
+
+  const rotaCoords = []
+  if (pizzaria?.lat && pizzaria?.lng) rotaCoords.push([pizzaria.lat, pizzaria.lng])
+  comCoords.sort((a, b) => {
+    const ordem = { entregue: 4, entregador_proximo: 3, em_rota: 2, liberado: 1, aceito: 0 }
+    return (ordem[a.status] || 0) - (ordem[b.status] || 0)
+  })
+  comCoords.forEach(p => rotaCoords.push([getLat(p), getLng(p)]))
+
+  const statusLabel = { pendente: 'Pendente', aceito: 'Em preparo', liberado: 'Saiu p/ entrega', em_rota: 'Em rota', entregador_proximo: 'Chegando!', entregue: 'Entregue' }
 
   return (
     <div className="rastreio-page">
@@ -677,6 +710,19 @@ function RastreioPage() {
           <span className="motoboy-status-label">{getStatusText()}</span>
         </div>
       </div>
+
+      {total > 0 && (
+        <div className="rastreio-progresso">
+          <div className="rastreio-progresso-header">
+            <span><strong>{concluidos}/{total}</strong> entregas concluídas</span>
+            <span className="rastreio-progresso-pct">{progresso}%</span>
+          </div>
+          <div className="rastreio-progresso-bar">
+            <div className="rastreio-progresso-preenchido" style={{ width: `${progresso}%` }} />
+          </div>
+        </div>
+      )}
+
       {!pos && status === 'desconectado' ? (
         <div className="rastreio-offline">
           <div className="rastreio-offline-icon"><Bike size={48} /></div>
@@ -696,13 +742,54 @@ function RastreioPage() {
                   iconAnchor: [14, 42],
                 })} />
               )}
+              {rotaCoords.length > 1 && (
+                <Polyline positions={rotaCoords} pathOptions={{ color: '#FF8F00', weight: 3, opacity: 0.6, dashArray: '8 4' }} />
+              )}
+              {pizzaria?.lat && pizzaria?.lng && (
+                <Marker position={[pizzaria.lat, pizzaria.lng]} icon={L.divIcon({
+                  className: '',
+                  html: '<div style="background:#E53935;color:#fff;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.3)">P</div>',
+                  iconSize: [32, 32],
+                  iconAnchor: [16, 16],
+                })} />
+              )}
+              {comCoords.map((p, i) => {
+                const lat = getLat(p)
+                const lng = getLng(p)
+                if (!lat || !lng) return null
+                const cor = p.status === 'entregue' ? '#43A047' : '#FF8F00'
+                return (
+                  <Marker key={p.id} position={[lat, lng]} icon={L.divIcon({
+                    className: '',
+                    html: `<div style="background:${cor};color:#fff;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.3);cursor:pointer" title="${p.cliente?.nome || `#${p.id}`}">${i + 1}</div>`,
+                    iconSize: [28, 28],
+                    iconAnchor: [14, 14],
+                  })} />
+                )
+              })}
             </MapContainer>
           </div>
           <div className="rastreio-footer">
             {motoboyNome && <span style={{ fontWeight: 600 }}>{motoboyNome}</span>}{motoboyNome ? ' · ' : ''}Última atualização: {ultimaAtualizacao ? new Date(ultimaAtualizacao).toLocaleTimeString('pt-BR') : '—'}
+            {total > 0 && <> · {concluidos}/{total} entregas</>}
           </div>
         </>
       ) : null}
+
+      {comCoords.length > 0 && (
+        <div className="rastreio-lista" style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 200, overflowY: 'auto' }}>
+          {comCoords.map((p, i) => (
+            <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', borderRadius: 8, background: p.status === 'entregue' ? 'rgba(67,160,71,0.1)' : 'rgba(255,143,0,0.1)' }}>
+              <span style={{ width: 24, height: 24, borderRadius: '50%', background: p.status === 'entregue' ? '#43A047' : '#FF8F00', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, flexShrink: 0 }}>{i + 1}</span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>#{p.id} - {p.cliente?.nome || 'Sem nome'}</div>
+                <div style={{ fontSize: 12, color: '#888' }}>{statusLabel[p.status] || p.status}</div>
+              </div>
+              {p.status === 'entregue' && <CheckCircle size={18} color="#43A047" style={{ flexShrink: 0 }} />}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

@@ -1129,6 +1129,45 @@ body {
   text-align: center;
 }
 
+.rastreio-progresso {
+  padding: 12px 16px;
+  margin: 8px 16px;
+  background: var(--card-bg, #1A1A1A);
+  border-radius: var(--radius, 12px);
+}
+
+.rastreio-progresso-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.85rem;
+  margin-bottom: 8px;
+}
+
+.rastreio-progresso-pct {
+  font-weight: 700;
+  color: #FF8F00;
+  font-size: 1rem;
+}
+
+.rastreio-progresso-bar {
+  height: 8px;
+  border-radius: 4px;
+  background: rgba(255,255,255,0.1);
+  overflow: hidden;
+}
+
+.rastreio-progresso-preenchido {
+  height: 100%;
+  border-radius: 4px;
+  background: linear-gradient(90deg, #FF8F00, #FF6D00);
+  transition: width 0.5s ease;
+}
+
+.rastreio-lista {
+  border-top: 1px solid rgba(255,255,255,0.05);
+}
+
 .motoboy-status-pill {
   display: inline-flex;
   align-items: center;
