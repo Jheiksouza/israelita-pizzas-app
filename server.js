@@ -501,14 +501,6 @@ app.patch('/orders/:id', async (req, res) => {
   if (!checkSupabase(res)) return
   try {
     const updates = { ...req.body, updatedAt: new Date().toISOString() }
-    // Se um motoboy está pegando um pedido liberado, vincular e mudar status
-    if (updates.motoboy_nome && !updates.status) {
-      const { data: current } = await supabase.from('orders').select('status, motoboy_nome').eq('id', parseInt(req.params.id)).maybeSingle()
-      if (!current) return res.status(404).json({ erro: 'Pedido não encontrado' })
-      if (current.motoboy_nome) return res.status(409).json({ erro: 'Pedido já está sendo atendido por outro entregador' })
-      if (current.status !== 'liberado') return res.status(400).json({ erro: 'Pedido não está mais disponível' })
-      updates.status = 'em_rota'
-    }
     const { data, error } = await supabase.from('orders').update(updates).eq('id', parseInt(req.params.id)).select()
     if (error) throw error
     if (!data || data.length === 0) return res.status(404).json({ erro: 'Pedido não encontrado' })
@@ -678,11 +670,33 @@ app.get('/motoboy/pedidos-disponiveis', async (req, res) => {
       .in('status', ['aceito', 'liberado'])
       .order('id')
     if (error) throw error
-    const disponiveis = (data || []).filter(p => !p.motoboy_nome)
+    const disponiveis = (data || []).filter(p => !p.motoboy_nome).filter(p => p.status === 'liberado' || p.status === 'aceito')
     res.json(disponiveis)
   } catch (err) {
     console.error('Erro pedidos-disponiveis:', err)
     res.status(500).json({ erro: 'Erro ao buscar pedidos' })
+  }
+})
+
+// Motoboy pegar pedido (endpoint dedicado em vez de PATCH)
+app.post('/motoboy/pegar-pedido', async (req, res) => {
+  if (!checkSupabase(res)) return
+  try {
+    const { pedidoId, nome } = req.body
+    if (!pedidoId || !nome) return res.status(400).json({ erro: 'pedidoId e nome obrigatórios' })
+    const { data: current } = await supabase.from('orders').select('status, motoboy_nome').eq('id', parseInt(pedidoId)).maybeSingle()
+    if (!current) return res.status(404).json({ erro: 'Pedido não encontrado' })
+    if (current.motoboy_nome) return res.status(409).json({ erro: 'Pedido já está sendo atendido por outro entregador' })
+    if (current.status !== 'liberado') return res.status(400).json({ erro: 'Pedido não está mais disponível' })
+    const { data, error } = await supabase.from('orders')
+      .update({ motoboy_nome: nome, updatedAt: new Date().toISOString() })
+      .eq('id', parseInt(pedidoId))
+      .select()
+    if (error) throw error
+    res.json(data[0])
+  } catch (err) {
+    console.error('Erro ao pegar pedido:', err)
+    res.status(500).json({ erro: 'Erro ao pegar pedido' })
   }
 })
 

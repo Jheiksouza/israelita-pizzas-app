@@ -331,12 +331,13 @@ function MotoboyDashboard({ user, token, onLogout }) {
     setErroPegar('')
     const ids = [...selecionados]
     const pegos = []
+    const nome = user?.nome || 'Motoboy'
     for (const id of ids) {
       try {
-        const res = await fetch(`${API}/orders/${id}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-          body: JSON.stringify({ motoboy_nome: user?.nome || 'Motoboy' })
+        const res = await fetch(`${API}/motoboy/pegar-pedido`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ pedidoId: id, nome })
         })
         if (res.status === 409) {
           setErroPegar(`Pedido #${id} já foi pego por outro entregador`)
@@ -345,13 +346,13 @@ function MotoboyDashboard({ user, token, onLogout }) {
         } else if (res.ok) {
           pegos.push(id)
         } else {
-          console.error('Erro ao pegar pedido', id, res.status)
+          console.error('Erro ao pegar pedido', id, res.status, await res.text().catch(() => ''))
         }
       } catch (e) { console.error('Erro fetch pegar pedido', e) }
     }
     setSelecionados(new Set())
     setPegando(false)
-    if (pegos.length === 0) return
+    if (pegos.length === 0) { carregarDisponiveis(); return }
     const pegosComDados = pedidosDisponiveis.filter(p => pegos.includes(p.id))
     const ordenados = sugerirRota(pegosComDados, pizzaria)
     setRotaPlanejada(ordenados)
@@ -359,7 +360,16 @@ function MotoboyDashboard({ user, token, onLogout }) {
     setTela('organizar')
   }
 
-  const iniciarRota = () => {
+  const iniciarRota = async () => {
+    for (const p of rotaPlanejada) {
+      if (p.status === 'liberado') {
+        await fetch(`${API}/orders/${p.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: 'em_rota' })
+        })
+      }
+    }
     setIndiceEntrega(0)
     setTela('entrega')
   }
@@ -404,7 +414,7 @@ function MotoboyDashboard({ user, token, onLogout }) {
     return `${min} min`
   }
 
-  const statusLabel = { pendente: 'Pendente', aceito: 'Em preparo', liberado: 'Saiu p/ entrega', em_rota: 'Em rota', entregador_proximo: 'Chegando!', entregue: 'Entregue', recusado: 'Recusado' }
+  const statusLabel = { pendente: 'Pendente', aceito: 'Em preparo', liberado: 'Saiu p/ entrega', em_rota: 'Em rota', entregador_proximo: 'Chegando!', entregue: 'Entregue', recusado: 'Cancelado' }
   const badgeClass = { pendente: 'badge badge-warning', aceito: 'badge badge-info', liberado: 'badge badge-liberate', em_rota: 'badge badge-amber', entregador_proximo: 'badge badge-amber', entregue: 'badge badge-success', recusado: 'badge badge-destructive' }
 
   return (
