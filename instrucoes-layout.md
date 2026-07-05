@@ -22,7 +22,9 @@ Você só pode:
 - Banco: Supabase PostgreSQL
 - Deploy: Vercel (auto-deploy via GitHub push na `main`)
 
-### Estrutura de Componentes (todos em App.jsx)
+### Estrutura de Componentes
+
+#### `client/src/App.jsx` — App do Cliente
 
 ```
 App
@@ -47,6 +49,18 @@ App
     ├── CardapioSettings (modal configurações)
     ├── MenuItemForm (modal add/edit item)
     └── AdminLogin (tela de login)
+```
+
+#### `motoboy/src/App.jsx` — App do Entregador
+
+```
+MotoboyApp
+├── MotoboyLogin (tela de login do entregador)
+├── MotoboyDashboard (dashboard principal)
+│   ├── StatusHeader (status online/offline + timer)
+│   ├── PedidoAtual (card do pedido em andamento)
+│   ├── ListaPedidos (histórico de entregas)
+│   └── MapaRastreio (mini mapa com posição)
 ```
 
 ---
@@ -108,6 +122,24 @@ App
 - **Normal**: modal com 2 colunas (imagem/logo/texto + tema/fonte/prévia)
 - **Com imagem/logo**: preview com overlay e logo arrastável
 - **Sem imagem/logo**: preview sem hero background
+
+### MotoboyApp
+- **Não autenticado**: mostra MotoboyLogin
+- **Autenticado**: mostra MotoboyDashboard
+- **Sem permissão de GPS**: alerta solicitando permissão de localização
+
+### MotoboyLogin
+- **Normal**: campo de telefone + botão ENTRAR
+- **Erro**: "Entregador não encontrado" ou "Senha incorreta"
+- **Loading**: estado de carregamento ao buscar
+
+### MotoboyDashboard
+- **Online**: tracking GPS ativo, posição enviada a cada 10s
+- **Offline**: tracking pausado, botão "Ficar Online"
+- **Com pedido ativo**: card destacado com dados do pedido + ações
+- **Sem pedido**: "Nenhum pedido no momento — aguardando..."
+- **Erro de localização**: GPS indisponível ou permissão negada
+- **Timer**: tempo decorrido desde que ficou online
 
 ---
 
@@ -388,6 +420,90 @@ Cada tema redefine APENAS as variáveis CSS. **NÃO** adicionar estilos específ
 </div>
 ```
 
+### Motoboy Page
+
+```html
+<div class="motoboy-app">
+  <!-- Login -->
+  <div class="motoboy-login">
+    <div class="motoboy-login-card">
+      <svg class="motoboy-login-icon">...</svg>
+      <h2>Entregador</h2>
+      <p class="motoboy-login-desc">Faça login para começar as entregas</p>
+      <form>
+        <input type="tel" placeholder="Celular" />
+        <input type="password" placeholder="Senha" />
+        <p class="erro">Credenciais inválidas</p>
+        <button class="btn btn-primary btn-full">Entrar</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Dashboard -->
+  <div class="motoboy-dashboard">
+    <header class="motoboy-header">
+      <div class="motoboy-header-left">
+        <strong class="motoboy-header-nome">João</strong>
+        <span class="motoboy-header-status motoboy-status-online">● Online</span>
+      </div>
+      <button class="topbar-btn" title="Sair">⏻</button>
+    </header>
+
+    <div class="motoboy-content">
+
+      <!-- Online/Offline toggle -->
+      <div class="motoboy-status-card motoboy-online">
+        <div class="motoboy-status-info">
+          <span class="motoboy-status-dot"></span>
+          <span class="motoboy-status-text">Online — enviando posição</span>
+        </div>
+        <span class="motoboy-timer">00:12:34</span>
+        <button class="btn btn-destructive btn-sm">Ficar Offline</button>
+      </div>
+      <div class="motoboy-status-card motoboy-offline">
+        <div class="motoboy-status-info">
+          <span class="motoboy-status-dot"></span>
+          <span class="motoboy-status-text">Offline</span>
+        </div>
+        <button class="btn btn-primary btn-sm">Ficar Online</button>
+      </div>
+
+      <!-- Pedido ativo -->
+      <div class="card motoboy-pedido-ativo">
+        <div class="motoboy-pedido-header">
+          <strong>Pedido #42</strong>
+          <span class="badge badge-warning">Pendente</span>
+        </div>
+        <div class="motoboy-pedido-info">
+          <p><strong>Cliente:</strong> Maria · (41) 99999-9999</p>
+          <p><strong>Endereço:</strong> Rua X, 123</p>
+          <p><strong>Itens:</strong> 1x Pizza Grande, 2x Coca-Cola</p>
+          <p class="pedido-total"><strong>Total: R$ 58,00</strong></p>
+        </div>
+        <div class="motoboy-pedido-actions">
+          <button class="btn btn-primary btn-sm">Aceitar Entrega</button>
+          <button class="btn btn-destructive btn-sm">Reportar Problema</button>
+        </div>
+      </div>
+
+      <!-- Sem pedido -->
+      <div class="card motoboy-aguardando">
+        <div class="empty-state">
+          <p>🚀 Nenhum pedido no momento</p>
+          <p style="font-size:0.85rem;color:var(--text-muted)">Aguardando novas entregas...</p>
+        </div>
+      </div>
+
+      <!-- Mini mapa -->
+      <div class="motoboy-mapa-mini">
+        <!-- Leaflet MapContainer -->
+      </div>
+
+    </div>
+  </div>
+</div>
+```
+
 ### Settings Modal
 ```html
 <div class="modal modal-config"><!-- mais largo que modal normal -->
@@ -482,6 +598,9 @@ Cada item no banco tem estes campos:
 | PATCH | `/api/orders/:id` | Atualizar status |
 | GET | `/api/orders/stats` | Estatísticas |
 | POST | `/api/login` | Login admin |
+| POST | `/api/motoboy/login` | Login entregador |
+| POST | `/api/motoboy/position` | Atualizar posição do motoboy |
+| GET | `/api/motoboy/position` | Obter posição atual do motoboy |
 
 ---
 
@@ -507,6 +626,13 @@ Admin auth usa `sessionStorage` (não localStorage):
 | Key | Tipo | Descrição |
 |-----|------|-----------|
 | `adminAuth` | string | `'true'` após login bem-sucedido |
+
+Motoboy usa `localStorage`:
+| Key | Tipo | Descrição |
+|-----|------|-----------|
+| `motoboyToken` | string | Token JWT do entregador |
+| `motoboyUser` | JSON | Dados do entregador (id, nome, telefone) |
+| `motoboyOnline` | boolean | `'true'` se estava online |
 
 ---
 
@@ -538,6 +664,9 @@ Admin auth usa `sessionStorage` (não localStorage):
 9. **Estado ativo em botões**: classe `.active`
 10. **Tags/badges**: classe `.tipo-badge` + `.tipo-{sabor|tamanho|produto|tradicional|especial|nobre}`
 11. **Status badges**: classe `.status-badge` + `.status-{pendente|aceito|entregue|recusado}`
+12. **App do entregador (`motoboy/`)**: usa o mesmo design system do admin (variáveis CSS, componentes `.btn`, `.card`, `.badge`, `.modal`, `.empty-state`)
+13. **Classes específicas do motoboy** prefixadas com `.motoboy-`: `.motoboy-app`, `.motoboy-login`, `.motoboy-dashboard`, `.motoboy-header`, `.motoboy-status-card`, `.motoboy-pedido-ativo`, `.motoboy-mapa-mini`
+14. **Status do motoboy**: `.motoboy-online` (verde), `.motoboy-offline` (cinza/destructive), `.motoboy-perdendo-sinal` (warning)
 
 ---
 

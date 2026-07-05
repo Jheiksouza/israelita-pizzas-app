@@ -545,6 +545,26 @@ app.post('/login', async (req, res) => {
   res.status(401).json({ autenticado: false, erro: 'Senha incorreta' })
 })
 
+// Login do motoboy
+app.post('/motoboy/login', async (req, res) => {
+  if (!checkSupabase(res)) return
+  try {
+    const { telefone, senha } = req.body
+    if (!telefone || !senha) return res.status(400).json({ erro: 'Telefone e senha obrigatórios' })
+    const { data: user, error } = await supabase.from('users').select('*').eq('telefone', telefone).maybeSingle()
+    if (error || !user) return res.status(401).json({ erro: 'Entregador não encontrado' })
+    if (user.role !== 'motoboy') return res.status(403).json({ erro: 'Conta não autorizada como entregador' })
+    if (user.status !== 'ativo') return res.status(403).json({ erro: 'Conta desativada' })
+    const ok = await bcrypt.compare(senha, user.senha)
+    if (!ok) return res.status(401).json({ erro: 'Senha incorreta' })
+    const token = jwt.sign({ id: user.id, email: user.email, nome: user.nome, role: user.role }, JWT_SECRET, { expiresIn: '7d' })
+    res.json({ token, user: { id: user.id, nome: user.nome, email: user.email, telefone: user.telefone, role: user.role, status: user.status } })
+  } catch (err) {
+    console.error('Erro ao logar motoboy:', err)
+    res.status(500).json({ erro: 'Erro ao fazer login' })
+  }
+})
+
 // Rastreio do motoboy (em memória)
 let ultimaPosMotoboy = null
 

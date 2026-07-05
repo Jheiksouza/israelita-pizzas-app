@@ -8,7 +8,10 @@
     "dev": "node server.js & cd client && npx vite",
     "build": "cd client && npm install && npm run build",
     "start": "node server.js",
-    "install-all": "npm install && cd client && npm install"
+    "install-all": "npm install && cd client && npm install",
+    "build:admin": "cd admin && npm install && npm run build",
+    "build:motoboy": "cd motoboy && npm install && npm run build",
+    "build:all": "npm run build && npm run build:admin && npm run build:motoboy"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.49.0",

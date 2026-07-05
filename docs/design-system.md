@@ -3,7 +3,7 @@
 > Inspirado em Stripe, Linear, Vercel e Notion.
 > Código e pixels em equilíbrio — funcional primeiro, bonito por consequência.
 >
-> **Escopo:** Este design system se aplica **exclusivamente** ao diretório `admin/`.
+> **Escopo:** Este design system se aplica **exclusivamente** aos diretórios `admin/` e `motoboy/`.
 > O app do cliente (`client/`) possui seu próprio sistema de estilos e temas definidos em `client/src/App.css`.
 > Os dois compartilham as mesmas variáveis CSS raiz (`:root`) no arquivo de estilos de cada um, mas NÃO compartilham componentes, layouts ou padrões visuais.
 

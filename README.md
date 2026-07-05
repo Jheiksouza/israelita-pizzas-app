@@ -31,6 +31,22 @@ Sistema de pedidos para Pizzaria Israelita — cardápio online + painel admin.
 │   │   └── App.css       # Estilos dark theme
 │   ├── vite.config.js
 │   └── package.json
+├── admin/                 # Painel admin (React, build → client/dist/admin)
+│   ├── src/
+│   │   ├── App.jsx       # Admin app (dashboard, pedidos, financeiro)
+│   │   ├── App.css       # Design system admin
+│   │   └── main.jsx
+│   ├── index.html
+│   ├── vite.config.js
+│   └── package.json
+├── motoboy/               # App do entregador (React, build → client/dist/motoboy)
+│   ├── src/
+│   │   ├── App.jsx       # Motoboy app (login, dashboard, rastreio)
+│   │   ├── App.css       # Design system motoboy
+│   │   └── main.jsx
+│   ├── index.html
+│   ├── vite.config.js
+│   └── package.json
 ├── server.js              # Servidor Express (raiz)
 ├── vercel.json            # Config de deploy
 ├── supabase-setup.sql     # Schema do banco + seed
@@ -192,7 +208,9 @@ git push
 | `api/index.js` | Apenas `require('../server')` e exporta pro Vercel |
 | `vercel.json` | Configuração de build, output e rewrites |
 | `client/vite.config.js` | Config do Vite com proxy e output dir |
-| `client/src/App.jsx` | TODO frontend (React) |
+| `client/src/App.jsx` | Frontend do cliente (React) |
+| `admin/src/App.jsx` | Admin painel (React) |
+| `motoboy/src/App.jsx` | App do entregador (React) |
 | `supabase-setup.sql` | Schema e seed do banco |
 | `.env.example` | Template das variáveis de ambiente |
 
@@ -211,5 +229,8 @@ git push
 | PATCH | `/api/orders/:id` | Atualizar status |
 | GET | `/api/orders/stats` | Estatísticas |
 | POST | `/api/login` | Login admin (senha: `admin123`) |
+| POST | `/api/motoboy/login` | Login entregador (telefone + senha) |
+| POST | `/api/motoboy/position` | Atualizar posição do motoboy |
+| GET | `/api/motoboy/position` | Obter posição atual do motoboy |
 
 > **Nota:** No código do Express, as rotas não têm o prefixo `/api` (ex: `app.get('/menu', ...)`). Um middleware de normalização cuida de adicionar/remover o prefixo conforme necessário pro Vercel.
