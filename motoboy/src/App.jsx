@@ -139,6 +139,23 @@ function haversineKm(lat1, lng1, lat2, lng2) {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
 }
 
+function getDirecao(pedido, origem) {
+  if (!origem) return null
+  const plat = parseFloat(pedido.entrega_lat) || parseFloat(pedido.cliente?.lat) || parseFloat(pedido.cliente?.endereco_lat)
+  const plng = parseFloat(pedido.entrega_lng) || parseFloat(pedido.cliente?.lng) || parseFloat(pedido.cliente?.endereco_lng)
+  if (!plat || !plng) return null
+  const dLat = plat - origem.lat
+  const dLng = plng - origem.lng
+  const ang = Math.atan2(dLng, dLat) * 180 / Math.PI
+  if (ang >= -45 && ang < 45) return 'N'
+  if (ang >= 45 && ang < 135) return 'L'
+  if (ang >= -135 && ang < -45) return 'O'
+  return 'S'
+}
+
+const DIRECOES = { N: 'Norte', S: 'Sul', L: 'Leste', O: 'Oeste' }
+const DIR_CORES = { N: '#2196F3', S: '#4CAF50', L: '#FF9800', O: '#9C27B0' }
+
 function sugerirRota(pedidos, origem) {
   if (!pedidos.length) return pedidos
   const restantes = [...pedidos]
@@ -473,6 +490,7 @@ function MotoboyDashboard({ user, token, onLogout }) {
               tempoDecorrido={tempoDecorrido}
               badgeClass={badgeClass}
               statusLabel={statusLabel}
+              pizzaria={pizzaria}
             />
           )}
 
@@ -534,9 +552,17 @@ function MotoboyDashboard({ user, token, onLogout }) {
   )
 }
 
-function TelaDisponiveis({ pedidos, selecionados, onToggle, onPegar, pegando, tempoDecorrido, badgeClass, statusLabel }) {
+function TelaDisponiveis({ pedidos, selecionados, onToggle, onPegar, pegando, tempoDecorrido, badgeClass, statusLabel, pizzaria }) {
+  const [filtroDir, setFiltroDir] = useState(null)
   const liberados = pedidos.filter(p => p.status === 'liberado')
   const aguardando = pedidos.filter(p => p.status === 'aceito')
+
+  const liberadosComDir = liberados.map(p => ({ ...p, direcao: getDirecao(p, pizzaria) }))
+  const filtrados = filtroDir ? liberadosComDir.filter(p => p.direcao === filtroDir) : liberadosComDir
+  const aguardandoComDir = aguardando.map(p => ({ ...p, direcao: getDirecao(p, pizzaria) }))
+
+  const dirCounts = {}
+  liberadosComDir.forEach(p => { if (p.direcao) dirCounts[p.direcao] = (dirCounts[p.direcao] || 0) + 1 })
 
   if (!pedidos || pedidos.length === 0) {
     return (
@@ -558,8 +584,29 @@ function TelaDisponiveis({ pedidos, selecionados, onToggle, onPegar, pegando, te
         <h3>Pedidos para entrega</h3>
         <span className="badge badge-liberate">{liberados.length} prontos · {aguardando.length} em preparo</span>
       </div>
+
+      {pizzaria && Object.keys(dirCounts).length > 0 && (
+        <div className="motoboy-direcao-filtros">
+          <button className={`motoboy-direcao-btn ${filtroDir === null ? 'active' : ''}`} onClick={() => setFiltroDir(null)}>
+            Todas
+          </button>
+          {Object.entries(DIRECOES).map(([sigla, nome]) =>
+            dirCounts[sigla] ? (
+              <button
+                key={sigla}
+                className={`motoboy-direcao-btn ${filtroDir === sigla ? 'active' : ''}`}
+                style={{ '--dir-cor': DIR_CORES[sigla] }}
+                onClick={() => setFiltroDir(filtroDir === sigla ? null : sigla)}
+              >
+                {nome} ({dirCounts[sigla]})
+              </button>
+            ) : null
+          )}
+        </div>
+      )}
+
       <div className="motoboy-disponiveis-lista">
-        {liberados.map(p => (
+        {filtrados.map(p => (
           <label key={p.id} className={`motoboy-disponivel-item ${selecionados.has(p.id) ? 'selected' : ''}`}>
             <input
               type="checkbox"
@@ -570,6 +617,7 @@ function TelaDisponiveis({ pedidos, selecionados, onToggle, onPegar, pegando, te
             <div className="motoboy-disponivel-info">
               <div className="motoboy-disponivel-top">
                 <strong>#{p.id}</strong>
+                {p.direcao && <span className="motoboy-direcao-badge" style={{ background: DIR_CORES[p.direcao] }}>{DIRECOES[p.direcao]}</span>}
                 <span className={badgeClass[p.status] || 'badge'}>{statusLabel[p.status] || p.status}</span>
               </div>
               <div className="motoboy-disponivel-row">
@@ -595,18 +643,20 @@ function TelaDisponiveis({ pedidos, selecionados, onToggle, onPegar, pegando, te
             </div>
           </label>
         ))}
-        {aguardando.length > 0 && (
+
+        {aguardando.length > 0 && (!filtroDir || aguardandoComDir.some(a => a.direcao === filtroDir)) && (
           <div className="motoboy-aguardando-liberacao">
             <div className="motoboy-aguardando-liberacao-header">
               <Clock size={14} />
               <span>Em preparo — logo serão liberados</span>
             </div>
-            {aguardando.map(p => (
+            {(filtroDir ? aguardandoComDir.filter(a => a.direcao === filtroDir) : aguardandoComDir).map(p => (
               <div key={p.id} className="motoboy-disponivel-item motoboy-disponivel-bloqueado">
                 <div className="motoboy-disponivel-check-placeholder" />
                 <div className="motoboy-disponivel-info">
                   <div className="motoboy-disponivel-top">
                     <strong>#{p.id}</strong>
+                    {p.direcao && <span className="motoboy-direcao-badge" style={{ background: DIR_CORES[p.direcao] }}>{DIRECOES[p.direcao]}</span>}
                     <span className="badge badge-info">Aguardando liberação</span>
                   </div>
                   <div className="motoboy-disponivel-row">

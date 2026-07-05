@@ -683,14 +683,18 @@ app.post('/motoboy/pegar-pedido', async (req, res) => {
   if (!checkSupabase(res)) return
   try {
     const { pedidoId, nome } = req.body
-    if (!pedidoId || !nome) return res.status(400).json({ erro: 'pedidoId e nome obrigatórios' })
-    const { data: current } = await supabase.from('orders').select('status, motoboy_nome').eq('id', parseInt(pedidoId)).maybeSingle()
-    if (!current) return res.status(404).json({ erro: 'Pedido não encontrado' })
-    if (current.motoboy_nome) return res.status(409).json({ erro: 'Pedido já está sendo atendido por outro entregador' })
-    if (current.status !== 'liberado') return res.status(400).json({ erro: 'Pedido não está mais disponível' })
+    if (pedidoId == null || !nome) return res.status(400).json({ erro: 'pedidoId e nome obrigatórios' })
+    const idNum = Number(pedidoId)
+    console.log('Pegar pedido:', { pedidoId, nome, idNum, tipo: typeof pedidoId })
+    if (!Number.isFinite(idNum)) return res.status(400).json({ erro: 'ID inválido' })
+    // Busca todos os orders e filtra em memoria (evita problemas com coluna)
+    const { data: todos, error: findErr } = await supabase.from('orders').select('*').in('status', ['liberado'])
+    if (findErr) { console.error('Erro find:', findErr); return res.status(500).json({ erro: 'Erro ao buscar pedido' }) }
+    const current = (todos || []).find(o => o.id === idNum && !o.motoboy_nome)
+    if (!current) return res.status(404).json({ erro: 'Pedido não encontrado ou já foi pego' })
     const { data, error } = await supabase.from('orders')
       .update({ motoboy_nome: nome, updatedAt: new Date().toISOString() })
-      .eq('id', parseInt(pedidoId))
+      .eq('id', idNum)
       .select()
     if (error) throw error
     res.json(data[0])

@@ -920,6 +920,51 @@ body {
 
 .motoboy-entrega-actions .btn { width: 100%; justify-content: center; }
 
+/* === DIREÇÃO === */
+.motoboy-direcao-filtros {
+  display: flex;
+  gap: 6px;
+  padding: 8px 20px;
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+
+.motoboy-direcao-btn {
+  padding: 5px 12px;
+  border-radius: 9999px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--muted-foreground);
+  font-size: 0.78rem;
+  font-weight: 600;
+  font-family: var(--font-body);
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.motoboy-direcao-btn:hover {
+  background: var(--muted);
+  color: var(--foreground);
+}
+
+.motoboy-direcao-btn.active {
+  background: color-mix(in oklch, var(--dir-cor, var(--primary)) 15%, transparent);
+  border-color: var(--dir-cor, var(--primary));
+  color: var(--dir-cor, var(--primary));
+}
+
+.motoboy-direcao-badge {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 8px;
+  border-radius: 9999px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: 0.02em;
+}
+
 /* === RESPONSIVE === */
 /* === GOOGLE BTN === */
 .google-btn {
