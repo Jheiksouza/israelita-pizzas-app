@@ -278,8 +278,9 @@ function MotoboyDashboard({ user, token, onLogout }) {
     try {
       const res = await fetch(`${API}/motoboy/pedidos-disponiveis`)
       const data = await res.json()
-      if (Array.isArray(data)) setPedidosDisponiveis(data)
-    } catch {}
+      if (Array.isArray(data)) { setPedidosDisponiveis(data); console.log('Disponiveis:', data.length) }
+      else console.error('Resposta inesperada:', data)
+    } catch (e) { console.error('Erro carregarDisponiveis:', e) }
   }, [])
 
   const carregarMeusPedidos = useCallback(async () => {
@@ -522,13 +523,8 @@ function MotoboyDashboard({ user, token, onLogout }) {
 }
 
 function TelaDisponiveis({ pedidos, selecionados, onToggle, onPegar, pegando, tempoDecorrido, badgeClass, statusLabel }) {
-  const disponiveis = pedidos.filter(p => {
-    const lat = getLat(p)
-    const lng = getLng(p)
-    return lat && lng
-  })
 
-  if (disponiveis.length === 0) {
+  if (!pedidos || pedidos.length === 0) {
     return (
       <div className="card motoboy-aguardando">
         <div className="empty-state">
@@ -546,10 +542,10 @@ function TelaDisponiveis({ pedidos, selecionados, onToggle, onPegar, pegando, te
     <div className="card motoboy-disponiveis">
       <div className="motoboy-disponiveis-header">
         <h3>Pedidos para entrega</h3>
-        <span className="badge badge-liberate">{disponiveis.length} disponível{disponiveis.length !== 1 ? 'is' : ''}</span>
+        <span className="badge badge-liberate">{pedidos.length} disponível{pedidos.length !== 1 ? 'is' : ''}</span>
       </div>
       <div className="motoboy-disponiveis-lista">
-        {disponiveis.map(p => {
+        {pedidos.map(p => {
           const lat = getLat(p)
           const lng = getLng(p)
           if (!lat || !lng) return null
