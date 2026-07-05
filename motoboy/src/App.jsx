@@ -490,6 +490,7 @@ function MotoboyDashboard({ user, token, onLogout }) {
               tempoDecorrido={tempoDecorrido}
               badgeClass={badgeClass}
               statusLabel={statusLabel}
+              pos={pos}
               pizzaria={pizzaria}
             />
           )}
@@ -552,14 +553,15 @@ function MotoboyDashboard({ user, token, onLogout }) {
   )
 }
 
-function TelaDisponiveis({ pedidos, selecionados, onToggle, onPegar, pegando, tempoDecorrido, badgeClass, statusLabel, pizzaria }) {
+function TelaDisponiveis({ pedidos, selecionados, onToggle, onPegar, pegando, tempoDecorrido, badgeClass, statusLabel, pos, pizzaria }) {
   const [filtroDir, setFiltroDir] = useState(null)
   const liberados = pedidos.filter(p => p.status === 'liberado')
   const aguardando = pedidos.filter(p => p.status === 'aceito')
 
-  const liberadosComDir = liberados.map(p => ({ ...p, direcao: getDirecao(p, pizzaria) }))
+  const origem = pos || pizzaria
+  const liberadosComDir = liberados.map(p => ({ ...p, direcao: getDirecao(p, origem) }))
   const filtrados = filtroDir ? liberadosComDir.filter(p => p.direcao === filtroDir) : liberadosComDir
-  const aguardandoComDir = aguardando.map(p => ({ ...p, direcao: getDirecao(p, pizzaria) }))
+  const aguardandoComDir = aguardando.map(p => ({ ...p, direcao: getDirecao(p, origem) }))
 
   const dirCounts = {}
   liberadosComDir.forEach(p => { if (p.direcao) dirCounts[p.direcao] = (dirCounts[p.direcao] || 0) + 1 })
