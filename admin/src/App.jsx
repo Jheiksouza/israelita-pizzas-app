@@ -616,15 +616,26 @@ function AdminFinanceiro() {
 }
 
 function RastreioPage() {
-  const [pos, setPos] = useState(null)
-  const [status, setStatus] = useState('desconectado')
-  const [ultimaAtualizacao, setUltimaAtualizacao] = useState(null)
-  const [motoboyNome, setMotoboyNome] = useState('')
+  const [motoboys, setMotoboys] = useState([])
   const [pedidos, setPedidos] = useState([])
   const [pizzaria, setPizzaria] = useState(null)
 
   const getLat = p => parseFloat(p.entrega_lat) || parseFloat(p.cliente?.lat) || parseFloat(p.cliente?.endereco_lat) || null
   const getLng = p => parseFloat(p.entrega_lng) || parseFloat(p.cliente?.lng) || parseFloat(p.cliente?.endereco_lng) || null
+
+  const statusCor = m => {
+    if (!m.online) return '#E53935'
+    const diff = Date.now() - new Date(m.timestamp).getTime()
+    if (diff < 45000) return '#43A047'
+    return '#FF8F00'
+  }
+
+  const statusTexto = m => {
+    if (!m.online) return 'Offline'
+    const diff = Date.now() - new Date(m.timestamp).getTime()
+    if (diff < 45000) return m.lat ? 'Online' : 'Online (sem GPS)'
+    return 'Sinal perdido'
+  }
 
   useEffect(() => {
     fetch(`${API}/admin/config/pizzaria`)
@@ -636,25 +647,10 @@ function RastreioPage() {
   useEffect(() => {
     let mounted = true
     const buscar = () => {
-      fetch(`${API}/motoboy/position`)
+      fetch(`${API}/motoboy/positions`)
         .then(r => r.json())
-        .then(data => {
-          if (!mounted) return
-          setUltimaAtualizacao(data?.timestamp || null)
-          if (data?.nome) setMotoboyNome(data.nome)
-          if (data?.online && data?.lat && data?.lng) {
-            setPos({ lat: data.lat, lng: data.lng })
-            const diff = Date.now() - new Date(data.timestamp).getTime()
-            setStatus(diff < 45000 ? 'conectado' : 'perdendo_sinal')
-          } else if (data?.online) {
-            setPos(null)
-            setStatus('conectado')
-          } else {
-            setPos(null)
-            setStatus('desconectado')
-          }
-        })
-        .catch(() => { if (mounted) setStatus('desconectado') })
+        .then(data => { if (mounted && Array.isArray(data)) setMotoboys(data) })
+        .catch(() => {})
       fetch(`${API}/orders`)
         .then(r => r.json())
         .then(data => {
@@ -673,20 +669,12 @@ function RastreioPage() {
     return () => { mounted = false; clearInterval(id) }
   }, [])
 
-  const center = pos || pizzaria || { lat: -25.4290, lng: -49.2671 }
-
-  const getStatusText = () => {
-    if (status === 'conectado') return pos ? 'Online' : 'Online (sem GPS)'
-    if (!ultimaAtualizacao) return 'Offline'
-    const ultima = new Date(ultimaAtualizacao).getTime()
-    const diffMin = Math.floor((Date.now() - ultima) / 60000)
-    if (diffMin < 1) return pos ? 'Online' : 'Online (sem GPS)'
-    return `${diffMin} min offline`
-  }
+  const onlineCount = motoboys.filter(m => m.online).length
+  const algumOnline = motoboys.some(m => m.online)
+  const center = motoboys.find(m => m.lat) || pizzaria || { lat: -25.4290, lng: -49.2671 }
 
   const comCoords = pedidos.filter(p => getLat(p) && getLng(p))
   const entregues = comCoords.filter(p => p.status === 'entregue')
-  const pendentes = comCoords.filter(p => p.status !== 'entregue')
   const total = comCoords.length
   const concluidos = entregues.length
   const progresso = total > 0 ? Math.round((concluidos / total) * 100) : 0
@@ -706,45 +694,51 @@ function RastreioPage() {
       <div className="page-header" style={{ marginBottom: 0 }}>
         <div className="page-header-left">
           <h1 className="page-title">Rastreio</h1>
-          <p className="page-description">Acompanhe a localização do motoboy em tempo real</p>
+          <p className="page-description">Acompanhe a localização dos motoboys em tempo real</p>
         </div>
-        <div className={`motoboy-status-pill motoboy-status-${status}`}>
-          <div className="status-dot" />
-          <span className="motoboy-status-label">{getStatusText()}</span>
+        <div className="rastreio-stats-header">
+          <span className="rastreio-online-count">{onlineCount} motoboy{onlineCount !== 1 ? 's' : ''} online</span>
         </div>
       </div>
 
       {total > 0 && (
-        <div className="rastreio-progresso">
-          <div className="rastreio-progresso-header">
-            <span><strong>{concluidos}/{total}</strong> entregas concluídas</span>
-            <span className="rastreio-progresso-pct">{progresso}%</span>
+        <div className="rastreio-route-progress">
+          <div className="rastreio-route-header">
+            <span className="rastreio-route-label">Rota do dia</span>
+            <span className="rastreio-route-pct">{progresso}%</span>
           </div>
-          <div className="rastreio-progresso-bar">
-            <div className="rastreio-progresso-preenchido" style={{ width: `${progresso}%` }} />
+          <div className="rastreio-route-bar">
+            <div className="rastreio-route-fill" style={{ width: `${progresso}%` }} />
+          </div>
+          <div className="rastreio-route-meta">
+            <span>{concluidos} concluída{concluidos !== 1 ? 's' : ''}</span>
+            <span>{total - concluidos} restante{total - concluidos !== 1 ? 's' : ''}</span>
           </div>
         </div>
       )}
 
-      {status === 'desconectado' ? (
+      {!algumOnline ? (
         <div className="rastreio-offline">
           <div className="rastreio-offline-icon"><Bike size={48} /></div>
-          <p>Motoboy desconectado</p>
-          <p>Aguardando sinal do motoboy...</p>
+          <p>Nenhum motoboy online</p>
+          <p>Aguardando conexão...</p>
         </div>
       ) : (
         <>
           <div className="rastreio-mapa">
             <MapContainer center={[center.lat, center.lng]} zoom={15} scrollWheelZoom={true} style={{ width: '100%', height: '100%' }}>
               <TileLayer attribution='&copy; OpenStreetMap' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-              {pos && (
-                <Marker position={[pos.lat, pos.lng]} icon={L.divIcon({
-                  className: '',
-                  html: `<div class="motoboy-marker-info"><div class="motoboy-marker-nome">${motoboyNome || 'Motoboy'}</div><div class="motoboy-marker-status" style="border-color:var(--motoboy-${status});color:var(--motoboy-${status})">${getStatusText()}</div><svg viewBox="0 0 24 36" width="28" height="42"><path d="M12 0C5.4 0 0 5.4 0 12c0 9 12 24 12 24s12-15 12-24C24 5.4 18.6 0 12 0z" fill="var(--motoboy-${status})"/><circle cx="12" cy="12" r="5" fill="#fff"/></svg><div class="motoboy-marker-pulse"></div></div>`,
-                  iconSize: [28, 42],
-                  iconAnchor: [14, 42],
-                })} />
-              )}
+              {motoboys.filter(m => m.online && m.lat).map(m => {
+                const cor = statusCor(m)
+                return (
+                  <Marker key={m.nome} position={[m.lat, m.lng]} icon={L.divIcon({
+                    className: '',
+                    html: `<div class="motoboy-marker-info"><div class="motoboy-marker-nome">${m.nome}</div><div class="motoboy-marker-status" style="border-color:${cor};color:${cor}">${statusTexto(m)}</div><svg viewBox="0 0 24 36" width="28" height="42"><path d="M12 0C5.4 0 0 5.4 0 12c0 9 12 24 12 24s12-15 12-24C24 5.4 18.6 0 12 0z" fill="${cor}"/><circle cx="12" cy="12" r="5" fill="#fff"/></svg></div>`,
+                    iconSize: [28, 42],
+                    iconAnchor: [14, 42],
+                  })} />
+                )
+              })}
               {rotaCoords.length > 1 && (
                 <Polyline positions={rotaCoords} pathOptions={{ color: '#FF8F00', weight: 3, opacity: 0.6, dashArray: '8 4' }} />
               )}
@@ -773,20 +767,35 @@ function RastreioPage() {
             </MapContainer>
           </div>
           <div className="rastreio-footer">
-            {motoboyNome && <span style={{ fontWeight: 600 }}>{motoboyNome}</span>}{motoboyNome ? ' · ' : ''}Última atualização: {ultimaAtualizacao ? new Date(ultimaAtualizacao).toLocaleTimeString('pt-BR') : '—'}
-            {total > 0 && <> · {concluidos}/{total} entregas</>}
+            {motoboys.filter(m => m.online).map((m, i) => (
+              <span key={m.nome}>{i > 0 && ' · '}<span style={{ fontWeight: 600, color: statusCor(m) }}>{m.nome}</span></span>
+            ))}
           </div>
         </>
       )}
 
+      {motoboys.length > 0 && (
+        <div className="rastreio-motoboys-list">
+          {motoboys.map(m => (
+            <div key={m.nome} className="rastreio-motoboy-item" style={{ borderLeftColor: statusCor(m) }}>
+              <div className="rastreio-motoboy-info">
+                <strong>{m.nome}</strong>
+                <span className="rastreio-motoboy-status-txt" style={{ color: statusCor(m) }}>{statusTexto(m)}</span>
+              </div>
+              <span className="rastreio-motoboy-time">{m.timestamp ? new Date(m.timestamp).toLocaleTimeString('pt-BR') : '—'}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
       {comCoords.length > 0 && (
-        <div className="rastreio-lista" style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 200, overflowY: 'auto' }}>
+        <div className="rastreio-lista">
           {comCoords.map((p, i) => (
-            <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', borderRadius: 8, background: p.status === 'entregue' ? 'rgba(67,160,71,0.1)' : 'rgba(255,143,0,0.1)' }}>
-              <span style={{ width: 24, height: 24, borderRadius: '50%', background: p.status === 'entregue' ? '#43A047' : '#FF8F00', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, flexShrink: 0 }}>{i + 1}</span>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>#{p.id} - {p.cliente?.nome || 'Sem nome'}</div>
-                <div style={{ fontSize: 12, color: '#888' }}>{statusLabel[p.status] || p.status}</div>
+            <div key={p.id} className="rastreio-lista-item" style={{ background: p.status === 'entregue' ? 'rgba(67,160,71,0.08)' : 'rgba(255,143,0,0.08)' }}>
+              <span className="rastreio-lista-num" style={{ background: p.status === 'entregue' ? '#43A047' : '#FF8F00' }}>{i + 1}</span>
+              <div className="rastreio-lista-info">
+                <span className="rastreio-lista-cliente">#{p.id} - {p.cliente?.nome || 'Sem nome'}</span>
+                <span className="rastreio-lista-status">{statusLabel[p.status] || p.status}</span>
               </div>
               {p.status === 'entregue' && <CheckCircle size={18} color="#43A047" style={{ flexShrink: 0 }} />}
             </div>

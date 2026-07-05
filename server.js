@@ -588,33 +588,44 @@ app.post('/motoboy/login', async (req, res) => {
   }
 })
 
-// Rastreio do motoboy (persistido no Supabase)
+// Rastreio dos motoboys (persistido no Supabase)
+function sanitizarChave(nome) {
+  return 'motoboy_pos_' + nome.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase().slice(0, 40)
+}
+
 app.post('/motoboy/position', async (req, res) => {
   const { lat, lng, nome } = req.body
+  const nomeMotoboy = nome || 'Motoboy'
   const dados = {
     online: true, lat: lat != null ? parseFloat(lat) : null, lng: lng != null ? parseFloat(lng) : null,
-    timestamp: new Date().toISOString(), nome: nome || 'Motoboy'
+    timestamp: new Date().toISOString(), nome: nomeMotoboy
   }
   try {
-    await supabase.from('app_config').upsert({ chave: 'motoboy_posicao', valor: dados, updated_at: new Date().toISOString() }, { onConflict: 'chave' })
+    const chave = sanitizarChave(nomeMotoboy)
+    await supabase.from('app_config').upsert({ chave, valor: dados, updated_at: new Date().toISOString() }, { onConflict: 'chave' })
   } catch (_) {}
   res.json({ ok: true })
 })
 
 app.post('/motoboy/offline', async (req, res) => {
-  const dados = { online: false, lat: null, lng: null, timestamp: new Date().toISOString(), nome: req.body?.nome || 'Motoboy' }
+  const nomeMotoboy = req.body?.nome || 'Motoboy'
+  const dados = { online: false, lat: null, lng: null, timestamp: new Date().toISOString(), nome: nomeMotoboy }
   try {
-    await supabase.from('app_config').upsert({ chave: 'motoboy_posicao', valor: dados, updated_at: new Date().toISOString() }, { onConflict: 'chave' })
+    const chave = sanitizarChave(nomeMotoboy)
+    await supabase.from('app_config').upsert({ chave, valor: dados, updated_at: new Date().toISOString() }, { onConflict: 'chave' })
   } catch (_) {}
   res.json({ ok: true })
 })
 
-app.get('/motoboy/position', async (req, res) => {
+app.get('/motoboy/positions', async (req, res) => {
   try {
-    const { data } = await supabase.from('app_config').select('valor').eq('chave', 'motoboy_posicao').maybeSingle()
-    if (data?.valor) return res.json(data.valor)
+    const { data } = await supabase.from('app_config').select('chave, valor').like('chave', 'motoboy_pos_%')
+    if (data) {
+      const motoboys = data.map(r => r.valor).filter(Boolean)
+      return res.json(motoboys)
+    }
   } catch (_) {}
-  res.json({ online: false, lat: null, lng: null, timestamp: null, nome: null })
+  res.json([])
 })
 
 // FCM tokens
