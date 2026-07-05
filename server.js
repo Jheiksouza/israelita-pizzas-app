@@ -503,10 +503,11 @@ app.patch('/orders/:id', async (req, res) => {
     const updates = { ...req.body, updatedAt: new Date().toISOString() }
     // Se um motoboy está pegando um pedido liberado, vincular e mudar status
     if (updates.motoboy_nome && !updates.status) {
-      const { data: current } = await supabase.from('orders').select('status').eq('id', parseInt(req.params.id)).maybeSingle()
-      if (current && current.status === 'liberado') {
-        updates.status = 'em_rota'
-      }
+      const { data: current } = await supabase.from('orders').select('status, motoboy_nome').eq('id', parseInt(req.params.id)).maybeSingle()
+      if (!current) return res.status(404).json({ erro: 'Pedido não encontrado' })
+      if (current.motoboy_nome) return res.status(409).json({ erro: 'Pedido já está sendo atendido por outro entregador' })
+      if (current.status !== 'liberado') return res.status(400).json({ erro: 'Pedido não está mais disponível' })
+      updates.status = 'em_rota'
     }
     const { data, error } = await supabase.from('orders').update(updates).eq('id', parseInt(req.params.id)).select()
     if (error) throw error
@@ -692,7 +693,7 @@ app.get('/motoboy/pedidos', async (req, res) => {
   try {
     const { data, error } = await supabase.from('orders')
       .select('*')
-      .in('status', ['em_rota', 'entregador_proximo', 'entregue'])
+      .in('status', ['em_rota', 'entregador_proximo', 'entregue', 'recusado'])
       .order('id')
     if (error) throw error
     const meus = (data || []).filter(p => p.motoboy_nome === req.user.nome)

@@ -188,6 +188,7 @@ function MotoboyDashboard({ user, token, onLogout }) {
   const [selecionados, setSelecionados] = useState(new Set())
   const [pizzaria, setPizzaria] = useState(null)
   const [pegando, setPegando] = useState(false)
+  const [erroPegar, setErroPegar] = useState('')
   const timerRef = useRef(null)
   const onlineRef = useRef(online)
   const posRef = useRef(pos)
@@ -307,6 +308,15 @@ function MotoboyDashboard({ user, token, onLogout }) {
     }
   }, [tela, carregarMeusPedidos])
 
+  useEffect(() => {
+    if (meusPedidos.length > 0 && rotaPlanejada.length > 0) {
+      setRotaPlanejada(prev => prev.map(p => {
+        const atualizado = meusPedidos.find(m => m.id === p.id)
+        return atualizado || p
+      }))
+    }
+  }, [meusPedidos])
+
   const toggleSelecionado = (id) => {
     setSelecionados(prev => {
       const next = new Set(prev)
@@ -317,21 +327,30 @@ function MotoboyDashboard({ user, token, onLogout }) {
 
   const pegarPedidos = async () => {
     setPegando(true)
+    setErroPegar('')
     const ids = [...selecionados]
+    const pegos = []
     for (const id of ids) {
       try {
-        await fetch(`${API}/orders/${id}`, {
+        const res = await fetch(`${API}/orders/${id}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
           body: JSON.stringify({ motoboy_nome: user?.nome || 'Motoboy' })
         })
+        if (res.status === 409) {
+          setErroPegar(`Pedido #${id} já foi pego por outro entregador`)
+        } else if (res.status === 400) {
+          setErroPegar(`Pedido #${id} não está mais disponível`)
+        } else if (res.ok) {
+          pegos.push(id)
+        }
       } catch {}
     }
     setSelecionados(new Set())
     setPegando(false)
-    const disponiveisAtualizados = pedidosDisponiveis.filter(p => !ids.includes(p.id))
-    const pegos = pedidosDisponiveis.filter(p => ids.includes(p.id))
-    const ordenados = sugerirRota(pegos, pizzaria)
+    if (pegos.length === 0) return
+    const pegosComDados = pedidosDisponiveis.filter(p => pegos.includes(p.id))
+    const ordenados = sugerirRota(pegosComDados, pizzaria)
     setRotaPlanejada(ordenados)
     setIndiceEntrega(0)
     setTela('organizar')
@@ -422,6 +441,14 @@ function MotoboyDashboard({ user, token, onLogout }) {
               {online ? 'Ficar Offline' : 'Ficar Online'}
             </button>
           </div>
+
+          {erroPegar && (
+            <div className="motoboy-alerta" style={{ color: 'var(--destructive)', borderColor: 'color-mix(in oklch, var(--destructive) 25%, transparent)', background: 'color-mix(in oklch, var(--destructive) 8%, transparent)' }}>
+              <X size={16} />
+              <span>{erroPegar}</span>
+              <button className="topbar-btn" onClick={() => setErroPegar('')} style={{ marginLeft: 'auto', flexShrink: 0 }}><X size={14} /></button>
+            </div>
+          )}
 
           {tela === 'disponiveis' && (
             <TelaDisponiveis
@@ -634,9 +661,36 @@ function TelaEntrega({ pedido, indice, total, onFinalizar, badgeClass, statusLab
     }
   }
 
+  const cancelado = pedido.status === 'recusado'
   const lat = getLat(pedido)
   const lng = getLng(pedido)
   const podeIniciarNavegacao = lat && lng
+
+  if (cancelado) {
+    return (
+      <div className="card motoboy-entrega">
+        <div className="motoboy-entrega-header">
+          <div className="motoboy-entrega-progresso">
+            <span className="motoboy-entrega-passo">Entrega {indice + 1} de {total}</span>
+            <div className="motoboy-entrega-bar">
+              <div className="motoboy-entrega-fill" style={{ width: `${((indice + 1) / total) * 100}%` }} />
+            </div>
+          </div>
+          <span className="badge badge-destructive">Cancelado</span>
+        </div>
+        <div className="motoboy-entrega-corpo" style={{ textAlign: 'center', padding: '40px 20px' }}>
+          <X size={48} style={{ color: 'var(--destructive)', marginBottom: 12, opacity: 0.6 }} />
+          <p style={{ fontWeight: 600, fontSize: '1rem', marginBottom: 4 }}>Este pedido foi cancelado pela loja</p>
+          <p style={{ fontSize: '0.85rem', color: 'var(--muted-foreground)' }}>Pedido #{pedido.id} — {pedido.cliente?.nome || 'Cliente'}</p>
+        </div>
+        <div className="motoboy-entrega-actions">
+          <button className="btn btn-primary btn-full" onClick={() => onFinalizar(pedido.id)}>
+            <CheckCircle size={16} /> Entendido
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="card motoboy-entrega">
