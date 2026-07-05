@@ -616,11 +616,13 @@ app.post('/motoboy/position', async (req, res) => {
   // Geofence: verificar se motoboy está a <100m de algum pedido atribuído a ele
   if (lat != null && lng != null) {
     try {
-      const { data: meusPedidos } = await supabase.from('orders')
-        .select('id, entrega_lat, entrega_lng, status, user_id, motoboy_nome')
-        .in('status', ['em_rota'])
-      if (meusPedidos) {
-        const filtrados = meusPedidos.filter(p => p.motoboy_nome === nomeMotoboy)
+      const [ordersRes, configsRes] = await Promise.all([
+        supabase.from('orders').select('id, entrega_lat, entrega_lng, status, user_id').in('status', ['em_rota']),
+        supabase.from('app_config').select('chave, valor').like('chave', `pedido_motoboy_%`)
+      ])
+      if (ordersRes.data && configsRes.data) {
+        const meusIds = configsRes.data.filter(c => c.valor?.motoboy === nomeMotoboy).map(c => c.valor.orderId)
+        const filtrados = ordersRes.data.filter(p => meusIds.includes(p.id))
         for (const pedido of filtrados) {
           const destLat = parseFloat(pedido.entrega_lat)
           const destLng = parseFloat(pedido.entrega_lng)
@@ -665,12 +667,19 @@ app.get('/motoboy/positions', async (req, res) => {
 app.get('/motoboy/pedidos-disponiveis', async (req, res) => {
   if (!checkSupabase(res)) return
   try {
-    const { data, error } = await supabase.from('orders')
-      .select('*')
-      .in('status', ['aceito', 'liberado'])
-      .order('id')
-    if (error) throw error
-    const disponiveis = (data || []).filter(p => !p.motoboy_nome).filter(p => p.status === 'liberado' || p.status === 'aceito')
+    const [ordersRes, configsRes] = await Promise.all([
+      supabase.from('orders').select('*').in('status', ['aceito', 'liberado']).order('id'),
+      supabase.from('app_config').select('chave, valor').like('chave', 'pedido_motoboy_%')
+    ])
+    if (ordersRes.error) throw ordersRes.error
+    const pedidosPegos = new Set()
+    if (configsRes.data) {
+      configsRes.data.forEach(c => {
+        const id = parseInt(c.chave.replace('pedido_motoboy_', ''))
+        if (!isNaN(id)) pedidosPegos.add(id)
+      })
+    }
+    const disponiveis = (ordersRes.data || []).filter(p => !pedidosPegos.has(p.id))
     res.json(disponiveis)
   } catch (err) {
     console.error('Erro pedidos-disponiveis:', err)
@@ -685,19 +694,23 @@ app.post('/motoboy/pegar-pedido', async (req, res) => {
     const { pedidoId, nome } = req.body
     if (pedidoId == null || !nome) return res.status(400).json({ erro: 'pedidoId e nome obrigatórios' })
     const idNum = Number(pedidoId)
-    console.log('Pegar pedido:', { pedidoId, nome, idNum, tipo: typeof pedidoId })
     if (!Number.isFinite(idNum)) return res.status(400).json({ erro: 'ID inválido' })
-    // Busca todos os orders e filtra em memoria (evita problemas com coluna)
+    // Busca todos os orders liberados e filtra em memoria (evita problemas com coluna)
     const { data: todos, error: findErr } = await supabase.from('orders').select('*').in('status', ['liberado'])
-    if (findErr) { console.error('Erro find:', findErr); return res.status(500).json({ erro: 'Erro ao buscar pedido' }) }
-    const current = (todos || []).find(o => o.id === idNum && !o.motoboy_nome)
-    if (!current) return res.status(404).json({ erro: 'Pedido não encontrado ou já foi pego' })
-    const { data, error } = await supabase.from('orders')
-      .update({ motoboy_nome: nome, updatedAt: new Date().toISOString() })
-      .eq('id', idNum)
-      .select()
-    if (error) throw error
-    res.json(data[0])
+    if (findErr) return res.status(500).json({ erro: 'Erro ao buscar pedido' })
+    // Verifica app_config se pedido já foi pego
+    const { data: configs } = await supabase.from('app_config').select('chave, valor').like('chave', `pedido_motoboy_${idNum}`)
+    const jaPego = configs && configs.length > 0 && configs[0].valor
+    if (jaPego) return res.status(409).json({ erro: 'Pedido já está sendo atendido por outro entregador' })
+    const current = (todos || []).find(o => o.id === idNum && o.status === 'liberado')
+    if (!current) return res.status(404).json({ erro: 'Pedido não encontrado ou não está mais disponível' })
+    // Salva atribuição no app_config (já que a coluna motoboy_nome não existe na tabela orders)
+    await supabase.from('app_config').upsert({
+      chave: `pedido_motoboy_${idNum}`,
+      valor: { orderId: idNum, motoboy: nome, timestamp: new Date().toISOString() },
+      updated_at: new Date().toISOString()
+    }, { onConflict: 'chave' })
+    res.json({ ok: true, id: idNum, motoboy: nome })
   } catch (err) {
     console.error('Erro ao pegar pedido:', err)
     res.status(500).json({ erro: 'Erro ao pegar pedido' })
@@ -709,12 +722,14 @@ app.get('/motoboy/pedidos', async (req, res) => {
   if (!req.user) return res.status(401).json({ erro: 'Não autenticado' })
   if (!checkSupabase(res)) return
   try {
-    const { data, error } = await supabase.from('orders')
-      .select('*')
-      .in('status', ['em_rota', 'entregador_proximo', 'entregue', 'recusado'])
-      .order('id')
-    if (error) throw error
-    const meus = (data || []).filter(p => p.motoboy_nome === req.user.nome)
+    const [ordersRes, configsRes] = await Promise.all([
+      supabase.from('orders').select('*').in('status', ['liberado', 'em_rota', 'entregador_proximo', 'entregue', 'recusado']).order('id'),
+      supabase.from('app_config').select('chave, valor').like('chave', 'pedido_motoboy_%')
+    ])
+    if (ordersRes.error) throw ordersRes.error
+    const configs = configsRes.data || []
+    const meusIds = configs.filter(c => c.valor?.motoboy === req.user.nome).map(c => c.valor.orderId)
+    const meus = (ordersRes.data || []).filter(p => meusIds.includes(p.id))
     res.json(meus)
   } catch (err) {
     console.error('Erro pedidos motoboy:', err)
