@@ -5,8 +5,18 @@ const bcrypt = require('bcryptjs')
 const jwt = require('jsonwebtoken')
 const { createClient } = require('@supabase/supabase-js')
 const { OAuth2Client } = require('google-auth-library')
+const admin = require('firebase-admin')
 
 try { require('dotenv').config() } catch (e) { /* dotenv opcional */ }
+
+const { getMessaging } = require('firebase-admin/messaging')
+const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT
+let fbApp
+if (serviceAccountJson) {
+  fbApp = admin.initializeApp({ credential: admin.cert(JSON.parse(serviceAccountJson)) })
+} else {
+  fbApp = admin.initializeApp({ credential: admin.cert(require('./notificacao-da-pizzaria-firebase-adminsdk-fbsvc-854d52358b.json')) })
+}
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || ''
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || ''
@@ -485,7 +495,11 @@ app.patch('/orders/:id', async (req, res) => {
     const { data, error } = await supabase.from('orders').update(updates).eq('id', parseInt(req.params.id)).select()
     if (error) throw error
     if (!data || data.length === 0) return res.status(404).json({ erro: 'Pedido não encontrado' })
-    res.json(data[0])
+    const order = data[0]
+    if (order.status === 'entregador_proximo' && order.user_id) {
+      sendPushNotification(order.user_id, 'Entregador chegou!', `Pedido #${order.id} - O entregador está próximo!`)
+    }
+    res.json(order)
   } catch (err) {
     console.error('Erro ao atualizar pedido:', err)
     res.status(500).json({ erro: 'Erro ao atualizar pedido' })
@@ -583,6 +597,27 @@ app.post('/motoboy/position', (req, res) => {
 app.get('/motoboy/position', (req, res) => {
   res.json(ultimaPosMotoboy || { lat: null, lng: null, timestamp: null, nome: null })
 })
+
+// FCM tokens
+const fcmTokens = {}
+
+app.post('/api/fcm/token', (req, res) => {
+  const { token, userId } = req.body
+  if (!token || !userId) return res.status(400).json({ erro: 'token e userId obrigatórios' })
+  if (!fcmTokens[userId]) fcmTokens[userId] = []
+  if (!fcmTokens[userId].includes(token)) fcmTokens[userId].push(token)
+  res.json({ ok: true })
+})
+
+async function sendPushNotification(userId, title, body) {
+  const tokens = fcmTokens[userId]
+  if (!tokens || tokens.length === 0) return
+  try {
+    await getMessaging(fbApp).sendEachForMulticast({ tokens, data: { title, body } })
+  } catch (err) {
+    console.error('FCM send error:', err)
+  }
+}
 
 // Servir frontend buildado (apenas local; no Vercel quem serve é o próprio Vercel)
 if (!process.env.VERCEL) {

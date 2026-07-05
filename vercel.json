@@ -4,6 +4,8 @@
   "outputDirectory": "client/dist",
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api" },
+    { "source": "/motoboy/firebase-messaging-sw.js", "destination": "/motoboy/firebase-messaging-sw.js" },
+    { "source": "/firebase-messaging-sw.js", "destination": "/firebase-messaging-sw.js" },
     { "source": "/admin(.*)", "destination": "/admin/index.html" },
     { "source": "/motoboy(.*)", "destination": "/motoboy/index.html" },
     { "source": "/(.*)", "destination": "/index.html" }
