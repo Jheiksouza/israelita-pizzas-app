@@ -5,27 +5,27 @@ const bcrypt = require('bcryptjs')
 const jwt = require('jsonwebtoken')
 const { createClient } = require('@supabase/supabase-js')
 const { OAuth2Client } = require('google-auth-library')
-const admin = require('firebase-admin')
-
-try { require('dotenv').config() } catch (e) { /* dotenv opcional */ }
 
 let fbApp = null
+let fbMessaging = null
 try {
+  const admin = require('firebase-admin')
+  fbMessaging = require('firebase-admin/messaging')
   const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT
   if (serviceAccountJson) {
-    const { getMessaging } = require('firebase-admin/messaging')
     fbApp = admin.initializeApp({ credential: admin.cert(JSON.parse(serviceAccountJson)) })
   } else {
     const fs = require('fs')
     const saPath = './notificacao-da-pizzaria-firebase-adminsdk-fbsvc-854d52358b.json'
     if (fs.existsSync(saPath)) {
-      const { getMessaging } = require('firebase-admin/messaging')
       fbApp = admin.initializeApp({ credential: admin.cert(require(saPath)) })
     }
   }
 } catch (e) {
-  console.log('Firebase não configurado, notificações desabilitadas')
+  console.log('Firebase não disponível, notificações desabilitadas:', e.message)
 }
+
+try { require('dotenv').config() } catch (e) { /* dotenv opcional */ }
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || ''
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || ''
@@ -621,16 +621,32 @@ app.post('/fcm/token', (req, res) => {
 })
 
 async function sendPushNotification(userId, title, body) {
-  if (!fbApp) return
+  if (!fbApp || !fbMessaging) return
   const tokens = fcmTokens[userId]
   if (!tokens || tokens.length === 0) return
   try {
-    const { getMessaging } = require('firebase-admin/messaging')
-    await getMessaging(fbApp).sendEachForMulticast({ tokens, data: { title, body } })
+    await fbMessaging.getMessaging(fbApp).sendEachForMulticast({ tokens, data: { title, body } })
   } catch (err) {
     console.error('FCM send error:', err)
   }
 }
+
+// Debug endpoint
+app.get('/api/debug', (req, res) => {
+  res.json({
+    hasSupabase: !!supabase,
+    hasFirebase: !!fbApp,
+    vercel: !!process.env.VERCEL,
+    node: process.version,
+    envKeys: Object.keys(process.env).filter(k => !k.includes('SECRET') && !k.includes('KEY') && !k.includes('TOKEN'))
+  })
+})
+
+// Global error handler
+app.use((err, req, res, next) => {
+  console.error('Erro não tratado:', err?.message || err, err?.stack?.split('\n').slice(0, 3).join('\n'))
+  res.status(500).json({ erro: 'Erro interno do servidor' })
+})
 
 // Servir frontend buildado (apenas local; no Vercel quem serve é o próprio Vercel)
 if (!process.env.VERCEL) {
