@@ -744,6 +744,40 @@ body {
   border-top: 1px solid var(--border);
 }
 
+/* === AGUARDANDO LIBERAÇÃO === */
+.motoboy-aguardando-liberacao {
+  border-top: 1px solid var(--border);
+  margin-top: 4px;
+  padding-top: 4px;
+}
+
+.motoboy-aguardando-liberacao-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--muted-foreground);
+}
+
+.motoboy-aguardando-liberacao-header svg { color: var(--info); }
+
+.motoboy-disponivel-bloqueado {
+  opacity: 0.65;
+  cursor: default;
+  border-left: 3px solid var(--info);
+}
+
+.motoboy-disponivel-bloqueado:hover { background: transparent; }
+
+.motoboy-disponivel-check-placeholder {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  margin-top: 4px;
+}
+
 /* === ENTREGA === */
 .motoboy-entrega {
   border: 1.5px solid var(--border);

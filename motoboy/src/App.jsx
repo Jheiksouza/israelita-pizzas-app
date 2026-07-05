@@ -290,13 +290,13 @@ function MotoboyDashboard({ user, token, onLogout }) {
       })
       const data = await res.json()
       if (Array.isArray(data)) setMeusPedidos(data)
-    } catch {}
+    } catch (e) { console.error('Erro meus pedidos:', e) }
   }, [token])
 
   useEffect(() => {
     if (tela === 'disponiveis') {
       carregarDisponiveis()
-      const id = setInterval(carregarDisponiveis, 15000)
+      const id = setInterval(carregarDisponiveis, 3000)
       return () => clearInterval(id)
     }
   }, [tela, carregarDisponiveis])
@@ -304,7 +304,7 @@ function MotoboyDashboard({ user, token, onLogout }) {
   useEffect(() => {
     if (tela === 'entrega' || tela === 'organizar') {
       carregarMeusPedidos()
-      const id = setInterval(carregarMeusPedidos, 15000)
+      const id = setInterval(carregarMeusPedidos, 3000)
       return () => clearInterval(id)
     }
   }, [tela, carregarMeusPedidos])
@@ -344,8 +344,10 @@ function MotoboyDashboard({ user, token, onLogout }) {
           setErroPegar(`Pedido #${id} não está mais disponível`)
         } else if (res.ok) {
           pegos.push(id)
+        } else {
+          console.error('Erro ao pegar pedido', id, res.status)
         }
-      } catch {}
+      } catch (e) { console.error('Erro fetch pegar pedido', e) }
     }
     setSelecionados(new Set())
     setPegando(false)
@@ -523,6 +525,8 @@ function MotoboyDashboard({ user, token, onLogout }) {
 }
 
 function TelaDisponiveis({ pedidos, selecionados, onToggle, onPegar, pegando, tempoDecorrido, badgeClass, statusLabel }) {
+  const liberados = pedidos.filter(p => p.status === 'liberado')
+  const aguardando = pedidos.filter(p => p.status === 'aceito')
 
   if (!pedidos || pedidos.length === 0) {
     return (
@@ -542,50 +546,84 @@ function TelaDisponiveis({ pedidos, selecionados, onToggle, onPegar, pegando, te
     <div className="card motoboy-disponiveis">
       <div className="motoboy-disponiveis-header">
         <h3>Pedidos para entrega</h3>
-        <span className="badge badge-liberate">{pedidos.length} disponível{pedidos.length !== 1 ? 'is' : ''}</span>
+        <span className="badge badge-liberate">{liberados.length} prontos · {aguardando.length} em preparo</span>
       </div>
       <div className="motoboy-disponiveis-lista">
-        {pedidos.map(p => {
-          const lat = getLat(p)
-          const lng = getLng(p)
-          if (!lat || !lng) return null
-          return (
-            <label key={p.id} className={`motoboy-disponivel-item ${selecionados.has(p.id) ? 'selected' : ''}`}>
-              <input
-                type="checkbox"
-                checked={selecionados.has(p.id)}
-                onChange={() => onToggle(p.id)}
-                className="motoboy-disponivel-check"
-              />
-              <div className="motoboy-disponivel-info">
-                <div className="motoboy-disponivel-top">
-                  <strong>#{p.id}</strong>
-                  <span className={badgeClass[p.status] || 'badge'}>{statusLabel[p.status] || p.status}</span>
+        {liberados.map(p => (
+          <label key={p.id} className={`motoboy-disponivel-item ${selecionados.has(p.id) ? 'selected' : ''}`}>
+            <input
+              type="checkbox"
+              checked={selecionados.has(p.id)}
+              onChange={() => onToggle(p.id)}
+              className="motoboy-disponivel-check"
+            />
+            <div className="motoboy-disponivel-info">
+              <div className="motoboy-disponivel-top">
+                <strong>#{p.id}</strong>
+                <span className={badgeClass[p.status] || 'badge'}>{statusLabel[p.status] || p.status}</span>
+              </div>
+              <div className="motoboy-disponivel-row">
+                <User size={14} />
+                <span>{p.cliente?.nome || 'Sem nome'}{p.cliente?.telefone ? ` · ${p.cliente.telefone}` : ''}</span>
+              </div>
+              <div className="motoboy-disponivel-row">
+                <MapPin size={14} />
+                <span>{p.cliente?.endereco || 'Endereço não informado'}</span>
+              </div>
+              {p.itens?.length > 0 && (
+                <div className="motoboy-disponivel-itens">
+                  {p.itens.slice(0, 3).map(item => (
+                    <span key={item.id} className="motoboy-pedido-item-chip">{item.qtd}x {item.nome}</span>
+                  ))}
+                  {p.itens.length > 3 && <span className="motoboy-pedido-item-chip">+{p.itens.length - 3}</span>}
                 </div>
-                <div className="motoboy-disponivel-row">
-                  <User size={14} />
-                  <span>{p.cliente?.nome || 'Sem nome'}{p.cliente?.telefone ? ` · ${p.cliente.telefone}` : ''}</span>
-                </div>
-                <div className="motoboy-disponivel-row">
-                  <MapPin size={14} />
-                  <span>{p.cliente?.endereco || 'Endereço não informado'}</span>
-                </div>
-                {p.itens?.length > 0 && (
-                  <div className="motoboy-disponivel-itens">
-                    {p.itens.slice(0, 3).map(item => (
-                      <span key={item.id} className="motoboy-pedido-item-chip">{item.qtd}x {item.nome}</span>
-                    ))}
-                    {p.itens.length > 3 && <span className="motoboy-pedido-item-chip">+{p.itens.length - 3}</span>}
+              )}
+              <div className="motoboy-disponivel-footer">
+                <span className="motoboy-disponivel-tempo">Aguardando há {tempoDecorrido(p.data)}</span>
+                <strong>R$ {p.total?.toFixed(2)}</strong>
+              </div>
+            </div>
+          </label>
+        ))}
+        {aguardando.length > 0 && (
+          <div className="motoboy-aguardando-liberacao">
+            <div className="motoboy-aguardando-liberacao-header">
+              <Clock size={14} />
+              <span>Em preparo — logo serão liberados</span>
+            </div>
+            {aguardando.map(p => (
+              <div key={p.id} className="motoboy-disponivel-item motoboy-disponivel-bloqueado">
+                <div className="motoboy-disponivel-check-placeholder" />
+                <div className="motoboy-disponivel-info">
+                  <div className="motoboy-disponivel-top">
+                    <strong>#{p.id}</strong>
+                    <span className="badge badge-info">Aguardando liberação</span>
                   </div>
-                )}
-                <div className="motoboy-disponivel-footer">
-                  <span className="motoboy-disponivel-tempo">Aguardando há {tempoDecorrido(p.data)}</span>
-                  <strong>R$ {p.total?.toFixed(2)}</strong>
+                  <div className="motoboy-disponivel-row">
+                    <User size={14} />
+                    <span>{p.cliente?.nome || 'Sem nome'}{p.cliente?.telefone ? ` · ${p.cliente.telefone}` : ''}</span>
+                  </div>
+                  <div className="motoboy-disponivel-row">
+                    <MapPin size={14} />
+                    <span>{p.cliente?.endereco || 'Endereço não informado'}</span>
+                  </div>
+                  {p.itens?.length > 0 && (
+                    <div className="motoboy-disponivel-itens">
+                      {p.itens.slice(0, 3).map(item => (
+                        <span key={item.id} className="motoboy-pedido-item-chip">{item.qtd}x {item.nome}</span>
+                      ))}
+                      {p.itens.length > 3 && <span className="motoboy-pedido-item-chip">+{p.itens.length - 3}</span>}
+                    </div>
+                  )}
+                  <div className="motoboy-disponivel-footer">
+                    <span className="motoboy-disponivel-tempo">Aguardando há {tempoDecorrido(p.data)}</span>
+                    <strong>R$ {p.total?.toFixed(2)}</strong>
+                  </div>
                 </div>
               </div>
-            </label>
-          )
-        })}
+            ))}
+          </div>
+        )}
       </div>
       {selecionados.size > 0 && (
         <div className="motoboy-disponiveis-actions">

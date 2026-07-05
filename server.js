@@ -675,7 +675,7 @@ app.get('/motoboy/pedidos-disponiveis', async (req, res) => {
   try {
     const { data, error } = await supabase.from('orders')
       .select('*')
-      .in('status', ['liberado'])
+      .in('status', ['aceito', 'liberado'])
       .order('id')
     if (error) throw error
     const disponiveis = (data || []).filter(p => !p.motoboy_nome)
