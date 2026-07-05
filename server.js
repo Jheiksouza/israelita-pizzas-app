@@ -624,11 +624,11 @@ app.post('/motoboy/position', async (req, res) => {
   if (lat != null && lng != null) {
     try {
       const { data: meusPedidos } = await supabase.from('orders')
-        .select('id, entrega_lat, entrega_lng, status, user_id')
-        .eq('motoboy_nome', nomeMotoboy)
+        .select('id, entrega_lat, entrega_lng, status, user_id, motoboy_nome')
         .in('status', ['em_rota'])
       if (meusPedidos) {
-        for (const pedido of meusPedidos) {
+        const filtrados = meusPedidos.filter(p => p.motoboy_nome === nomeMotoboy)
+        for (const pedido of filtrados) {
           const destLat = parseFloat(pedido.entrega_lat)
           const destLng = parseFloat(pedido.entrega_lng)
           if (isNaN(destLat) || isNaN(destLng)) continue
@@ -675,11 +675,12 @@ app.get('/motoboy/pedidos-disponiveis', async (req, res) => {
     const { data, error } = await supabase.from('orders')
       .select('*')
       .in('status', ['liberado'])
-      .is('motoboy_nome', null)
       .order('id')
     if (error) throw error
-    res.json(data || [])
+    const disponiveis = (data || []).filter(p => !p.motoboy_nome)
+    res.json(disponiveis)
   } catch (err) {
+    console.error('Erro pedidos-disponiveis:', err)
     res.status(500).json({ erro: 'Erro ao buscar pedidos' })
   }
 })
@@ -691,12 +692,13 @@ app.get('/motoboy/pedidos', async (req, res) => {
   try {
     const { data, error } = await supabase.from('orders')
       .select('*')
-      .eq('motoboy_nome', req.user.nome)
       .in('status', ['em_rota', 'entregador_proximo', 'entregue'])
       .order('id')
     if (error) throw error
-    res.json(data || [])
+    const meus = (data || []).filter(p => p.motoboy_nome === req.user.nome)
+    res.json(meus)
   } catch (err) {
+    console.error('Erro pedidos motoboy:', err)
     res.status(500).json({ erro: 'Erro ao buscar pedidos' })
   }
 })
