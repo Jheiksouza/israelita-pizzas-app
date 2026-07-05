@@ -512,6 +512,380 @@ body {
   to { transform: scale(1.05); box-shadow: 0 0 0 8px color-mix(in oklch, var(--success) 0%, transparent); }
 }
 
+/* === DISPONÍVEIS === */
+.motoboy-disponiveis {
+  border: 1.5px solid var(--border);
+  animation: fadeUp 0.35s ease;
+}
+
+.motoboy-disponiveis-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.motoboy-disponiveis-header h3 {
+  font-size: 1rem;
+  font-weight: 700;
+  font-family: var(--font-heading);
+}
+
+.motoboy-disponiveis-lista {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.motoboy-disponivel-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 20px;
+  cursor: pointer;
+  transition: var(--transition);
+  border-bottom: 1px solid var(--border);
+}
+
+.motoboy-disponivel-item:last-child { border-bottom: none; }
+
+.motoboy-disponivel-item:hover {
+  background: color-mix(in oklch, var(--muted) 30%, transparent);
+}
+
+.motoboy-disponivel-item.selected {
+  background: color-mix(in oklch, var(--success) 6%, transparent);
+  border-left: 3px solid var(--success);
+}
+
+.motoboy-disponivel-check {
+  margin-top: 4px;
+  width: 18px;
+  height: 18px;
+  accent-color: var(--success);
+  flex-shrink: 0;
+}
+
+.motoboy-disponivel-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.motoboy-disponivel-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.motoboy-disponivel-top strong {
+  font-size: 0.9rem;
+  font-family: var(--font-heading);
+}
+
+.motoboy-disponivel-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.82rem;
+  color: var(--foreground);
+}
+
+.motoboy-disponivel-row svg {
+  color: var(--muted-foreground);
+  flex-shrink: 0;
+}
+
+.motoboy-disponivel-itens {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.motoboy-disponivel-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.8rem;
+}
+
+.motoboy-disponivel-tempo {
+  color: var(--muted-foreground);
+}
+
+.motoboy-disponiveis-actions {
+  padding: 12px 20px;
+  border-top: 1px solid var(--border);
+}
+
+/* === ORGANIZAR === */
+.motoboy-organizar {
+  border: 1.5px solid var(--border);
+  animation: fadeUp 0.35s ease;
+}
+
+.motoboy-organizar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.motoboy-organizar-header h3 {
+  font-size: 1rem;
+  font-weight: 700;
+  font-family: var(--font-heading);
+}
+
+.motoboy-organizar-desc {
+  font-size: 0.82rem;
+  color: var(--muted-foreground);
+  padding: 12px 20px 0;
+}
+
+.motoboy-organizar-lista {
+  padding: 8px 0;
+}
+
+.motoboy-organizar-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 20px;
+  transition: var(--transition);
+}
+
+.motoboy-organizar-item:hover {
+  background: color-mix(in oklch, var(--muted) 30%, transparent);
+}
+
+.motoboy-organizar-ordem {
+  flex-shrink: 0;
+}
+
+.motoboy-organizar-num {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--amber);
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.motoboy-organizar-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.motoboy-organizar-info strong {
+  font-size: 0.85rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.motoboy-organizar-end {
+  font-size: 0.78rem;
+  color: var(--muted-foreground);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.motoboy-organizar-meta {
+  display: flex;
+  gap: 12px;
+  font-size: 0.75rem;
+  color: var(--muted-foreground);
+}
+
+.motoboy-organizar-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.motoboy-organizar-btn {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--muted-foreground);
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.motoboy-organizar-btn:hover:not(:disabled) {
+  background: var(--muted);
+  color: var(--foreground);
+}
+
+.motoboy-organizar-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.motoboy-organizar-footer {
+  padding: 12px 20px;
+  border-top: 1px solid var(--border);
+}
+
+/* === ENTREGA === */
+.motoboy-entrega {
+  border: 1.5px solid var(--border);
+  animation: fadeUp 0.35s ease;
+}
+
+.motoboy-entrega-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.motoboy-entrega-progresso {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+  margin-right: 12px;
+}
+
+.motoboy-entrega-passo {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--muted-foreground);
+}
+
+.motoboy-entrega-bar {
+  height: 5px;
+  border-radius: 9999px;
+  background: var(--muted);
+  overflow: hidden;
+}
+
+.motoboy-entrega-fill {
+  height: 100%;
+  border-radius: 9999px;
+  background: var(--amber);
+  transition: width 0.4s ease;
+}
+
+.motoboy-entrega-corpo {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.motoboy-entrega-destino {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px;
+  background: color-mix(in oklch, var(--info) 8%, transparent);
+  border-radius: var(--radius);
+  border: 1px solid color-mix(in oklch, var(--info) 20%, transparent);
+}
+
+.motoboy-entrega-destino svg { color: var(--info); flex-shrink: 0; }
+
+.motoboy-entrega-destino div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.motoboy-entrega-destino strong {
+  font-size: 1rem;
+  font-family: var(--font-heading);
+}
+
+.motoboy-entrega-tel {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.85rem;
+  color: var(--info);
+  text-decoration: none;
+}
+
+.motoboy-entrega-endereco {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
+.motoboy-entrega-endereco svg {
+  color: var(--muted-foreground);
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.motoboy-entrega-itens h4 {
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: var(--muted-foreground);
+}
+
+.motoboy-entrega-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  font-size: 0.85rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.motoboy-entrega-item:last-child { border-bottom: none; }
+
+.motoboy-entrega-qtd {
+  font-weight: 600;
+  color: var(--muted-foreground);
+  min-width: 24px;
+}
+
+.motoboy-entrega-nome { flex: 1; }
+
+.motoboy-entrega-preco {
+  color: var(--muted-foreground);
+  font-size: 0.8rem;
+}
+
+.motoboy-entrega-total {
+  text-align: right;
+  font-size: 1rem;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+
+.motoboy-entrega-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0 20px 20px;
+}
+
+.motoboy-entrega-actions .btn { width: 100%; justify-content: center; }
+
 /* === RESPONSIVE === */
 /* === GOOGLE BTN === */
 .google-btn {

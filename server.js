@@ -501,6 +501,13 @@ app.patch('/orders/:id', async (req, res) => {
   if (!checkSupabase(res)) return
   try {
     const updates = { ...req.body, updatedAt: new Date().toISOString() }
+    // Se um motoboy está pegando um pedido liberado, vincular e mudar status
+    if (updates.motoboy_nome && !updates.status) {
+      const { data: current } = await supabase.from('orders').select('status').eq('id', parseInt(req.params.id)).maybeSingle()
+      if (current && current.status === 'liberado') {
+        updates.status = 'em_rota'
+      }
+    }
     const { data, error } = await supabase.from('orders').update(updates).eq('id', parseInt(req.params.id)).select()
     if (error) throw error
     if (!data || data.length === 0) return res.status(404).json({ erro: 'Pedido não encontrado' })
@@ -593,6 +600,14 @@ function sanitizarChave(nome) {
   return 'motoboy_pos_' + nome.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase().slice(0, 40)
 }
 
+function haversine(lat1, lng1, lat2, lng2) {
+  const R = 6371000
+  const dLat = (lat2 - lat1) * Math.PI / 180
+  const dLng = (lng2 - lng1) * Math.PI / 180
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+}
+
 app.post('/motoboy/position', async (req, res) => {
   const { lat, lng, nome } = req.body
   const nomeMotoboy = nome || 'Motoboy'
@@ -604,6 +619,31 @@ app.post('/motoboy/position', async (req, res) => {
     const chave = sanitizarChave(nomeMotoboy)
     await supabase.from('app_config').upsert({ chave, valor: dados, updated_at: new Date().toISOString() }, { onConflict: 'chave' })
   } catch (_) {}
+
+  // Geofence: verificar se motoboy está a <100m de algum pedido atribuído a ele
+  if (lat != null && lng != null) {
+    try {
+      const { data: meusPedidos } = await supabase.from('orders')
+        .select('id, entrega_lat, entrega_lng, status, user_id')
+        .eq('motoboy_nome', nomeMotoboy)
+        .in('status', ['em_rota'])
+      if (meusPedidos) {
+        for (const pedido of meusPedidos) {
+          const destLat = parseFloat(pedido.entrega_lat)
+          const destLng = parseFloat(pedido.entrega_lng)
+          if (isNaN(destLat) || isNaN(destLng)) continue
+          const dist = haversine(parseFloat(lat), parseFloat(lng), destLat, destLng)
+          if (dist < 100) {
+            await supabase.from('orders').update({ status: 'entregador_proximo', updatedAt: new Date().toISOString() }).eq('id', pedido.id)
+            if (pedido.user_id) {
+              sendPushNotification(pedido.user_id, 'Entregador chegou!', `Pedido #${pedido.id} - O entregador está próximo!`)
+            }
+          }
+        }
+      }
+    } catch (_) {}
+  }
+
   res.json({ ok: true })
 })
 
@@ -626,6 +666,39 @@ app.get('/motoboy/positions', async (req, res) => {
     }
   } catch (_) {}
   res.json([])
+})
+
+// Pedidos disponíveis para o motoboy pegar (liberado sem dono)
+app.get('/motoboy/pedidos-disponiveis', async (req, res) => {
+  if (!checkSupabase(res)) return
+  try {
+    const { data, error } = await supabase.from('orders')
+      .select('*')
+      .in('status', ['liberado'])
+      .is('motoboy_nome', null)
+      .order('id')
+    if (error) throw error
+    res.json(data || [])
+  } catch (err) {
+    res.status(500).json({ erro: 'Erro ao buscar pedidos' })
+  }
+})
+
+// Pedidos do motoboy autenticado
+app.get('/motoboy/pedidos', async (req, res) => {
+  if (!req.user) return res.status(401).json({ erro: 'Não autenticado' })
+  if (!checkSupabase(res)) return
+  try {
+    const { data, error } = await supabase.from('orders')
+      .select('*')
+      .eq('motoboy_nome', req.user.nome)
+      .in('status', ['em_rota', 'entregador_proximo', 'entregue'])
+      .order('id')
+    if (error) throw error
+    res.json(data || [])
+  } catch (err) {
+    res.status(500).json({ erro: 'Erro ao buscar pedidos' })
+  }
 })
 
 // FCM tokens

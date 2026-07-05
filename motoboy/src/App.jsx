@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet'
 import L from 'leaflet'
-import { Bike, MapPin, Clock, CheckCircle, X, Navigation, Phone, Pizza, LogOut, User } from 'lucide-react'
+import { Bike, MapPin, Clock, CheckCircle, X, Navigation, Phone, Pizza, LogOut, User, ArrowUp, ArrowDown, ShoppingBag, Package } from 'lucide-react'
 import { registerFCMToken } from './firebase'
 
 const API = '/api'
@@ -131,6 +131,46 @@ function MotoboyLogin({ onLogin }) {
   )
 }
 
+function haversineKm(lat1, lng1, lat2, lng2) {
+  const R = 6371
+  const dLat = (lat2 - lat1) * Math.PI / 180
+  const dLng = (lng2 - lng1) * Math.PI / 180
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+}
+
+function sugerirRota(pedidos, origem) {
+  if (!pedidos.length) return pedidos
+  const restantes = [...pedidos]
+  const rota = []
+  let atual = origem ? { lat: origem.lat, lng: origem.lng } : null
+  while (restantes.length > 0) {
+    let menorDist = Infinity
+    let idx = 0
+    restantes.forEach((p, i) => {
+      const plat = parseFloat(p.entrega_lat) || parseFloat(p.cliente?.lat) || parseFloat(p.cliente?.endereco_lat) || 0
+      const plng = parseFloat(p.entrega_lng) || parseFloat(p.cliente?.lng) || parseFloat(p.cliente?.endereco_lng) || 0
+      if (atual) {
+        const dist = haversineKm(atual.lat, atual.lng, plat, plng)
+        if (dist < menorDist) { menorDist = dist; idx = i }
+      }
+    })
+    rota.push(restantes[idx])
+    const plat = parseFloat(restantes[idx].entrega_lat) || parseFloat(restantes[idx].cliente?.lat) || parseFloat(restantes[idx].cliente?.endereco_lat) || 0
+    const plng = parseFloat(restantes[idx].entrega_lng) || parseFloat(restantes[idx].cliente?.lng) || parseFloat(restantes[idx].cliente?.endereco_lng) || 0
+    atual = { lat: plat, lng: plng }
+    restantes.splice(idx, 1)
+  }
+  return rota
+}
+
+function getLat(p) {
+  return parseFloat(p.entrega_lat) || parseFloat(p.cliente?.lat) || parseFloat(p.cliente?.endereco_lat) || null
+}
+function getLng(p) {
+  return parseFloat(p.entrega_lng) || parseFloat(p.cliente?.lng) || parseFloat(p.cliente?.endereco_lng) || null
+}
+
 function MotoboyDashboard({ user, token, onLogout }) {
   const [online, setOnline] = useState(() => {
     const saved = localStorage.getItem('motoboyOnline')
@@ -138,10 +178,16 @@ function MotoboyDashboard({ user, token, onLogout }) {
   })
   const [pos, setPos] = useState(null)
   const [watchId, setWatchId] = useState(null)
-  const [pedidos, setPedidos] = useState([])
-  const [pedidoAtivo, setPedidoAtivo] = useState(null)
   const [timer, setTimer] = useState(0)
   const [permissaoGps, setPermissaoGps] = useState(true)
+  const [tela, setTela] = useState('disponiveis')
+  const [pedidosDisponiveis, setPedidosDisponiveis] = useState([])
+  const [meusPedidos, setMeusPedidos] = useState([])
+  const [rotaPlanejada, setRotaPlanejada] = useState([])
+  const [indiceEntrega, setIndiceEntrega] = useState(0)
+  const [selecionados, setSelecionados] = useState(new Set())
+  const [pizzaria, setPizzaria] = useState(null)
+  const [pegando, setPegando] = useState(false)
   const timerRef = useRef(null)
   const onlineRef = useRef(online)
   const posRef = useRef(pos)
@@ -220,33 +266,105 @@ function MotoboyDashboard({ user, token, onLogout }) {
     return () => clearInterval(id)
   }, [online, pos])
 
-  const carregarPedidos = useCallback(async () => {
+  useEffect(() => {
+    fetch(`${API}/admin/config/pizzaria`)
+      .then(r => r.json())
+      .then(data => { if (data.lat && data.lng) setPizzaria(data) })
+      .catch(() => {})
+  }, [])
+
+  const carregarDisponiveis = useCallback(async () => {
     try {
-      const res = await fetch(`${API}/orders`)
+      const res = await fetch(`${API}/motoboy/pedidos-disponiveis`)
       const data = await res.json()
-      if (Array.isArray(data)) setPedidos(data)
+      if (Array.isArray(data)) setPedidosDisponiveis(data)
     } catch {}
   }, [])
 
-  useEffect(() => { carregarPedidos(); const id = setInterval(carregarPedidos, 15000); return () => clearInterval(id) }, [carregarPedidos])
+  const carregarMeusPedidos = useCallback(async () => {
+    try {
+      const res = await fetch(`${API}/motoboy/pedidos`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      const data = await res.json()
+      if (Array.isArray(data)) setMeusPedidos(data)
+    } catch {}
+  }, [token])
 
   useEffect(() => {
-    const hoje = new Date().toLocaleDateString('pt-BR')
-    const pedidosHoje = pedidos.filter(p => {
-      if (!p.data) return false
-      const dataPedido = new Date(p.data).toLocaleDateString('pt-BR')
-      return dataPedido === hoje
-    })
-    const ativo = pedidosHoje.find(p => ['aceito', 'liberado', 'em_rota', 'entregador_proximo'].includes(p.status))
-    setPedidoAtivo(ativo || null)
-  }, [pedidos])
+    if (tela === 'disponiveis') {
+      carregarDisponiveis()
+      const id = setInterval(carregarDisponiveis, 15000)
+      return () => clearInterval(id)
+    }
+  }, [tela, carregarDisponiveis])
 
-  const atualizarStatus = async (id, status) => {
-    await fetch(`${API}/orders/${id}`, {
-      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status })
+  useEffect(() => {
+    if (tela === 'entrega' || tela === 'organizar') {
+      carregarMeusPedidos()
+      const id = setInterval(carregarMeusPedidos, 15000)
+      return () => clearInterval(id)
+    }
+  }, [tela, carregarMeusPedidos])
+
+  const toggleSelecionado = (id) => {
+    setSelecionados(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id); else next.add(id)
+      return next
     })
-    carregarPedidos()
+  }
+
+  const pegarPedidos = async () => {
+    setPegando(true)
+    const ids = [...selecionados]
+    for (const id of ids) {
+      try {
+        await fetch(`${API}/orders/${id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ motoboy_nome: user?.nome || 'Motoboy' })
+        })
+      } catch {}
+    }
+    setSelecionados(new Set())
+    setPegando(false)
+    const disponiveisAtualizados = pedidosDisponiveis.filter(p => !ids.includes(p.id))
+    const pegos = pedidosDisponiveis.filter(p => ids.includes(p.id))
+    const ordenados = sugerirRota(pegos, pizzaria)
+    setRotaPlanejada(ordenados)
+    setIndiceEntrega(0)
+    setTela('organizar')
+  }
+
+  const iniciarRota = () => {
+    setIndiceEntrega(0)
+    setTela('entrega')
+  }
+
+  const finalizarEntrega = async (id) => {
+    await fetch(`${API}/orders/${id}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ status: 'entregue' })
+    })
+    const novoIndice = indiceEntrega + 1
+    if (novoIndice >= rotaPlanejada.length) {
+      setRotaPlanejada([])
+      setIndiceEntrega(0)
+      setTela('disponiveis')
+    } else {
+      setIndiceEntrega(novoIndice)
+    }
+  }
+
+  const moverItem = (idx, dir) => {
+    const nova = [...rotaPlanejada]
+    const target = idx + dir
+    if (target < 0 || target >= nova.length) return
+    const temp = nova[target]
+    nova[target] = nova[idx]
+    nova[idx] = temp
+    setRotaPlanejada(nova)
   }
 
   const formatTimer = (s) => {
@@ -254,6 +372,14 @@ function MotoboyDashboard({ user, token, onLogout }) {
     const m = Math.floor((s % 3600) / 60)
     const sec = s % 60
     return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`
+  }
+
+  const tempoDecorrido = (data) => {
+    if (!data) return ''
+    const diff = Date.now() - new Date(data).getTime()
+    const min = Math.floor(diff / 60000)
+    if (min < 1) return '<1 min'
+    return `${min} min`
   }
 
   const statusLabel = { pendente: 'Pendente', aceito: 'Em preparo', liberado: 'Saiu p/ entrega', em_rota: 'Em rota', entregador_proximo: 'Chegando!', entregue: 'Entregue', recusado: 'Recusado' }
@@ -297,64 +423,37 @@ function MotoboyDashboard({ user, token, onLogout }) {
             </button>
           </div>
 
-          {pedidoAtivo ? (
-            <div className="card motoboy-pedido-ativo">
-              <div className="motoboy-pedido-header">
-                <strong>Pedido #{pedidoAtivo.id}</strong>
-                <span className={badgeClass[pedidoAtivo.status] || 'badge'}>{statusLabel[pedidoAtivo.status] || pedidoAtivo.status}</span>
-              </div>
-              <div className="motoboy-pedido-info">
-                <div className="motoboy-pedido-row">
-                  <User size={16} />
-                  <span>{pedidoAtivo.cliente?.nome}{pedidoAtivo.cliente?.telefone ? ` · ${pedidoAtivo.cliente.telefone}` : ''}</span>
-                </div>
-                <div className="motoboy-pedido-row">
-                  <MapPin size={16} />
-                  <span>{pedidoAtivo.cliente?.endereco || 'Endereço não informado'}</span>
-                </div>
-                {pedidoAtivo.itens?.length > 0 && (
-                  <div className="motoboy-pedido-row">
-                    <Pizza size={16} />
-                    <div className="motoboy-pedido-itens">
-                      {pedidoAtivo.itens.map(item => (
-                        <span key={item.id} className="motoboy-pedido-item-chip">{item.qtd}x {item.nome}</span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                <p className="motoboy-pedido-total"><strong>Total: R$ {pedidoAtivo.total?.toFixed(2)}</strong></p>
-              </div>
-              <div className="motoboy-pedido-actions">
-                {(pedidoAtivo.status === 'liberado' || pedidoAtivo.status === 'em_rota') && (
-                  <>
-                    <button className="btn btn-approve btn-sm" onClick={() => atualizarStatus(pedidoAtivo.id, 'entregador_proximo')}>
-                      <Navigation size={16} /> Estou Chegando
-                    </button>
-                    <button className="btn btn-primary btn-sm" onClick={() => atualizarStatus(pedidoAtivo.id, 'entregue')}>
-                      <CheckCircle size={16} /> Entregue
-                    </button>
-                  </>
-                )}
-                {pedidoAtivo.status === 'entregador_proximo' && (
-                  <button className="btn btn-approve btn-sm" onClick={() => atualizarStatus(pedidoAtivo.id, 'entregue')}>
-                    <CheckCircle size={16} /> Confirmar Entrega
-                  </button>
-                )}
-                {pedidoAtivo.status === 'aceito' && (
-                  <span className="motoboy-pedido-aguardando-label">Aguardando liberação</span>
-                )}
-              </div>
-            </div>
-          ) : (
-            <div className="card motoboy-aguardando">
-              <div className="empty-state">
-                <Bike size={40} />
-                <p>Nenhum pedido no momento</p>
-                <p style={{ fontSize: '0.85rem', color: 'var(--muted-foreground)', marginTop: 4 }}>
-                  {online ? 'Aguardando novas entregas...' : 'Fique online para receber pedidos'}
-                </p>
-              </div>
-            </div>
+          {tela === 'disponiveis' && (
+            <TelaDisponiveis
+              pedidos={pedidosDisponiveis}
+              selecionados={selecionados}
+              onToggle={toggleSelecionado}
+              onPegar={pegarPedidos}
+              pegando={pegando}
+              tempoDecorrido={tempoDecorrido}
+              badgeClass={badgeClass}
+              statusLabel={statusLabel}
+            />
+          )}
+
+          {tela === 'organizar' && (
+            <TelaOrganizar
+              pedidos={rotaPlanejada}
+              onMover={moverItem}
+              onIniciar={iniciarRota}
+            />
+          )}
+
+          {tela === 'entrega' && rotaPlanejada[indiceEntrega] && (
+            <TelaEntrega
+              pedido={rotaPlanejada[indiceEntrega]}
+              indice={indiceEntrega}
+              total={rotaPlanejada.length}
+              onFinalizar={finalizarEntrega}
+              badgeClass={badgeClass}
+              statusLabel={statusLabel}
+              pos={pos}
+            />
           )}
 
           {pos && online && (
@@ -390,6 +489,210 @@ function MotoboyDashboard({ user, token, onLogout }) {
             </div>
           )}
         </div>
+      </div>
+    </div>
+  )
+}
+
+function TelaDisponiveis({ pedidos, selecionados, onToggle, onPegar, pegando, tempoDecorrido, badgeClass, statusLabel }) {
+  const disponiveis = pedidos.filter(p => {
+    const lat = getLat(p)
+    const lng = getLng(p)
+    return lat && lng
+  })
+
+  if (disponiveis.length === 0) {
+    return (
+      <div className="card motoboy-aguardando">
+        <div className="empty-state">
+          <Package size={40} />
+          <p>Nenhum pedido disponível</p>
+          <p style={{ fontSize: '0.85rem', color: 'var(--muted-foreground)', marginTop: 4 }}>
+            Aguardando pedidos liberados para entrega...
+          </p>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="card motoboy-disponiveis">
+      <div className="motoboy-disponiveis-header">
+        <h3>Pedidos para entrega</h3>
+        <span className="badge badge-liberate">{disponiveis.length} disponível{disponiveis.length !== 1 ? 'is' : ''}</span>
+      </div>
+      <div className="motoboy-disponiveis-lista">
+        {disponiveis.map(p => {
+          const lat = getLat(p)
+          const lng = getLng(p)
+          if (!lat || !lng) return null
+          return (
+            <label key={p.id} className={`motoboy-disponivel-item ${selecionados.has(p.id) ? 'selected' : ''}`}>
+              <input
+                type="checkbox"
+                checked={selecionados.has(p.id)}
+                onChange={() => onToggle(p.id)}
+                className="motoboy-disponivel-check"
+              />
+              <div className="motoboy-disponivel-info">
+                <div className="motoboy-disponivel-top">
+                  <strong>#{p.id}</strong>
+                  <span className={badgeClass[p.status] || 'badge'}>{statusLabel[p.status] || p.status}</span>
+                </div>
+                <div className="motoboy-disponivel-row">
+                  <User size={14} />
+                  <span>{p.cliente?.nome || 'Sem nome'}{p.cliente?.telefone ? ` · ${p.cliente.telefone}` : ''}</span>
+                </div>
+                <div className="motoboy-disponivel-row">
+                  <MapPin size={14} />
+                  <span>{p.cliente?.endereco || 'Endereço não informado'}</span>
+                </div>
+                {p.itens?.length > 0 && (
+                  <div className="motoboy-disponivel-itens">
+                    {p.itens.slice(0, 3).map(item => (
+                      <span key={item.id} className="motoboy-pedido-item-chip">{item.qtd}x {item.nome}</span>
+                    ))}
+                    {p.itens.length > 3 && <span className="motoboy-pedido-item-chip">+{p.itens.length - 3}</span>}
+                  </div>
+                )}
+                <div className="motoboy-disponivel-footer">
+                  <span className="motoboy-disponivel-tempo">Aguardando há {tempoDecorrido(p.data)}</span>
+                  <strong>R$ {p.total?.toFixed(2)}</strong>
+                </div>
+              </div>
+            </label>
+          )
+        })}
+      </div>
+      {selecionados.size > 0 && (
+        <div className="motoboy-disponiveis-actions">
+          <button className="btn btn-approve btn-full" onClick={onPegar} disabled={pegando}>
+            <ShoppingBag size={16} />
+            {pegando ? 'Pegando...' : `Pegar ${selecionados.size} Pedido${selecionados.size !== 1 ? 's' : ''}`}
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function TelaOrganizar({ pedidos, onMover, onIniciar }) {
+  if (pedidos.length === 0) return null
+
+  return (
+    <div className="card motoboy-organizar">
+      <div className="motoboy-organizar-header">
+        <h3>Organizar Rota</h3>
+        <span className="badge badge-amber">{pedidos.length} parada{pedidos.length !== 1 ? 's' : ''}</span>
+      </div>
+      <p className="motoboy-organizar-desc">
+        Rota sugerida por proximidade. Ajuste a ordem conforme necessário.
+      </p>
+      <div className="motoboy-organizar-lista">
+        {pedidos.map((p, i) => (
+          <div key={p.id} className="motoboy-organizar-item">
+            <div className="motoboy-organizar-ordem">
+              <span className="motoboy-organizar-num">{i + 1}</span>
+            </div>
+            <div className="motoboy-organizar-info">
+              <strong>#{p.id} - {p.cliente?.nome || 'Sem nome'}</strong>
+              <span className="motoboy-organizar-end">{p.cliente?.endereco || 'Endereço não informado'}</span>
+              <div className="motoboy-organizar-meta">
+                <span>R$ {p.total?.toFixed(2)}</span>
+                <span>{p.itens?.length || 0} item(ns)</span>
+              </div>
+            </div>
+            <div className="motoboy-organizar-actions">
+              <button className="motoboy-organizar-btn" onClick={() => onMover(i, -1)} disabled={i === 0} title="Subir">
+                <ArrowUp size={16} />
+              </button>
+              <button className="motoboy-organizar-btn" onClick={() => onMover(i, 1)} disabled={i === pedidos.length - 1} title="Descer">
+                <ArrowDown size={16} />
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="motoboy-organizar-footer">
+        <button className="btn btn-approve btn-full" onClick={onIniciar}>
+          <Navigation size={16} /> Iniciar Rota
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function TelaEntrega({ pedido, indice, total, onFinalizar, badgeClass, statusLabel, pos }) {
+  const abrirNavegacao = () => {
+    const lat = getLat(pedido)
+    const lng = getLng(pedido)
+    if (lat && lng) {
+      window.open(`https://www.google.com/maps/dir/${pos?.lat || ''},${pos?.lng || ''}/${lat},${lng}`, '_blank')
+    } else {
+      const endereco = encodeURIComponent(pedido.cliente?.endereco || '')
+      window.open(`https://www.google.com/maps/search/${endereco}`, '_blank')
+    }
+  }
+
+  const lat = getLat(pedido)
+  const lng = getLng(pedido)
+  const podeIniciarNavegacao = lat && lng
+
+  return (
+    <div className="card motoboy-entrega">
+      <div className="motoboy-entrega-header">
+        <div className="motoboy-entrega-progresso">
+          <span className="motoboy-entrega-passo">Entrega {indice + 1} de {total}</span>
+          <div className="motoboy-entrega-bar">
+            <div className="motoboy-entrega-fill" style={{ width: `${((indice + 1) / total) * 100}%` }} />
+          </div>
+        </div>
+        <span className={badgeClass[pedido.status] || 'badge'}>{statusLabel[pedido.status] || pedido.status}</span>
+      </div>
+
+      <div className="motoboy-entrega-corpo">
+        <div className="motoboy-entrega-destino">
+          <MapPin size={20} />
+          <div>
+            <strong>{pedido.cliente?.nome || 'Cliente'}</strong>
+            {pedido.cliente?.telefone && (
+              <a href={`tel:${pedido.cliente.telefone}`} className="motoboy-entrega-tel">
+                <Phone size={14} /> {pedido.cliente.telefone}
+              </a>
+            )}
+          </div>
+        </div>
+
+        <div className="motoboy-entrega-endereco">
+          <MapPin size={16} />
+          <span>{pedido.cliente?.endereco || 'Endereço não informado'}</span>
+        </div>
+
+        {pedido.itens?.length > 0 && (
+          <div className="motoboy-entrega-itens">
+            <h4>Itens do Pedido #{pedido.id}</h4>
+            {pedido.itens.map(item => (
+              <div key={item.id} className="motoboy-entrega-item">
+                <span className="motoboy-entrega-qtd">{item.qtd}x</span>
+                <span className="motoboy-entrega-nome">{item.nome}</span>
+                {item.preco && <span className="motoboy-entrega-preco">R$ {(item.qtd * item.preco).toFixed(2)}</span>}
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className="motoboy-entrega-total">
+          <strong>Total: R$ {pedido.total?.toFixed(2)}</strong>
+        </div>
+      </div>
+
+      <div className="motoboy-entrega-actions">
+        <button className="btn btn-primary btn-full" onClick={abrirNavegacao} disabled={!podeIniciarNavegacao}>
+          <Navigation size={16} /> Iniciar Navegação
+        </button>
+        <button className="btn btn-approve btn-full" onClick={() => onFinalizar(pedido.id)}>
+          <CheckCircle size={16} /> Confirmar Entrega
+        </button>
       </div>
     </div>
   )
