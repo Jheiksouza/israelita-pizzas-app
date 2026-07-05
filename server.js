@@ -9,13 +9,22 @@ const admin = require('firebase-admin')
 
 try { require('dotenv').config() } catch (e) { /* dotenv opcional */ }
 
-const { getMessaging } = require('firebase-admin/messaging')
-const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT
-let fbApp
-if (serviceAccountJson) {
-  fbApp = admin.initializeApp({ credential: admin.cert(JSON.parse(serviceAccountJson)) })
-} else {
-  fbApp = admin.initializeApp({ credential: admin.cert(require('./notificacao-da-pizzaria-firebase-adminsdk-fbsvc-854d52358b.json')) })
+let fbApp = null
+try {
+  const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT
+  if (serviceAccountJson) {
+    const { getMessaging } = require('firebase-admin/messaging')
+    fbApp = admin.initializeApp({ credential: admin.cert(JSON.parse(serviceAccountJson)) })
+  } else {
+    const fs = require('fs')
+    const saPath = './notificacao-da-pizzaria-firebase-adminsdk-fbsvc-854d52358b.json'
+    if (fs.existsSync(saPath)) {
+      const { getMessaging } = require('firebase-admin/messaging')
+      fbApp = admin.initializeApp({ credential: admin.cert(require(saPath)) })
+    }
+  }
+} catch (e) {
+  console.log('Firebase não configurado, notificações desabilitadas')
 }
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || ''
@@ -611,9 +620,11 @@ app.post('/fcm/token', (req, res) => {
 })
 
 async function sendPushNotification(userId, title, body) {
+  if (!fbApp) return
   const tokens = fcmTokens[userId]
   if (!tokens || tokens.length === 0) return
   try {
+    const { getMessaging } = require('firebase-admin/messaging')
     await getMessaging(fbApp).sendEachForMulticast({ tokens, data: { title, body } })
   } catch (err) {
     console.error('FCM send error:', err)
