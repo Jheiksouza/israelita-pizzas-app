@@ -311,6 +311,40 @@ function MotoboyDashboard({ user, token, onLogout }) {
     } catch {}
   }
 
+  /* Acorda AudioContext no primeiro clique */
+  const audioCtxUnlockRef = useRef(null)
+  useEffect(() => {
+    const acordar = () => {
+      if (!audioCtxUnlockRef.current) {
+        audioCtxUnlockRef.current = new (window.AudioContext || window.webkitAudioContext)()
+        audioCtxUnlockRef.current.resume().catch(() => {})
+      }
+    }
+    document.addEventListener('click', acordar, { once: true })
+    document.addEventListener('touchstart', acordar, { once: true })
+    return () => {
+      document.removeEventListener('click', acordar)
+      document.removeEventListener('touchstart', acordar)
+    }
+  }, [])
+
+  /* Som global de novos liberados (qualquer tela) */
+  const notifLiberadosRef = useRef(0)
+  useEffect(() => {
+    let mounted = true
+    const buscar = () => {
+      fetch(`${API}/motoboy/pedidos-disponiveis`).then(r => r.json()).then(data => {
+        if (!mounted || !Array.isArray(data)) return
+        const lib = data.filter(p => p.status === 'liberado').length
+        if (lib > notifLiberadosRef.current && notifLiberadosRef.current > 0) tocarSom(2)
+        notifLiberadosRef.current = lib
+      }).catch(() => {})
+    }
+    buscar()
+    const id = setInterval(buscar, 5000)
+    return () => { mounted = false; clearInterval(id) }
+  }, [])
+
   const carregarDisponiveis = useCallback(async () => {
     try {
       const res = await fetch(`${API}/motoboy/pedidos-disponiveis`)
