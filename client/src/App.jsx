@@ -782,7 +782,7 @@ function MeusPedidos({ token, onVoltar, qtdCarrinho, onCartOpen, onPagina }) {
                   const ctx = new (window.AudioContext || window.webkitAudioContext)()
                   if (ctx.state === 'suspended') ctx.resume()
                   const t = ctx.currentTime
-                  for (let i = 0; i < 2; i++) {
+                  for (let i = 0; i < 4; i++) {
                     const o = ctx.createOscillator()
                     const g = ctx.createGain()
                     o.type = 'sine'; o.frequency.value = 880
@@ -806,25 +806,17 @@ function MeusPedidos({ token, onVoltar, qtdCarrinho, onCartOpen, onPagina }) {
   const tocarSomLiberado = () => {
     try {
       const ctx = new (window.AudioContext || window.webkitAudioContext)()
-      let toques = 0
-      const tocar = () => {
-        if (toques >= 4 || !ctx || ctx.state === 'closed') return
-        if (ctx.state === 'suspended') ctx.resume()
-        const t = ctx.currentTime
-        for (let i = 0; i < 3; i++) {
-          const osc = ctx.createOscillator()
-          const gain = ctx.createGain()
-          osc.type = 'sine'
-          osc.frequency.value = 660 + i * 110
-          gain.gain.setValueAtTime(0.2, t + i * 0.1)
-          gain.gain.exponentialRampToValueAtTime(0.01, t + i * 0.1 + 0.3)
-          osc.connect(gain); gain.connect(ctx.destination)
-          osc.start(t + i * 0.1); osc.stop(t + i * 0.1 + 0.3)
-        }
-        toques++
-        if (toques < 4) setTimeout(tocar, 1200)
-      }
-      tocar()
+      if (ctx.state === 'suspended') ctx.resume()
+      const t = ctx.currentTime
+      const osc = ctx.createOscillator()
+      const gain = ctx.createGain()
+      osc.type = 'sine'
+      osc.frequency.value = 660
+      gain.gain.setValueAtTime(0.2, t)
+      gain.gain.exponentialRampToValueAtTime(0.01, t + 0.4)
+      osc.connect(gain); gain.connect(ctx.destination)
+      osc.start(t); osc.stop(t + 0.4)
+      setTimeout(() => ctx.close().catch(() => {}), 500)
     } catch (_) {}
   }
 
