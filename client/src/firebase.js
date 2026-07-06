@@ -16,7 +16,7 @@ const VAPID_KEY = 'BG6gnw_oAKJhwkj4BaKuGHSrre-740AGp6lslN5P95pVJbMsQEU6-h4vxk08K
 const app = initializeApp(firebaseConfig)
 const messaging = getMessaging(app)
 
-export async function registerFCMToken(userId) {
+export async function registerFCMToken(userId, role) {
   try {
     if (!('Notification' in window)) return null
     const permission = await Notification.requestPermission()
@@ -28,7 +28,7 @@ export async function registerFCMToken(userId) {
     await fetch('/api/fcm/token', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ token, userId, platform: 'web' })
+      body: JSON.stringify({ token, userId, platform: 'web', role })
     })
 
     return token

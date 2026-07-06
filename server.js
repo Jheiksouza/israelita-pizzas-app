@@ -508,6 +508,9 @@ app.patch('/orders/:id', async (req, res) => {
     if (order.status === 'entregador_proximo' && order.user_id) {
       sendPushNotification(order.user_id, 'Entregador chegou!', `Pedido #${order.id} - O entregador está próximo!`)
     }
+    if (order.status === 'liberado') {
+      sendPushToMotoboys('Novo pedido!', `Pedido #${order.id} saiu para entrega!`)
+    }
     res.json(order)
   } catch (err) {
     console.error('Erro ao atualizar pedido:', err)
@@ -739,12 +742,14 @@ app.get('/motoboy/pedidos', async (req, res) => {
 
 // FCM tokens
 const fcmTokens = {}
+const fcmMotoboyTokens = []
 
 app.post('/fcm/token', (req, res) => {
-  const { token, userId } = req.body
+  const { token, userId, role } = req.body
   if (!token || !userId) return res.status(400).json({ erro: 'token e userId obrigatórios' })
   if (!fcmTokens[userId]) fcmTokens[userId] = []
   if (!fcmTokens[userId].includes(token)) fcmTokens[userId].push(token)
+  if (role === 'motoboy' && !fcmMotoboyTokens.includes(token)) fcmMotoboyTokens.push(token)
   res.json({ ok: true })
 })
 
@@ -756,6 +761,15 @@ async function sendPushNotification(userId, title, body) {
     await fbMessaging.getMessaging(fbApp).sendEachForMulticast({ tokens, data: { title, body } })
   } catch (err) {
     console.error('FCM send error:', err)
+  }
+}
+
+async function sendPushToMotoboys(title, body) {
+  if (!fbApp || !fbMessaging || fcmMotoboyTokens.length === 0) return
+  try {
+    await fbMessaging.getMessaging(fbApp).sendEachForMulticast({ tokens: fcmMotoboyTokens, data: { title, body } })
+  } catch (err) {
+    console.error('FCM send to motoboys error:', err)
   }
 }
 

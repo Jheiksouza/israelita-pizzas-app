@@ -28,7 +28,7 @@ export async function registerFCMToken(userId) {
     await fetch('/api/fcm/token', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ token, userId, platform: 'web' })
+      body: JSON.stringify({ token, userId, platform: 'web', role: 'motoboy' })
     })
 
     return token

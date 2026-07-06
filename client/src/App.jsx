@@ -71,7 +71,25 @@ function App() {
     localStorage.setItem('appPagina', pagina)
   }, [pagina])
   const carrinhoSyncTimer = useRef(null)
+  const sharedAudioRef = useRef(null)
   window.__authSetters = window.__authSetters || {}
+
+  /* Acorda AudioContext no primeiro clique (iOS precisa) */
+  useEffect(() => {
+    const acordar = () => {
+      if (!sharedAudioRef.current) {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)()
+        ctx.resume().catch(() => {})
+        sharedAudioRef.current = ctx
+      }
+    }
+    document.addEventListener('click', acordar, { once: true })
+    document.addEventListener('touchstart', acordar, { once: true })
+    return () => {
+      document.removeEventListener('click', acordar)
+      document.removeEventListener('touchstart', acordar)
+    }
+  }, [])
 
   useEffect(() => {
     if (!bannerApp.key) return
@@ -111,7 +129,7 @@ function App() {
   }, [carrinho, user?.id])
 
   useEffect(() => {
-    if (user?.id) registerFCMToken(user.id)
+    if (user?.id) registerFCMToken(user.id, user?.role)
   }, [user?.id])
 
   useEffect(() => {
@@ -139,7 +157,8 @@ function App() {
 
   const tocarNotificacao = () => {
     try {
-      const ctx = new (window.AudioContext || window.webkitAudioContext)()
+      const ctx = sharedAudioRef.current || new (window.AudioContext || window.webkitAudioContext)()
+      if (ctx.state === 'suspended') { ctx.resume().catch(() => {}); return }
       const osc = ctx.createOscillator()
       const gain = ctx.createGain()
       osc.type = 'sine'
@@ -779,8 +798,8 @@ function MeusPedidos({ token, onVoltar, qtdCarrinho, onCartOpen, onPagina }) {
                   }
                 } catch (_) {}
                 try {
-                  const ctx = new (window.AudioContext || window.webkitAudioContext)()
-                  if (ctx.state === 'suspended') ctx.resume()
+                  const ctx = sharedAudioRef.current || new (window.AudioContext || window.webkitAudioContext)()
+                  if (ctx.state === 'suspended') { ctx.resume().catch(() => {}); return }
                   const t = ctx.currentTime
                   for (let i = 0; i < 4; i++) {
                     const o = ctx.createOscillator()
@@ -805,8 +824,8 @@ function MeusPedidos({ token, onVoltar, qtdCarrinho, onCartOpen, onPagina }) {
 
   const tocarSomLiberado = () => {
     try {
-      const ctx = new (window.AudioContext || window.webkitAudioContext)()
-      if (ctx.state === 'suspended') ctx.resume()
+      const ctx = sharedAudioRef.current || new (window.AudioContext || window.webkitAudioContext)()
+      if (ctx.state === 'suspended') { ctx.resume().catch(() => {}); return }
       const t = ctx.currentTime
       const osc = ctx.createOscillator()
       const gain = ctx.createGain()
@@ -816,7 +835,6 @@ function MeusPedidos({ token, onVoltar, qtdCarrinho, onCartOpen, onPagina }) {
       gain.gain.exponentialRampToValueAtTime(0.01, t + 0.4)
       osc.connect(gain); gain.connect(ctx.destination)
       osc.start(t); osc.stop(t + 0.4)
-      setTimeout(() => ctx.close().catch(() => {}), 500)
     } catch (_) {}
   }
 

@@ -89,11 +89,27 @@ function App() {
   const audioCtxRef = useRef(null)
   const loopTimerRef = useRef(null)
 
+  /* Acorda e mantém um AudioContext compartilhado no primeiro clique/toque */
+  useEffect(() => {
+    const acordar = () => {
+      if (!audioCtxRef.current) {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)()
+        ctx.resume().catch(() => {})
+        audioCtxRef.current = ctx
+      }
+    }
+    document.addEventListener('click', acordar, { once: true })
+    document.addEventListener('touchstart', acordar, { once: true })
+    return () => {
+      document.removeEventListener('click', acordar)
+      document.removeEventListener('touchstart', acordar)
+    }
+  }, [])
+
   function tocarLoopPendente() {
-    pararLoopPendente()
-    const ctx = new (window.AudioContext || window.webkitAudioContext)()
-    if (ctx.state === 'suspended') ctx.resume()
-    audioCtxRef.current = ctx
+    const ctx = audioCtxRef.current
+    if (!ctx) return
+    if (ctx.state === 'suspended') { ctx.resume().catch(() => {}); return }
     const tocar = () => {
       if (ctx.state === 'closed') return
       const t = ctx.currentTime
@@ -114,22 +130,7 @@ function App() {
 
   function pararLoopPendente() {
     if (loopTimerRef.current) { clearTimeout(loopTimerRef.current); loopTimerRef.current = null }
-    if (audioCtxRef.current) { audioCtxRef.current.close().catch(() => {}); audioCtxRef.current = null }
   }
-
-  /* Acorda AudioContext no primeiro clique/toque do usuário */
-  useEffect(() => {
-    const acordar = () => {
-      const ctx = new (window.AudioContext || window.webkitAudioContext)()
-      ctx.resume().catch(() => {})
-    }
-    document.addEventListener('click', acordar, { once: true })
-    document.addEventListener('touchstart', acordar, { once: true })
-    return () => {
-      document.removeEventListener('click', acordar)
-      document.removeEventListener('touchstart', acordar)
-    }
-  }, [])
 
   useEffect(() => {
     let mounted = true
