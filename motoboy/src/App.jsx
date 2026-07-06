@@ -291,36 +291,21 @@ function MotoboyDashboard({ user, token, onLogout }) {
       .catch(() => {})
   }, [])
 
-  const audioCtxUnlockRef = useRef(null)
-  useEffect(() => {
-    const acordar = () => {
-      if (!audioCtxUnlockRef.current) {
-        audioCtxUnlockRef.current = new (window.AudioContext || window.webkitAudioContext)()
-        audioCtxUnlockRef.current.resume().catch(() => {})
-      }
+  /* Cria/reusa AudioContext e tenta destravar */
+  function getAudioCtx() {
+    const ref = audioCtxUnlockRef
+    if (!ref.current) {
+      ref.current = new (window.AudioContext || window.webkitAudioContext)()
     }
-    document.addEventListener('click', acordar, { once: true })
-    document.addEventListener('touchstart', acordar, { once: true })
-    return () => {
-      document.removeEventListener('click', acordar)
-      document.removeEventListener('touchstart', acordar)
+    if (ref.current.state === 'suspended') {
+      ref.current.resume().catch(() => {})
     }
-  }, [])
+    return ref.current
+  }
 
   function tocarSom(vezes) {
     try {
-      const ctx = audioCtxUnlockRef.current || new (window.AudioContext || window.webkitAudioContext)()
-      if (!audioCtxUnlockRef.current) audioCtxUnlockRef.current = ctx
-      if (ctx.state === 'suspended') {
-        ctx.resume().then(() => tocarBeeps(ctx, vezes)).catch(() => {})
-        return
-      }
-      tocarBeeps(ctx, vezes)
-    } catch {}
-  }
-
-  function tocarBeeps(ctx, vezes) {
-    try {
+      const ctx = audioCtxUnlockRef.current || getAudioCtx()
       for (let i = 0; i < vezes; i++) {
         const osc = ctx.createOscillator()
         const gain = ctx.createGain()

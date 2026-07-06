@@ -88,39 +88,24 @@ function App() {
   /* --- som global de pedidos pendentes (qualquer tela) --- */
   const audioCtxRef = useRef(null)
   const loopTimerRef = useRef(null)
+  const loopAtivoRef = useRef(false)
 
-  /* Acorda e mantém um AudioContext compartilhado no primeiro clique/toque */
-  useEffect(() => {
-    const acordar = () => {
-      if (!audioCtxRef.current) {
-        const ctx = new (window.AudioContext || window.webkitAudioContext)()
-        ctx.resume().catch(() => {})
-        audioCtxRef.current = ctx
-      }
+  /* Cria AudioContext e tenta destravar (pode precisar de clique do usuário) */
+  function getAudioCtx() {
+    if (!audioCtxRef.current) {
+      audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)()
     }
-    document.addEventListener('click', acordar, { once: true })
-    document.addEventListener('touchstart', acordar, { once: true })
-    return () => {
-      document.removeEventListener('click', acordar)
-      document.removeEventListener('touchstart', acordar)
+    if (audioCtxRef.current.state === 'suspended') {
+      audioCtxRef.current.resume().catch(() => {})
     }
-  }, [])
-
-  function tocarLoopPendente() {
-    const ctx = audioCtxRef.current || new (window.AudioContext || window.webkitAudioContext)()
-    if (!audioCtxRef.current) audioCtxRef.current = ctx
-    if (ctx.state === 'suspended') {
-      ctx.resume().then(() => {
-        agendarLoop(ctx)
-      }).catch(() => {})
-      return
-    }
-    agendarLoop(ctx)
+    return audioCtxRef.current
   }
 
-  function agendarLoop(ctx) {
+  function tocarLoopPendente() {
+    loopAtivoRef.current = true
+    const ctx = getAudioCtx()
     const tocar = () => {
-      if (ctx.state === 'closed') return
+      if (!loopAtivoRef.current || ctx.state === 'closed') return
       const t = ctx.currentTime
       for (let i = 0; i < 3; i++) {
         const osc = ctx.createOscillator()
@@ -132,12 +117,13 @@ function App() {
         osc.connect(gain); gain.connect(ctx.destination)
         osc.start(t + i * 0.12); osc.stop(t + i * 0.12 + 0.25)
       }
-      if (ctx.state !== 'closed') loopTimerRef.current = setTimeout(tocar, 3000)
+      if (loopAtivoRef.current) loopTimerRef.current = setTimeout(tocar, 3000)
     }
     tocar()
   }
 
   function pararLoopPendente() {
+    loopAtivoRef.current = false
     if (loopTimerRef.current) { clearTimeout(loopTimerRef.current); loopTimerRef.current = null }
   }
 
@@ -147,8 +133,8 @@ function App() {
       fetch(`${API}/orders`).then(r => r.json()).then(data => {
         if (!mounted || !Array.isArray(data)) return
         const temPendente = data.some(p => p.status === 'pendente')
-        if (temPendente && !audioCtxRef.current) tocarLoopPendente()
-        if (!temPendente && audioCtxRef.current) pararLoopPendente()
+        if (temPendente && !loopAtivoRef.current) tocarLoopPendente()
+        if (!temPendente && loopAtivoRef.current) pararLoopPendente()
       }).catch(() => {})
     }
     buscar()

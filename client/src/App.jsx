@@ -74,23 +74,6 @@ function App() {
   const sharedAudioRef = useRef(null)
   window.__authSetters = window.__authSetters || {}
 
-  /* Acorda AudioContext no primeiro clique (iOS precisa) */
-  useEffect(() => {
-    const acordar = () => {
-      if (!sharedAudioRef.current) {
-        const ctx = new (window.AudioContext || window.webkitAudioContext)()
-        ctx.resume().catch(() => {})
-        sharedAudioRef.current = ctx
-      }
-    }
-    document.addEventListener('click', acordar, { once: true })
-    document.addEventListener('touchstart', acordar, { once: true })
-    return () => {
-      document.removeEventListener('click', acordar)
-      document.removeEventListener('touchstart', acordar)
-    }
-  }, [])
-
   useEffect(() => {
     if (!bannerApp.key) return
     const t = setTimeout(() => setBannerApp({ texto: '', key: 0 }), 3000)
@@ -829,15 +812,19 @@ function MeusPedidos({ token, onVoltar, qtdCarrinho, onCartOpen, onPagina }) {
     } catch {}
   }
 
+  function getAudioCtx() {
+    if (!sharedAudioRef.current) {
+      sharedAudioRef.current = new (window.AudioContext || window.webkitAudioContext)()
+    }
+    if (sharedAudioRef.current.state === 'suspended') {
+      sharedAudioRef.current.resume().catch(() => {})
+    }
+    return sharedAudioRef.current
+  }
+
   function tocarComCtx(fn) {
     try {
-      const ctx = sharedAudioRef.current || new (window.AudioContext || window.webkitAudioContext)()
-      if (!sharedAudioRef.current) sharedAudioRef.current = ctx
-      if (ctx.state === 'suspended') {
-        ctx.resume().then(() => fn(ctx)).catch(() => {})
-        return
-      }
-      fn(ctx)
+      fn(getAudioCtx())
     } catch {}
   }
 
