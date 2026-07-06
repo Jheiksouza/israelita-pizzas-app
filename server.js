@@ -740,21 +740,49 @@ app.get('/motoboy/pedidos', async (req, res) => {
   }
 })
 
-// FCM tokens
-const fcmTokens = {}
-const fcmMotoboyTokens = []
+// FCM tokens (persistidos no Supabase para funcionar em serverless)
+let fcmTokens = {}
+let fcmMotoboyTokens = []
 
-app.post('/fcm/token', (req, res) => {
+async function carregarFcmTokens() {
+  if (!supabase) return
+  try {
+    const { data } = await supabase.from('app_config').select('valor').eq('chave', 'fcm_tokens').maybeSingle()
+    if (data?.valor) {
+      fcmTokens = data.valor.userTokens || {}
+      fcmMotoboyTokens = data.valor.motoboyTokens || []
+    }
+  } catch {}
+}
+
+async function salvarFcmTokens() {
+  if (!supabase) return
+  try {
+    await supabase.from('app_config').upsert(
+      { chave: 'fcm_tokens', valor: { userTokens: fcmTokens, motoboyTokens: fcmMotoboyTokens } },
+      { onConflict: 'chave' }
+    )
+  } catch {}
+}
+
+// Carrega tokens no primeiro request
+let tokensCarregados = false
+
+app.post('/fcm/token', async (req, res) => {
+  if (!checkSupabase(res)) return
+  if (!tokensCarregados) { await carregarFcmTokens(); tokensCarregados = true }
   const { token, userId, role } = req.body
   if (!token || !userId) return res.status(400).json({ erro: 'token e userId obrigatórios' })
   if (!fcmTokens[userId]) fcmTokens[userId] = []
   if (!fcmTokens[userId].includes(token)) fcmTokens[userId].push(token)
   if (role === 'motoboy' && !fcmMotoboyTokens.includes(token)) fcmMotoboyTokens.push(token)
+  salvarFcmTokens() // não espera, fire-and-forget
   res.json({ ok: true })
 })
 
 async function sendPushNotification(userId, title, body) {
   if (!fbApp || !fbMessaging) return
+  if (!tokensCarregados) await carregarFcmTokens()
   const tokens = fcmTokens[userId]
   if (!tokens || tokens.length === 0) return
   try {
@@ -765,7 +793,9 @@ async function sendPushNotification(userId, title, body) {
 }
 
 async function sendPushToMotoboys(title, body) {
-  if (!fbApp || !fbMessaging || fcmMotoboyTokens.length === 0) return
+  if (!fbApp || !fbMessaging) return
+  if (!tokensCarregados) await carregarFcmTokens()
+  if (fcmMotoboyTokens.length === 0) return
   try {
     await fbMessaging.getMessaging(fbApp).sendEachForMulticast({ tokens: fcmMotoboyTokens, data: { title, body } })
   } catch (err) {

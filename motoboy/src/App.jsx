@@ -291,24 +291,6 @@ function MotoboyDashboard({ user, token, onLogout }) {
       .catch(() => {})
   }, [])
 
-  function tocarSom(vezes) {
-    try {
-      const ctx = audioCtxUnlockRef.current || new (window.AudioContext || window.webkitAudioContext)()
-      if (ctx.state === 'suspended') { ctx.resume().catch(() => {}); return }
-      for (let i = 0; i < vezes; i++) {
-        const osc = ctx.createOscillator()
-        const gain = ctx.createGain()
-        osc.type = 'sine'
-        osc.frequency.value = 660 + i * 110
-        gain.gain.setValueAtTime(0.2, ctx.currentTime + i * 0.3)
-        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + i * 0.3 + 0.2)
-        osc.connect(gain); gain.connect(ctx.destination)
-        osc.start(ctx.currentTime + i * 0.3); osc.stop(ctx.currentTime + i * 0.3 + 0.2)
-      }
-    } catch {}
-  }
-
-  /* Acorda AudioContext no primeiro clique */
   const audioCtxUnlockRef = useRef(null)
   useEffect(() => {
     const acordar = () => {
@@ -324,6 +306,33 @@ function MotoboyDashboard({ user, token, onLogout }) {
       document.removeEventListener('touchstart', acordar)
     }
   }, [])
+
+  function tocarSom(vezes) {
+    try {
+      const ctx = audioCtxUnlockRef.current || new (window.AudioContext || window.webkitAudioContext)()
+      if (!audioCtxUnlockRef.current) audioCtxUnlockRef.current = ctx
+      if (ctx.state === 'suspended') {
+        ctx.resume().then(() => tocarBeeps(ctx, vezes)).catch(() => {})
+        return
+      }
+      tocarBeeps(ctx, vezes)
+    } catch {}
+  }
+
+  function tocarBeeps(ctx, vezes) {
+    try {
+      for (let i = 0; i < vezes; i++) {
+        const osc = ctx.createOscillator()
+        const gain = ctx.createGain()
+        osc.type = 'sine'
+        osc.frequency.value = 660 + i * 110
+        gain.gain.setValueAtTime(0.2, ctx.currentTime + i * 0.3)
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + i * 0.3 + 0.2)
+        osc.connect(gain); gain.connect(ctx.destination)
+        osc.start(ctx.currentTime + i * 0.3); osc.stop(ctx.currentTime + i * 0.3 + 0.2)
+      }
+    } catch {}
+  }
 
   /* Som global de novos liberados (qualquer tela) */
   const notifLiberadosRef = useRef(0)

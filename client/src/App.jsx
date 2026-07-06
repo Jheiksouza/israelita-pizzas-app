@@ -155,22 +155,18 @@ function App() {
     return () => window.removeEventListener('message', handler)
   }, [])
 
-  const tocarNotificacao = () => {
-    try {
-      const ctx = sharedAudioRef.current || new (window.AudioContext || window.webkitAudioContext)()
-      if (ctx.state === 'suspended') { ctx.resume().catch(() => {}); return }
-      const osc = ctx.createOscillator()
-      const gain = ctx.createGain()
-      osc.type = 'sine'
-      osc.connect(gain); gain.connect(ctx.destination)
-      const t = ctx.currentTime
-      osc.frequency.setValueAtTime(660, t)
-      osc.frequency.setValueAtTime(880, t + 0.12)
-      gain.gain.setValueAtTime(0.2, t)
-      gain.gain.exponentialRampToValueAtTime(0.01, t + 0.4)
-      osc.start(t); osc.stop(t + 0.4)
-    } catch (_) {}
-  }
+  const tocarNotificacao = () => tocarComCtx(ctx => {
+    const osc = ctx.createOscillator()
+    const gain = ctx.createGain()
+    osc.type = 'sine'
+    osc.connect(gain); gain.connect(ctx.destination)
+    const t = ctx.currentTime
+    osc.frequency.setValueAtTime(660, t)
+    osc.frequency.setValueAtTime(880, t + 0.12)
+    gain.gain.setValueAtTime(0.2, t)
+    gain.gain.exponentialRampToValueAtTime(0.01, t + 0.4)
+    osc.start(t); osc.stop(t + 0.4)
+  })
 
   const adicionarAoCarrinho = (item) => {
     setCarrinho(prev => {
@@ -797,9 +793,7 @@ function MeusPedidos({ token, onVoltar, qtdCarrinho, onCartOpen, onPagina }) {
                     })
                   }
                 } catch (_) {}
-                try {
-                  const ctx = sharedAudioRef.current || new (window.AudioContext || window.webkitAudioContext)()
-                  if (ctx.state === 'suspended') { ctx.resume().catch(() => {}); return }
+                tocarComCtx(ctx => {
                   const t = ctx.currentTime
                   for (let i = 0; i < 4; i++) {
                     const o = ctx.createOscillator()
@@ -810,7 +804,7 @@ function MeusPedidos({ token, onVoltar, qtdCarrinho, onCartOpen, onPagina }) {
                     o.connect(g); g.connect(ctx.destination)
                     o.start(t + i * 0.3); o.stop(t + i * 0.3 + 0.2)
                   }
-                } catch (_) {}
+                })
               }
             }
             prevStatusRef.current[p.id] = p.status
@@ -822,21 +816,32 @@ function MeusPedidos({ token, onVoltar, qtdCarrinho, onCartOpen, onPagina }) {
     return () => clearInterval(id)
   }, [token])
 
-  const tocarSomLiberado = () => {
+  function tocarBeep(ctx, freq, duracao, volume) {
     try {
-      const ctx = sharedAudioRef.current || new (window.AudioContext || window.webkitAudioContext)()
-      if (ctx.state === 'suspended') { ctx.resume().catch(() => {}); return }
-      const t = ctx.currentTime
       const osc = ctx.createOscillator()
       const gain = ctx.createGain()
       osc.type = 'sine'
-      osc.frequency.value = 660
-      gain.gain.setValueAtTime(0.2, t)
-      gain.gain.exponentialRampToValueAtTime(0.01, t + 0.4)
+      osc.frequency.value = freq
+      gain.gain.setValueAtTime(volume || 0.2, ctx.currentTime)
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + duracao)
       osc.connect(gain); gain.connect(ctx.destination)
-      osc.start(t); osc.stop(t + 0.4)
-    } catch (_) {}
+      osc.start(ctx.currentTime); osc.stop(ctx.currentTime + duracao)
+    } catch {}
   }
+
+  function tocarComCtx(fn) {
+    try {
+      const ctx = sharedAudioRef.current || new (window.AudioContext || window.webkitAudioContext)()
+      if (!sharedAudioRef.current) sharedAudioRef.current = ctx
+      if (ctx.state === 'suspended') {
+        ctx.resume().then(() => fn(ctx)).catch(() => {})
+        return
+      }
+      fn(ctx)
+    } catch {}
+  }
+
+  const tocarSomLiberado = () => tocarComCtx(ctx => tocarBeep(ctx, 660, 0.4, 0.2))
 
   const buscarPorId = async () => {
     if (!buscaId) return

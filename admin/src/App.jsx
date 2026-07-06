@@ -107,9 +107,18 @@ function App() {
   }, [])
 
   function tocarLoopPendente() {
-    const ctx = audioCtxRef.current
-    if (!ctx) return
-    if (ctx.state === 'suspended') { ctx.resume().catch(() => {}); return }
+    const ctx = audioCtxRef.current || new (window.AudioContext || window.webkitAudioContext)()
+    if (!audioCtxRef.current) audioCtxRef.current = ctx
+    if (ctx.state === 'suspended') {
+      ctx.resume().then(() => {
+        agendarLoop(ctx)
+      }).catch(() => {})
+      return
+    }
+    agendarLoop(ctx)
+  }
+
+  function agendarLoop(ctx) {
     const tocar = () => {
       if (ctx.state === 'closed') return
       const t = ctx.currentTime
