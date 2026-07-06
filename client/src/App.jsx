@@ -808,7 +808,7 @@ function MeusPedidos({ token, onVoltar, qtdCarrinho, onCartOpen, onPagina }) {
       const ctx = new (window.AudioContext || window.webkitAudioContext)()
       let toques = 0
       const tocar = () => {
-        if (toques >= 5 || !ctx || ctx.state === 'closed') return
+        if (toques >= 4 || !ctx || ctx.state === 'closed') return
         if (ctx.state === 'suspended') ctx.resume()
         const t = ctx.currentTime
         for (let i = 0; i < 3; i++) {
@@ -822,7 +822,7 @@ function MeusPedidos({ token, onVoltar, qtdCarrinho, onCartOpen, onPagina }) {
           osc.start(t + i * 0.1); osc.stop(t + i * 0.1 + 0.3)
         }
         toques++
-        if (toques < 5) setTimeout(tocar, 1200)
+        if (toques < 4) setTimeout(tocar, 1200)
       }
       tocar()
     } catch (_) {}

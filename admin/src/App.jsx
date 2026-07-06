@@ -397,13 +397,46 @@ function AdminOrders() {
   const [pedidos, setPedidos] = useState([])
   const [filtro, setFiltro] = useState('todos')
   const [, setTick] = useState(0)
+  const audioCtxRef = useRef(null)
+  const loopTimerRef = useRef(null)
 
   const carregar = () => fetch(`${API}/orders`).then(r => r.json()).then(data => setPedidos(data))
   useEffect(() => { carregar(); const id = setInterval(carregar, 10000); return () => clearInterval(id) }, [])
 
+  function tocarLoopPendente() {
+    pararLoopPendente()
+    const ctx = new (window.AudioContext || window.webkitAudioContext)()
+    if (ctx.state === 'suspended') ctx.resume()
+    audioCtxRef.current = ctx
+    const tocar = () => {
+      if (ctx.state === 'closed') return
+      const t = ctx.currentTime
+      for (let i = 0; i < 3; i++) {
+        const osc = ctx.createOscillator()
+        const gain = ctx.createGain()
+        osc.type = 'sine'
+        osc.frequency.value = 520 + i * 130
+        gain.gain.setValueAtTime(0.25, t + i * 0.12)
+        gain.gain.exponentialRampToValueAtTime(0.01, t + i * 0.12 + 0.25)
+        osc.connect(gain); gain.connect(ctx.destination)
+        osc.start(t + i * 0.12); osc.stop(t + i * 0.12 + 0.25)
+      }
+      if (ctx.state !== 'closed') loopTimerRef.current = setTimeout(tocar, 3000)
+    }
+    tocar()
+  }
+
+  function pararLoopPendente() {
+    if (loopTimerRef.current) { clearTimeout(loopTimerRef.current); loopTimerRef.current = null }
+    if (audioCtxRef.current) { audioCtxRef.current.close().catch(() => {}); audioCtxRef.current = null }
+  }
+
   useEffect(() => {
     const id = setInterval(() => {
       setTick(t => t + 1)
+      const temPendente = pedidos.some(p => p.status === 'pendente')
+      if (temPendente && !audioCtxRef.current) tocarLoopPendente()
+      if (!temPendente && audioCtxRef.current) pararLoopPendente()
       pedidos.forEach(p => {
         if (p.status !== 'pendente' || !p.data) return
         const elapsed = Date.now() - new Date(p.data).getTime()
@@ -415,7 +448,7 @@ function AdminOrders() {
         }
       })
     }, 1000)
-    return () => clearInterval(id)
+    return () => { clearInterval(id); pararLoopPendente() }
   }, [pedidos])
 
   const atualizarStatus = async (id, status) => {

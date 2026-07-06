@@ -291,11 +291,38 @@ function MotoboyDashboard({ user, token, onLogout }) {
       .catch(() => {})
   }, [])
 
+  const liberadosAnteriorRef = useRef(0)
+
+  function tocarSom(vezes) {
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)()
+      if (ctx.state === 'suspended') ctx.resume()
+      for (let i = 0; i < vezes; i++) {
+        const osc = ctx.createOscillator()
+        const gain = ctx.createGain()
+        osc.type = 'sine'
+        osc.frequency.value = 660 + i * 110
+        gain.gain.setValueAtTime(0.2, ctx.currentTime + i * 0.3)
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + i * 0.3 + 0.2)
+        osc.connect(gain); gain.connect(ctx.destination)
+        osc.start(ctx.currentTime + i * 0.3); osc.stop(ctx.currentTime + i * 0.3 + 0.2)
+      }
+      setTimeout(() => ctx.close().catch(() => {}), vezes * 400)
+    } catch {}
+  }
+
   const carregarDisponiveis = useCallback(async () => {
     try {
       const res = await fetch(`${API}/motoboy/pedidos-disponiveis`)
       const data = await res.json()
-      if (Array.isArray(data)) { setPedidosDisponiveis(data); console.log('Disponiveis:', data.length) }
+      if (Array.isArray(data)) {
+        setPedidosDisponiveis(data)
+        const liberadosAgora = data.filter(p => p.status === 'liberado').length
+        if (liberadosAgora > liberadosAnteriorRef.current && liberadosAnteriorRef.current > 0) {
+          tocarSom(2)
+        }
+        liberadosAnteriorRef.current = liberadosAgora
+      }
       else console.error('Resposta inesperada:', data)
     } catch (e) { console.error('Erro carregarDisponiveis:', e) }
   }, [])
