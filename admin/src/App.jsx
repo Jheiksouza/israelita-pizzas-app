@@ -1276,7 +1276,7 @@ function AdminConfiguracoes() {
                 {credentialsFields.map(field => (
                   <div className="form-group" key={field.key}>
                     <label className="form-label">{field.label}</label>
-                    <input className="form-input" type={field.type === 'password' ? 'password' : 'text'} placeholder={field.label} value={platformConfig[field.key] || ''} disabled={!isEnabled} onChange={e => handleFieldChange(mp.platform, field.key, e.target.value)} />
+                    <input className="form-input" type={field.type === 'password' ? 'text' : 'text'} autoComplete="off" placeholder={field.label} value={platformConfig[field.key] || ''} disabled={!isEnabled} onChange={e => handleFieldChange(mp.platform, field.key, e.target.value)} />
                     {field.hint && <span className="form-hint">{field.hint}</span>}
                   </div>
                 ))}
@@ -1297,7 +1297,12 @@ function AdminConfiguracoes() {
                 {webhookFields.map(field => (
                   <div className="form-group" key={field.key}>
                     <label className="form-label">{field.label}</label>
-                    <input className="form-input" type={field.type === 'password' ? 'password' : 'text'} placeholder={field.label} value={platformConfig[field.key] || ''} disabled={!isEnabled} onChange={e => handleFieldChange(mp.platform, field.key, e.target.value)} />
+                    <div className="input-copy">
+                      <input className="form-input" type="text" autoComplete="off" placeholder={field.label} value={platformConfig[field.key] || ''} disabled={!isEnabled} onChange={e => handleFieldChange(mp.platform, field.key, e.target.value)} />
+                      {platformConfig[field.key] && (
+                        <button className="btn btn-ghost btn-sm" disabled={!isEnabled} onClick={() => handleFieldChange(mp.platform, field.key, '')}>Limpar</button>
+                      )}
+                    </div>
                     {field.hint && <span className="form-hint" dangerouslySetInnerHTML={{ __html: field.hint }} />}
                   </div>
                 ))}
