@@ -185,12 +185,13 @@ class IfoodAdapter extends MarketplaceAdapter {
 
     const formatAddress = (addr) => {
       if (!addr) return 'Endereço iFood'
-      if (addr.formattedAddress) return addr.formattedAddress
-      if (!addr.streetName) return 'Endereço iFood'
-      let end = `${addr.streetName || ''}, ${addr.streetNumber || ''}`
+      let end = addr.streetName
+        ? `${addr.streetName}, ${addr.streetNumber || 's/n'}`
+        : addr.formattedAddress || 'Endereço iFood'
       if (addr.neighborhood) end += ` - ${addr.neighborhood}`
       if (addr.complement) end += ` (${addr.complement})`
       if (addr.city || addr.state) end += `, ${addr.city || ''}${addr.state ? `/${addr.state}` : ''}`
+      if (addr.reference) end += ` [${addr.reference}]`
       return end
     }
 
