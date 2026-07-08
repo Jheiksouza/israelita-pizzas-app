@@ -1229,6 +1229,17 @@ function AdminConfiguracoes() {
     setPolling(false)
   }
 
+  const [debugLog, setDebugLog] = useState(null)
+  const handleDebug = async () => {
+    try {
+      const res = await fetch(`${API}/marketplace/debug/log`)
+      const data = await res.json()
+      setDebugLog(data)
+    } catch {
+      setMsg('Erro ao buscar log')
+    }
+  }
+
   if (marketplaces.length === 0) return <div className="empty-state"><p>Carregando...</p></div>
 
   if (selectedPlatform) {
@@ -1348,7 +1359,20 @@ function AdminConfiguracoes() {
               <button className="btn btn-primary" onClick={() => handleSalvar(mp.platform)} disabled={salvando[mp.platform]}>
                 {salvando[mp.platform] ? 'Salvando...' : 'Salvar'}
               </button>
+              <button className="btn btn-ghost" onClick={handleDebug} style={{ fontSize: 12 }}>
+                Debug
+              </button>
             </div>
+            {debugLog && (
+              <div className="config-section" style={{ marginTop: 16 }}>
+                <h4 className="config-subtitle">Últimos eventos do webhook</h4>
+                <pre style={{ fontSize: 11, maxHeight: 300, overflow: 'auto', background: 'var(--bg)', padding: 8, borderRadius: 4 }}>
+                  {JSON.stringify(debugLog, null, 2)}
+                </pre>
+                <button className="btn btn-ghost btn-sm" onClick={() => setDebugLog(null)} style={{ marginTop: 4 }}>Fechar</button>
+                <button className="btn btn-ghost btn-sm" onClick={handleDebug} style={{ marginTop: 4, marginLeft: 4 }}>Atualizar</button>
+              </div>
+            )}
           </div>
         </div>
       </div>
