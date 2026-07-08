@@ -27,6 +27,8 @@ try {
 
 try { require('dotenv').config() } catch (e) { /* dotenv opcional */ }
 
+const setupMarketplaces = require('./marketplaces')
+
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || ''
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || ''
 const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, 'postmessage')
@@ -59,6 +61,8 @@ try {
 } catch (e) {
   console.error('Erro ao criar cliente Supabase:', e)
 }
+
+const { getAdapter, getPlatformInfo, getConfigDefaults } = setupMarketplaces()
 
 // Health check (pra testar se o Express está rodando no Vercel)
 app.get('/health', (req, res) => {
@@ -515,6 +519,101 @@ app.patch('/orders/:id', async (req, res) => {
   } catch (err) {
     console.error('Erro ao atualizar pedido:', err)
     res.status(500).json({ erro: 'Erro ao atualizar pedido' })
+  }
+})
+
+// ===== MARKETPLACES CONFIG =====
+// Informações dos adapters registrados (para o admin montar formulários)
+app.get('/marketplaces/info', (req, res) => {
+  res.json(getPlatformInfo())
+})
+
+// Carrega configuração salva de todos os marketplaces (merge com defaults)
+app.get('/config/marketplaces', async (req, res) => {
+  if (!checkSupabase(res)) return
+  try {
+    const { data } = await supabase.from('app_config').select('valor').eq('chave', 'marketplaces').maybeSingle()
+    const defaults = getConfigDefaults()
+    const saved = data?.valor || {}
+    const merged = {}
+    for (const key of Object.keys(defaults)) {
+      merged[key] = { ...defaults[key], ...(saved[key] || {}) }
+    }
+    for (const key of Object.keys(saved)) {
+      if (!merged[key]) merged[key] = saved[key]
+    }
+    res.json(merged)
+  } catch (err) {
+    console.error('Erro ao ler config de marketplaces:', err)
+    res.status(500).json({ erro: err.message })
+  }
+})
+
+// Salva configuração de um marketplace específico
+app.put('/config/marketplaces/:platform', async (req, res) => {
+  if (!checkSupabase(res)) return
+  try {
+    const { platform } = req.params
+    const adapter = getAdapter(platform)
+    if (!adapter) return res.status(404).json({ erro: 'Marketplace não encontrado' })
+
+    const { data: currentData } = await supabase.from('app_config').select('valor').eq('chave', 'marketplaces').maybeSingle()
+    const current = currentData?.valor || {}
+    current[platform] = req.body
+
+    const { data, error } = await supabase.from('app_config').upsert(
+      { chave: 'marketplaces', valor: current, updated_at: new Date().toISOString() },
+      { onConflict: 'chave' }
+    ).select()
+    if (error) throw error
+    res.json({ ok: true, config: data?.[0]?.valor?.[platform] })
+  } catch (err) {
+    console.error('Erro ao salvar config marketplace:', err)
+    res.status(500).json({ erro: err.message })
+  }
+})
+
+// Webhook genérico para qualquer marketplace registrado
+app.post('/marketplace/:platform/webhook', async (req, res) => {
+  if (!checkSupabase(res)) return res.status(500).json({ erro: 'Banco não configurado' })
+  try {
+    const { platform } = req.params
+    const adapter = getAdapter(platform)
+    if (!adapter) return res.status(404).json({ erro: 'Marketplace não encontrado' })
+
+    const { data: configData } = await supabase.from('app_config').select('valor').eq('chave', 'marketplaces').maybeSingle()
+    const allConfigs = configData?.valor || {}
+    const config = allConfigs[platform] || {}
+
+    if (!config.enabled) {
+      return res.status(403).json({ erro: `Integração ${adapter.displayName} desabilitada` })
+    }
+
+    const { valid, eventType, rawPayload } = await adapter.validateWebhook(req, config)
+    if (!valid) return res.status(401).json({ erro: 'Webhook inválido' })
+
+    if (eventType === 'ORDER_CREATED') {
+      const orderData = await adapter.toInternalOrder(rawPayload, config)
+      const pedido = {
+        data: new Date().toISOString(),
+        status: 'pendente',
+        updatedAt: new Date().toISOString(),
+        cliente: orderData.cliente,
+        itens: orderData.itens,
+        total: orderData.total,
+        user_id: null,
+        entrega_lat: orderData.entrega_lat,
+        entrega_lng: orderData.entrega_lng
+      }
+      const { data, error } = await supabase.from('orders').insert(pedido).select()
+      if (error) throw error
+      console.log(`[${adapter.displayName} Webhook] Pedido #${data[0].id} importado (order: ${orderData.cliente.marketplace_order_id})`)
+    }
+
+    res.json({ received: true })
+  } catch (err) {
+    console.error('[Marketplace Webhook] Erro ao processar:', err)
+    res.status(500).json({ erro: err.message || 'Erro interno' })
   }
 })
 

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react'
 import { MapContainer, TileLayer, Marker, Polyline, useMapEvents, useMap } from 'react-leaflet'
 import L from 'leaflet'
-import { Pizza, MapPin, Store, Lock, Clock, Timer, Check, X, Truck, CheckCircle, Bike, Search, Plus, Pencil, DollarSign, List, Sun, Moon, LogOut } from 'lucide-react'
+import { Pizza, MapPin, Store, Lock, Clock, Timer, Check, X, Truck, CheckCircle, Bike, Search, Plus, Pencil, DollarSign, List, Sun, Moon, LogOut, Settings } from 'lucide-react'
 
 window.__googleCallback = (response) => {
   const s = window.__adminAuthSetters
@@ -46,6 +46,7 @@ const allNavItems = [
   { key: 'rastreio', label: 'Rastreio', icon: MapPin, roles: ['admin'], section: 'Admin' },
   { key: 'pizzaria', label: 'Pizzaria', icon: Store, roles: ['admin'], section: 'Admin' },
   { key: 'permissoes', label: 'Permissões', icon: Lock, roles: ['admin'], section: 'Admin' },
+  { key: 'configuracoes', label: 'Configurações', icon: Settings, roles: ['admin'], section: 'Admin' },
 ]
 
 function App() {
@@ -194,6 +195,7 @@ function App() {
           {aba === 'rastreio' && role === 'admin' && <RastreioPage />}
           {aba === 'pizzaria' && role === 'admin' && <AdminPizzariaConfig />}
           {aba === 'permissoes' && role === 'admin' && <AdminPermissoes user={user} token={token} />}
+          {aba === 'configuracoes' && role === 'admin' && <AdminConfiguracoes />}
         </main>
       </div>
     </div>
@@ -454,6 +456,18 @@ function AdminOrders() {
   const [pedidos, setPedidos] = useState([])
   const [filtro, setFiltro] = useState('todos')
   const [, setTick] = useState(0)
+  const [marketplaceInfo, setMarketplaceInfo] = useState({})
+
+  useEffect(() => {
+    fetch(`${API}/marketplaces/info`)
+      .then(r => r.json())
+      .then(data => {
+        const map = {}
+        data.forEach(mp => { map[mp.platform] = mp })
+        setMarketplaceInfo(map)
+      })
+      .catch(() => {})
+  }, [])
 
   const carregar = () => fetch(`${API}/orders`).then(r => r.json()).then(data => setPedidos(data))
   useEffect(() => { carregar(); const id = setInterval(carregar, 10000); return () => clearInterval(id) }, [])
@@ -541,10 +555,16 @@ function AdminOrders() {
         <div className="empty-state"><p>Nenhum pedido hoje</p></div>
       ) : (
         <div className="pedidos-list">
-          {filtrados.map(pedido => (
-            <div key={pedido.id} className={`pedido-card${pedido.status === 'pendente' ? ' pedido-pendente-destaque' : ''}`}>
+          {filtrados.map(pedido => {
+            const origem = pedido.cliente?.origem
+            const mpInfo = marketplaceInfo[origem]
+            return (
+            <div key={pedido.id} className={`pedido-card${pedido.status === 'pendente' ? ' pedido-pendente-destaque' : ''}${mpInfo ? ' pedido-marketplace' : ''}`} style={mpInfo ? { borderLeftColor: mpInfo.color } : {}}>
               <div className="pedido-card-header">
-                <span className="pedido-id">Pedido #{pedido.id}</span>
+                <span className="pedido-id">
+                  Pedido #{pedido.id}
+                  {mpInfo && <span className="pedido-origem-badge" style={{ background: mpInfo.color }}>{mpInfo.displayName}</span>}
+                </span>
                 <span className={badgeClass[pedido.status]}>{statusLabel[pedido.status]}</span>
               </div>
               <div className="pedido-card-body">
@@ -614,7 +634,8 @@ function AdminOrders() {
                 )}
               </div>
             </div>
-          ))}
+            )
+          })}
         </div>
       )}
     </>
@@ -1114,6 +1135,123 @@ function AdminPermissoes({ user, token }) {
           ))}
         </div>
       )}
+    </div>
+  )
+}
+
+function AdminConfiguracoes() {
+  const [marketplaces, setMarketplaces] = useState([])
+  const [config, setConfig] = useState({})
+  const [salvando, setSalvando] = useState({})
+  const [msg, setMsg] = useState('')
+
+  useEffect(() => {
+    Promise.all([
+      fetch(`${API}/marketplaces/info`).then(r => r.json()),
+      fetch(`${API}/config/marketplaces`).then(r => r.json())
+    ]).then(([info, cfg]) => {
+      setMarketplaces(info)
+      setConfig(cfg)
+    }).catch(() => {})
+  }, [])
+
+  const handleSalvar = async (platform) => {
+    setSalvando(s => ({ ...s, [platform]: true }))
+    setMsg('')
+    try {
+      const res = await fetch(`${API}/config/marketplaces/${platform}`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(config[platform])
+      })
+      if (res.ok) { setMsg('Configurações salvas!'); setTimeout(() => setMsg(''), 3000) }
+      else { const err = await res.json(); setMsg('Erro: ' + (err.erro || 'Falha')) }
+    } catch { setMsg('Erro de conexão') }
+    setSalvando(s => ({ ...s, [platform]: false }))
+  }
+
+  if (marketplaces.length === 0) return <div className="empty-state"><p>Carregando...</p></div>
+
+  return (
+    <div className="configuracoes-page">
+      <div className="page-header">
+        <div className="page-header-left">
+          <h1 className="page-title">Configurações</h1>
+          <p className="page-description">Gerencie as integrações com marketplaces</p>
+        </div>
+      </div>
+
+      {msg && <p className={`form-msg ${msg.includes('sucesso') ? 'success' : ''}`} style={{ marginBottom: 16 }}>{msg}</p>}
+
+      {marketplaces.map(mp => {
+        const platformConfig = config[mp.platform] || {}
+        const webhookUrl = `${window.location.origin}/api/marketplace/${mp.platform}/webhook`
+        const hasWebhook = mp.fields.some(f => f.section === 'webhook')
+        const credentialsFields = mp.fields.filter(f => f.section === 'credentials')
+        const webhookFields = mp.fields.filter(f => f.section === 'webhook')
+        const topFields = mp.fields.filter(f => f.key === 'enabled')
+
+        return (
+          <div className="card" key={mp.platform} style={{ marginBottom: 20 }}>
+            <div className="card-header">
+              <Settings size={18} />
+              <span>Integração <span style={{ color: mp.color, fontWeight: 700 }}>{mp.displayName}</span></span>
+            </div>
+            <div className="card-body">
+              {topFields.map(field => (
+                <div className="config-section" key={field.key}>
+                  <div className="form-group">
+                    <label className="form-label">{field.label}</label>
+                    <label className="toggle-label">
+                      <input type="checkbox" checked={platformConfig[field.key] || false} onChange={e => setConfig(c => ({ ...c, [mp.platform]: { ...(c[mp.platform] || {}), [field.key]: e.target.checked } }))} />
+                      <span className="toggle-slider"></span>
+                      <span className="toggle-text">{platformConfig[field.key] ? 'Ativado' : 'Desativado'}</span>
+                    </label>
+                  </div>
+                </div>
+              ))}
+
+              {credentialsFields.length > 0 && (
+                <div className="config-section">
+                  <h4 className="config-subtitle">Credenciais da API</h4>
+                  {credentialsFields.map(field => (
+                    <div className="form-group" key={field.key}>
+                      <label className="form-label">{field.label}</label>
+                      <input className="form-input" type={field.type === 'password' ? 'password' : 'text'} placeholder={field.label} value={platformConfig[field.key] || ''} onChange={e => setConfig(c => ({ ...c, [mp.platform]: { ...(c[mp.platform] || {}), [field.key]: e.target.value } }))} />
+                      {field.hint && <span className="form-hint">{field.hint}</span>}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {hasWebhook && (
+                <div className="config-section">
+                  <h4 className="config-subtitle">Webhook</h4>
+                  <p className="config-desc">Configure esta URL no {mp.displayName} para receber os pedidos automaticamente.</p>
+                  <div className="form-group">
+                    <label className="form-label">URL do Webhook</label>
+                    <div className="input-copy">
+                      <input className="form-input" readOnly value={webhookUrl} onClick={e => e.target.select()} />
+                      <button className="btn btn-ghost btn-sm" onClick={() => { navigator.clipboard.writeText(webhookUrl); setMsg('URL copiada!'); setTimeout(() => setMsg(''), 2000) }}>Copiar</button>
+                    </div>
+                  </div>
+                  {webhookFields.map(field => (
+                    <div className="form-group" key={field.key}>
+                      <label className="form-label">{field.label}</label>
+                      <input className="form-input" type={field.type === 'password' ? 'password' : 'text'} placeholder={field.label} value={platformConfig[field.key] || ''} onChange={e => setConfig(c => ({ ...c, [mp.platform]: { ...(c[mp.platform] || {}), [field.key]: e.target.value } }))} />
+                      {field.hint && <span className="form-hint" dangerouslySetInnerHTML={{ __html: field.hint }} />}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div className="form-actions" style={{ marginTop: 16 }}>
+                <button className="btn btn-primary" onClick={() => handleSalvar(mp.platform)} disabled={salvando[mp.platform]}>
+                  {salvando[mp.platform] ? 'Salvando...' : `Salvar ${mp.displayName}`}
+                </button>
+              </div>
+            </div>
+          </div>
+        )
+      })}
     </div>
   )
 }
