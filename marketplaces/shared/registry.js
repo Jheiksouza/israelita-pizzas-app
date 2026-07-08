@@ -25,6 +25,7 @@ function getPlatformInfo() {
     platform: a.platform,
     displayName: a.displayName,
     color: a.color,
+    supportsPolling: typeof a.pollOrders === 'function',
     fields: a.getConfigFields()
   }))
 }

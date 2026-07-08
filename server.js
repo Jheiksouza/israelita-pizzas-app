@@ -40,7 +40,9 @@ const PORT = process.env.PORT || 3001
 const JWT_SECRET = process.env.JWT_SECRET || 'israelita-pizzas-jwt-secret-dev'
 
 app.use(cors())
-app.use(express.json())
+app.use(express.json({
+  verify: (req, res, buf) => { req.rawBody = buf }
+}))
 
 // Normaliza a URL para funcionar no Vercel (que tira o /api) e localmente
 app.use((req, res, next) => {
@@ -515,6 +517,34 @@ app.patch('/orders/:id', async (req, res) => {
     if (order.status === 'liberado') {
       sendPushToMotoboys('Novo pedido!', `Pedido #${order.id} saiu para entrega!`)
     }
+
+    // Sincronizar status com marketplace de origem
+    const origem = order.cliente?.origem
+    if (origem && origem !== 'site') {
+      const adapter = getAdapter(origem)
+      if (adapter) {
+        const { data: configData } = await supabase.from('app_config').select('valor').eq('chave', 'marketplaces').maybeSingle()
+        const allConfigs = configData?.valor || {}
+        const config = allConfigs[origem] || {}
+        if (config.enabled) {
+          const extId = order.cliente?.marketplace_order_id
+          const statusMap = {
+            'entregue': 'dispatched',
+            'preparando': 'preparation_started',
+            'pronto': 'ready_to_pickup',
+            'saiu_entrega': 'dispatched',
+            'confirmado': 'confirmed'
+          }
+          const mappedStatus = statusMap[order.status]
+          if (mappedStatus && extId) {
+            adapter.updateOrderStatus(extId, mappedStatus, config).catch(err =>
+              console.error(`[${origem}] Erro ao atualizar status ${order.status}:`, err.message)
+            )
+          }
+        }
+      }
+    }
+
     res.json(order)
   } catch (err) {
     console.error('Erro ao atualizar pedido:', err)
@@ -627,50 +657,133 @@ app.post('/marketplace/:platform/webhook', async (req, res) => {
       return res.status(403).json({ error: `Integração ${adapter.displayName} desabilitada` })
     }
 
-    const { valid, eventType, rawPayload } = await adapter.validateWebhook(req, config)
+    const { valid, eventType, rawPayload, parsedEvents } = await adapter.validateWebhook(req, config)
     if (!valid) return res.status(401).json({ error: 'Webhook inválido' })
 
-    // Evento de presença — iFood testa conectividade, deve responder 202
     if (eventType === 'PRESENCE') {
       return res.status(202).json({ received: true })
     }
 
-    if (eventType === 'ORDER_CREATED' && rawPayload) {
-      const orderData = await adapter.toInternalOrder(rawPayload, config)
-      const extId = orderData.cliente?.marketplace_order_id
+    if (eventType === 'EVENTS' && parsedEvents) {
+      const eventosParaAck = []
 
-      // Deduplicação: verifica se já existe pedido com este marketplace_order_id
-      if (extId) {
-        const { data: existente } = await supabase
-          .from('orders')
-          .select('id')
-          .filter('cliente->>marketplace_order_id', 'eq', extId)
-          .maybeSingle()
-        if (existente) {
-          console.log(`[${adapter.displayName} Webhook] Pedido duplicado ignorado (order: ${extId})`)
-          return res.json({ received: true, duplicated: true })
+      for (const event of parsedEvents) {
+        if (event.code === 'CONFIRMED' || event.code === 'PLACED') {
+          try {
+            let orderPayload = rawPayload
+
+            if (event.orderId) {
+              const orderData = await adapter.fetchOrderDetails(event.orderId, config).catch(() => null)
+              orderPayload = orderData || event.metadata
+              eventosParaAck.push(event.id)
+            }
+
+            const orderData = await adapter.toInternalOrder(orderPayload, config)
+            orderData.cliente.marketplace_order_id = event.orderId || orderData.cliente.marketplace_order_id
+
+            const extId = orderData.cliente?.marketplace_order_id
+            if (!extId) continue
+
+            const { data: existente } = await supabase
+              .from('orders')
+              .select('id')
+              .filter('cliente->>marketplace_order_id', 'eq', extId)
+              .maybeSingle()
+            if (existente) {
+              console.log(`[ifood] Pedido duplicado ignorado: ${extId}`)
+              continue
+            }
+
+            const pedido = {
+              data: new Date().toISOString(),
+              status: 'pendente',
+              updatedAt: new Date().toISOString(),
+              cliente: orderData.cliente,
+              itens: orderData.itens,
+              total: orderData.total,
+              user_id: null,
+              entrega_lat: orderData.entrega_lat,
+              entrega_lng: orderData.entrega_lng
+            }
+            const { data, error } = await supabase.from('orders').insert(pedido).select()
+            if (error) throw error
+            console.log(`[ifood] Pedido #${data[0].id} importado: ${extId}`)
+          } catch (err) {
+            console.error(`[ifood] Erro ao processar evento ${event.id}:`, err.message || err)
+          }
+        } else if (event.code === 'PRESENCE') {
+          eventosParaAck.push(event.id)
         }
       }
 
-      const pedido = {
-        data: new Date().toISOString(),
-        status: 'pendente',
-        updatedAt: new Date().toISOString(),
-        cliente: orderData.cliente,
-        itens: orderData.itens,
-        total: orderData.total,
-        user_id: null,
-        entrega_lat: orderData.entrega_lat,
-        entrega_lng: orderData.entrega_lng
+      if (eventosParaAck.length > 0) {
+        adapter.acknowledgeEvents(eventosParaAck, config).catch(() => {})
       }
-      const { data, error } = await supabase.from('orders').insert(pedido).select()
-      if (error) throw error
-      console.log(`[${adapter.displayName} Webhook] Pedido #${data[0].id} importado (order: ${extId})`)
     }
 
     res.json({ received: true })
   } catch (err) {
     console.error('[Marketplace Webhook] Erro ao processar:', err)
+    res.status(500).json({ error: err.message || 'Erro interno' })
+  }
+})
+
+app.post('/marketplace/:platform/poll', async (req, res) => {
+  if (!checkSupabase(res)) return res.status(500).json({ error: 'Banco não configurado' })
+  try {
+    const { platform } = req.params
+    const adapter = getAdapter(platform)
+    if (!adapter) return res.status(404).json({ error: 'Marketplace não encontrado' })
+    if (!adapter.pollOrders) return res.status(400).json({ error: 'Polling não suportado' })
+
+    const { data: configData } = await supabase.from('app_config').select('valor').eq('chave', 'marketplaces').maybeSingle()
+    const allConfigs = configData?.valor || {}
+    const config = allConfigs[platform] || {}
+    if (!config.enabled) return res.status(403).json({ error: 'Integração desabilitada' })
+
+    const events = await adapter.pollOrders(config)
+    const imported = []
+
+    for (const event of events) {
+      if (event.code === 'CONFIRMED' || event.code === 'PLACED') {
+        try {
+          const orderData = await adapter.fetchOrderDetails(event.orderId, config)
+          const internal = await adapter.toInternalOrder(orderData, config)
+
+          const { data: existente } = await supabase
+            .from('orders')
+            .select('id')
+            .filter('cliente->>marketplace_order_id', 'eq', event.orderId)
+            .maybeSingle()
+          if (existente) continue
+
+          const pedido = {
+            data: new Date().toISOString(),
+            status: 'pendente',
+            updatedAt: new Date().toISOString(),
+            cliente: { ...internal.cliente, marketplace_order_id: event.orderId },
+            itens: internal.itens,
+            total: internal.total,
+            user_id: null,
+            entrega_lat: internal.entrega_lat,
+            entrega_lng: internal.entrega_lng
+          }
+          const { data } = await supabase.from('orders').insert(pedido).select()
+          if (data) imported.push(data[0].id)
+        } catch (err) {
+          console.error(`[poll/${platform}] Erro evento ${event.id}:`, err.message)
+        }
+      }
+    }
+
+    if (events.length > 0) {
+      const ids = events.map(e => e.id).filter(Boolean)
+      adapter.acknowledgeEvents(ids, config).catch(() => {})
+    }
+
+    res.json({ importedCount: imported.length, imported, totalEvents: events.length })
+  } catch (err) {
+    console.error('[Marketplace Poll] Erro:', err)
     res.status(500).json({ error: err.message || 'Erro interno' })
   }
 })

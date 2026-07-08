@@ -1148,6 +1148,7 @@ function AdminConfiguracoes() {
   const [testando, setTestando] = useState({})
   const [testResult, setTestResult] = useState(null)
   const [msg, setMsg] = useState('')
+  const [polling, setPolling] = useState(false)
 
   useEffect(() => {
     Promise.all([
@@ -1207,6 +1208,25 @@ function AdminConfiguracoes() {
   const handleFieldChange = (platform, key, value) => {
     setConfig(c => ({ ...c, [platform]: { ...(c[platform] || {}), [key]: value } }))
     setTestResult(null)
+  }
+
+  const handlePoll = async (platform) => {
+    setPolling(true)
+    setMsg('')
+    try {
+      const res = await fetch(`${API}/marketplace/${platform}/poll`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }
+      })
+      const data = await res.json()
+      if (res.ok) {
+        setMsg(`Polling concluído: ${data.importedCount} pedido(s) importado(s) de ${data.totalEvents} evento(s)`)
+      } else {
+        setMsg('Erro: ' + (data.error || 'Falha'))
+      }
+    } catch {
+      setMsg('Erro de conexão')
+    }
+    setPolling(false)
   }
 
   if (marketplaces.length === 0) return <div className="empty-state"><p>Carregando...</p></div>
@@ -1320,6 +1340,11 @@ function AdminConfiguracoes() {
               <button className="btn btn-secondary" onClick={() => handleTest(mp.platform)} disabled={!isEnabled || testando[mp.platform]}>
                 {testando[mp.platform] ? 'Testando...' : 'Testar conexão'}
               </button>
+              {mp.supportsPolling && (
+                <button className="btn btn-ghost" onClick={() => handlePoll(mp.platform)} disabled={!isEnabled || polling}>
+                  {polling ? 'Buscando...' : 'Buscar pedidos pendentes'}
+                </button>
+              )}
               <button className="btn btn-primary" onClick={() => handleSalvar(mp.platform)} disabled={salvando[mp.platform]}>
                 {salvando[mp.platform] ? 'Salvando...' : 'Salvar'}
               </button>
