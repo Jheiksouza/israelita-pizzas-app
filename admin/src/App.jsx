@@ -1169,15 +1169,15 @@ function AdminConfiguracoes() {
       const res = await fetch(`${API}/config/marketplaces/${platform}`, {
         method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(config[platform])
       })
+      const data = await res.json()
       if (res.ok) {
         setMsg('Configurações salvas!')
         setTimeout(() => setMsg(''), 3000)
-        const stRes = await fetch(`${API}/marketplaces/status`)
-        const st = await stRes.json()
-        setStatuses(st)
+        if (data.status) {
+          setStatuses(st => ({ ...st, [platform]: data.status }))
+        }
       } else {
-        const err = await res.json()
-        setMsg('Erro: ' + (err.erro || 'Falha'))
+        setMsg('Erro: ' + (data.erro || 'Falha'))
       }
     } catch { setMsg('Erro de conexão') }
     setSalvando(s => ({ ...s, [platform]: false }))
@@ -1187,7 +1187,9 @@ function AdminConfiguracoes() {
     setTestando(s => ({ ...s, [platform]: true }))
     setTestResult(null)
     try {
-      const res = await fetch(`${API}/marketplace/${platform}/test`, { method: 'POST' })
+      const res = await fetch(`${API}/marketplace/${platform}/test`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(config[platform])
+      })
       const result = await res.json()
       setTestResult(result)
       setStatuses(st => ({

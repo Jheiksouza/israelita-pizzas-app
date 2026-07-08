@@ -540,6 +540,7 @@ app.get('/marketplaces/status', async (req, res) => {
 })
 
 // Testa conexão com um marketplace específico
+// Aceita config no body para testar valores do formulário antes de salvar
 app.post('/marketplace/:platform/test', async (req, res) => {
   if (!checkSupabase(res)) return
   try {
@@ -547,9 +548,13 @@ app.post('/marketplace/:platform/test', async (req, res) => {
     const adapter = getAdapter(platform)
     if (!adapter) return res.status(404).json({ erro: 'Marketplace não encontrado' })
 
-    const { data: configData } = await supabase.from('app_config').select('valor').eq('chave', 'marketplaces').maybeSingle()
-    const allConfigs = configData?.valor || {}
-    const config = allConfigs[platform] || {}
+    // Usa config enviado no body (formulário); fallback pra DB se vazio
+    let config = req.body
+    if (!config || Object.keys(config).length === 0) {
+      const { data: configData } = await supabase.from('app_config').select('valor').eq('chave', 'marketplaces').maybeSingle()
+      const allConfigs = configData?.valor || {}
+      config = allConfigs[platform] || {}
+    }
 
     const result = await adapter.testConnection(config)
     res.json(result)
@@ -597,7 +602,9 @@ app.put('/config/marketplaces/:platform', async (req, res) => {
       { onConflict: 'chave' }
     ).select()
     if (error) throw error
-    res.json({ ok: true, config: data?.[0]?.valor?.[platform] })
+    const novoValor = data?.[0]?.valor || {}
+    const status = getPlatformStatuses(novoValor)
+    res.json({ ok: true, config: novoValor[platform], status: status[platform] })
   } catch (err) {
     console.error('Erro ao salvar config marketplace:', err)
     res.status(500).json({ erro: err.message })
