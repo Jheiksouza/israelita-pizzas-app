@@ -699,7 +699,9 @@ app.post('/marketplace/:platform/webhook', async (req, res) => {
       for (const event of parsedEvents) {
         addWebhookLog(platform, { type: 'EVENT', code: event.code, orderId: event.orderId, eventId: event.id })
 
-        if (event.code === 'CONFIRMED' || event.code === 'PLACED') {
+        if (event.code === 'KEEPALIVE') {
+          eventosParaAck.push(event.id)
+        } else if (event.code === 'CONFIRMED' || event.code === 'PLACED') {
           try {
             let orderPayload = rawPayload
 

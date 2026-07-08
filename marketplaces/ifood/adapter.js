@@ -130,8 +130,14 @@ class IfoodAdapter extends MarketplaceAdapter {
       }
     }
 
-    // iFood envia { events: [...] } ou { event, orderId }
-    const events = body.events || (body.event ? [body] : [])
+    // iFood envia o evento diretamente no body (não dentro de { events: [...] })
+    // Formato: { id, code, fullCode, orderId, createdAt, metadata }
+    // ou { events: [...] } (menos comum)
+    const events = body.events
+      ? body.events
+      : body.id
+        ? [body]
+        : []
 
     if (events.length === 0) {
       return { valid: false, eventType: 'INVALID' }
@@ -144,9 +150,9 @@ class IfoodAdapter extends MarketplaceAdapter {
       parsedEvents: events.map(e => ({
         id: e.id,
         code: e.code || e.fullCode || '',
-        orderId: e.orderId || '',
+        orderId: e.orderId || e.metadata?.orderId || '',
         createdAt: e.createdAt,
-        metadata: e.metadata || {}
+        metadata: e.metadata || e
       }))
     }
   }
