@@ -642,6 +642,27 @@ app.put('/config/marketplaces/:platform', async (req, res) => {
 })
 
 // Webhook genérico para qualquer marketplace registrado
+// Log em memória dos últimos webhooks (útil pra debug)
+const webhookLog = []
+function addWebhookLog(platform, event) {
+  webhookLog.unshift({ platform, ...event, timestamp: new Date().toISOString() })
+  if (webhookLog.length > 50) webhookLog.pop()
+}
+
+// GET para teste de conectividade do webhook (iFood faz presença)
+app.get('/marketplace/:platform/webhook', (req, res) => {
+  const { platform } = req.params
+  const adapter = getAdapter(platform)
+  if (!adapter) return res.status(404).json({ error: 'Marketplace não encontrado' })
+  addWebhookLog(platform, { type: 'GET_PRESENCE' })
+  res.status(202).json({ received: true })
+})
+
+// Debug: ver os últimos webhooks recebidos
+app.get('/marketplace/debug/log', (req, res) => {
+  res.json(webhookLog)
+})
+
 app.post('/marketplace/:platform/webhook', async (req, res) => {
   if (!checkSupabase(res)) return res.status(500).json({ error: 'Banco não configurado' })
   try {
@@ -658,9 +679,13 @@ app.post('/marketplace/:platform/webhook', async (req, res) => {
     }
 
     const { valid, eventType, rawPayload, parsedEvents } = await adapter.validateWebhook(req, config)
+
+    addWebhookLog(platform, { type: 'VALIDATE', valid, eventType, eventsCount: parsedEvents?.length || 0 })
+
     if (!valid) return res.status(401).json({ error: 'Webhook inválido' })
 
     if (eventType === 'PRESENCE') {
+      addWebhookLog(platform, { type: 'PRESENCE' })
       return res.status(202).json({ received: true })
     }
 
@@ -668,12 +693,18 @@ app.post('/marketplace/:platform/webhook', async (req, res) => {
       const eventosParaAck = []
 
       for (const event of parsedEvents) {
+        addWebhookLog(platform, { type: 'EVENT', code: event.code, orderId: event.orderId, eventId: event.id })
+
         if (event.code === 'CONFIRMED' || event.code === 'PLACED') {
           try {
             let orderPayload = rawPayload
 
             if (event.orderId) {
-              const orderData = await adapter.fetchOrderDetails(event.orderId, config).catch(() => null)
+              addWebhookLog(platform, { type: 'FETCH_ORDER', orderId: event.orderId })
+              const orderData = await adapter.fetchOrderDetails(event.orderId, config).catch(err => {
+                addWebhookLog(platform, { type: 'FETCH_FAIL', orderId: event.orderId, error: err.message })
+                return null
+              })
               orderPayload = orderData || event.metadata
               eventosParaAck.push(event.id)
             }
@@ -682,7 +713,10 @@ app.post('/marketplace/:platform/webhook', async (req, res) => {
             orderData.cliente.marketplace_order_id = event.orderId || orderData.cliente.marketplace_order_id
 
             const extId = orderData.cliente?.marketplace_order_id
-            if (!extId) continue
+            if (!extId) {
+              addWebhookLog(platform, { type: 'SKIP_NO_ORDER_ID' })
+              continue
+            }
 
             const { data: existente } = await supabase
               .from('orders')
@@ -690,7 +724,7 @@ app.post('/marketplace/:platform/webhook', async (req, res) => {
               .filter('cliente->>marketplace_order_id', 'eq', extId)
               .maybeSingle()
             if (existente) {
-              console.log(`[ifood] Pedido duplicado ignorado: ${extId}`)
+              addWebhookLog(platform, { type: 'DUPLICATE', extId })
               continue
             }
 
@@ -707,8 +741,10 @@ app.post('/marketplace/:platform/webhook', async (req, res) => {
             }
             const { data, error } = await supabase.from('orders').insert(pedido).select()
             if (error) throw error
+            addWebhookLog(platform, { type: 'IMPORTED', orderId: data[0].id, extId })
             console.log(`[ifood] Pedido #${data[0].id} importado: ${extId}`)
           } catch (err) {
+            addWebhookLog(platform, { type: 'ERROR', eventId: event.id, error: err.message })
             console.error(`[ifood] Erro ao processar evento ${event.id}:`, err.message || err)
           }
         } else if (event.code === 'PRESENCE') {
