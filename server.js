@@ -635,8 +635,23 @@ app.post('/marketplace/:platform/webhook', async (req, res) => {
       return res.status(202).json({ received: true })
     }
 
-    if (eventType === 'ORDER_CREATED') {
+    if (eventType === 'ORDER_CREATED' && rawPayload) {
       const orderData = await adapter.toInternalOrder(rawPayload, config)
+      const extId = orderData.cliente?.marketplace_order_id
+
+      // Deduplicação: verifica se já existe pedido com este marketplace_order_id
+      if (extId) {
+        const { data: existente } = await supabase
+          .from('orders')
+          .select('id')
+          .filter('cliente->>marketplace_order_id', 'eq', extId)
+          .maybeSingle()
+        if (existente) {
+          console.log(`[${adapter.displayName} Webhook] Pedido duplicado ignorado (order: ${extId})`)
+          return res.json({ received: true, duplicated: true })
+        }
+      }
+
       const pedido = {
         data: new Date().toISOString(),
         status: 'pendente',
@@ -650,7 +665,7 @@ app.post('/marketplace/:platform/webhook', async (req, res) => {
       }
       const { data, error } = await supabase.from('orders').insert(pedido).select()
       if (error) throw error
-      console.log(`[${adapter.displayName} Webhook] Pedido #${data[0].id} importado (order: ${orderData.cliente.marketplace_order_id})`)
+      console.log(`[${adapter.displayName} Webhook] Pedido #${data[0].id} importado (order: ${extId})`)
     }
 
     res.json({ received: true })
