@@ -11,7 +11,8 @@
     "install-all": "npm install && cd client && npm install",
     "build:admin": "cd admin && npm install && npm run build",
     "build:motoboy": "cd motoboy && npm install && npm run build",
-    "build:all": "npm run build && npm run build:admin && npm run build:motoboy"
+    "build:chat": "cd chat && npm install && npm run build",
+    "build:all": "npm run build && npm run build:admin && npm run build:motoboy && npm run build:chat"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.49.0",
