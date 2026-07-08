@@ -741,7 +741,13 @@ app.post('/marketplace/:platform/poll', async (req, res) => {
     const config = allConfigs[platform] || {}
     if (!config.enabled) return res.status(403).json({ error: 'Integração desabilitada' })
 
-    const events = await adapter.pollOrders(config)
+    let events
+    try {
+      events = await adapter.pollOrders(config)
+    } catch (err) {
+      return res.status(400).json({ error: `API iFood retornou ${err.message}. O webhook é o método recomendado. Verifique se o Polling está habilitado no Portal iFood.` })
+    }
+
     const imported = []
 
     for (const event of events) {
