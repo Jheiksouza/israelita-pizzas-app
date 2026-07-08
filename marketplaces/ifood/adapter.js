@@ -174,30 +174,77 @@ class IfoodAdapter extends MarketplaceAdapter {
     const orderCode = rawPayload.code || rawPayload.fullCode || rawPayload.orderId || rawPayload.id || ''
 
     const customerData = orderData.customer || orderData.client || {}
-    const addressData = customerData.deliveryAddress || customerData.address || {}
+    const addressData = orderData.deliveryAddress || customerData.deliveryAddress || customerData.address || {}
     const itemsData = orderData.items || orderData.products || []
-    const orderAmount = orderData.total?.orderAmount || orderData.total || orderData.orderAmount || 0
+
+    const formatPhone = (phone) => {
+      if (!phone) return ''
+      if (typeof phone === 'object') return phone.number || phone.phone || ''
+      return String(phone)
+    }
+
+    const formatAddress = (addr) => {
+      if (!addr || !addr.streetName) return 'Endereço iFood'
+      let end = `${addr.streetName || ''}, ${addr.streetNumber || ''}`
+      if (addr.neighborhood) end += ` - ${addr.neighborhood}`
+      if (addr.city || addr.state) end += `, ${addr.city || ''}${addr.state ? `/${addr.state}` : ''}`
+      return end
+    }
+
+    const flattenItems = (items) => {
+      const result = []
+      items.forEach((item, idx) => {
+        const qtd = item.quantity || 1
+        const nome = item.name || item.product || 'Item iFood'
+        const preco = parseFloat(item.unitPrice || item.price || 0)
+        const total = parseFloat(item.totalPrice || (item.quantity || 1) * (item.unitPrice || item.price || 0) || 0)
+        result.push({
+          id: `ifood_${orderCode}_${idx}`,
+          qtd,
+          nome,
+          preco,
+          total
+        })
+        if (item.subItems && item.subItems.length > 0) {
+          item.subItems.forEach((sub, subIdx) => {
+            result.push({
+              id: `ifood_${orderCode}_${idx}_sub_${subIdx}`,
+              qtd: sub.quantity || 1,
+              nome: `  ➥ ${sub.name || sub.product || 'Adicional'}`,
+              preco: parseFloat(sub.unitPrice || sub.price || 0),
+              total: parseFloat(sub.totalPrice || (sub.quantity || 1) * (sub.unitPrice || sub.price || 0) || 0)
+            })
+          })
+        }
+        if (item.options && item.options.length > 0) {
+          item.options.forEach((opt, optIdx) => {
+            result.push({
+              id: `ifood_${orderCode}_${idx}_opt_${optIdx}`,
+              qtd: 1,
+              nome: `  ➥ ${opt.name || 'Opção'}: ${opt.optionName || opt.value || ''}`,
+              preco: parseFloat(opt.price || 0),
+              total: parseFloat(opt.price || 0)
+            })
+          })
+        }
+      })
+      return result
+    }
+
+    const orderAmount = orderData.total?.orderAmount || orderData.total?.subTotal || orderData.total || orderData.orderAmount || 0
     const deliveryFee = orderData.total?.deliveryFee || orderData.deliveryFee || 0
     const discount = orderData.total?.discount || orderData.discount || 0
-    const total = parseFloat(orderAmount) + parseFloat(deliveryFee) - parseFloat(discount)
+    const total = parseFloat(typeof orderAmount === 'object' ? orderAmount.total || 0 : orderAmount) + parseFloat(deliveryFee) - parseFloat(discount)
 
     return {
       cliente: {
-        nome: customerData.name || customerData.customer?.name || 'Cliente iFood',
-        telefone: customerData.phone || customerData.customer?.phone || '',
-        endereco: addressData.streetName
-          ? `${addressData.streetName || ''}, ${addressData.streetNumber || ''}${addressData.neighborhood ? ` - ${addressData.neighborhood}` : ''}`
-          : 'Endereço iFood',
+        nome: customerData.name || 'Cliente iFood',
+        telefone: formatPhone(customerData.phone),
+        endereco: formatAddress(addressData),
         origem: 'ifood',
         marketplace_order_id: orderCode
       },
-      itens: itemsData.map((item, idx) => ({
-        id: `ifood_${orderCode}_${idx}`,
-        qtd: item.quantity || 1,
-        nome: item.name || item.product || 'Item iFood',
-        preco: parseFloat(item.unitPrice || item.price || 0),
-        total: parseFloat(item.totalPrice || (item.quantity || 1) * (item.unitPrice || item.price || 0) || 0)
-      })),
+      itens: flattenItems(itemsData),
       total: isNaN(total) ? 0 : total,
       entrega_lat: addressData.coordinates?.latitude || addressData.latitude ? parseFloat(addressData.coordinates?.latitude || addressData.latitude) : null,
       entrega_lng: addressData.coordinates?.longitude || addressData.longitude ? parseFloat(addressData.coordinates?.longitude || addressData.longitude) : null
