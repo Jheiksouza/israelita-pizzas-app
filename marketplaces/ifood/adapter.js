@@ -103,12 +103,25 @@ class IfoodAdapter extends MarketplaceAdapter {
   }
 
   async pollOrders(config) {
-    const res = await this.apiFetch('/order/v1.0/orders:polling', config, {
-      method: 'POST',
-      body: JSON.stringify({ events: ['PLACED', 'CONFIRMED'], groups: 'ALL' })
-    })
-    const data = await res.json()
-    return data.events || []
+    const body = { events: ['PLACED', 'CONFIRMED'], groups: 'ALL' }
+    if (config.merchant_id) {
+      body.merchantId = config.merchant_id
+    }
+    try {
+      const res = await this.apiFetch('/order/v1.0/orders:polling', config, {
+        method: 'POST',
+        body: JSON.stringify(body)
+      })
+      const data = await res.json()
+      return data.events || []
+    } catch (err) {
+      console.error('[iFood poll] API error details:', {
+        message: err.message,
+        merchantId: config.merchant_id,
+        hasToken: !!this._token
+      })
+      throw err
+    }
   }
 
   async validateWebhook(req, config) {
