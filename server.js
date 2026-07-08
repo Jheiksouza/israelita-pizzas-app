@@ -694,14 +694,21 @@ app.post('/marketplace/:platform/webhook', async (req, res) => {
     }
 
     if (eventType === 'EVENTS' && parsedEvents) {
+      // KEEPALIVE / PRESENCE — responder 202 imediatamente (iFood espera isso)
+      const isKeepalive = parsedEvents.some(e => e.code === 'KEEPALIVE' || e.code === 'PRESENCE')
+      if (isKeepalive) {
+        addWebhookLog(platform, { type: 'KEEPALIVE', events: parsedEvents.map(e => ({ id: e.id, code: e.code })) })
+        const ids = parsedEvents.filter(e => e.id).map(e => e.id)
+        if (ids.length > 0) adapter.acknowledgeEvents(ids, config).catch(() => {})
+        return res.status(202).json({ received: true })
+      }
+
       const eventosParaAck = []
 
       for (const event of parsedEvents) {
         addWebhookLog(platform, { type: 'EVENT', code: event.code, orderId: event.orderId, eventId: event.id })
 
-        if (event.code === 'KEEPALIVE') {
-          eventosParaAck.push(event.id)
-        } else if (event.code === 'CONFIRMED' || event.code === 'PLACED') {
+        if (event.code === 'CONFIRMED' || event.code === 'PLACED') {
           try {
             let orderPayload = rawPayload
 
