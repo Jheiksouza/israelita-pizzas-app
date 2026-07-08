@@ -613,22 +613,22 @@ app.put('/config/marketplaces/:platform', async (req, res) => {
 
 // Webhook genérico para qualquer marketplace registrado
 app.post('/marketplace/:platform/webhook', async (req, res) => {
-  if (!checkSupabase(res)) return res.status(500).json({ erro: 'Banco não configurado' })
+  if (!checkSupabase(res)) return res.status(500).json({ error: 'Banco não configurado' })
   try {
     const { platform } = req.params
     const adapter = getAdapter(platform)
-    if (!adapter) return res.status(404).json({ erro: 'Marketplace não encontrado' })
+    if (!adapter) return res.status(404).json({ error: 'Marketplace não encontrado' })
 
     const { data: configData } = await supabase.from('app_config').select('valor').eq('chave', 'marketplaces').maybeSingle()
     const allConfigs = configData?.valor || {}
     const config = allConfigs[platform] || {}
 
     if (!config.enabled) {
-      return res.status(403).json({ erro: `Integração ${adapter.displayName} desabilitada` })
+      return res.status(403).json({ error: `Integração ${adapter.displayName} desabilitada` })
     }
 
     const { valid, eventType, rawPayload } = await adapter.validateWebhook(req, config)
-    if (!valid) return res.status(401).json({ erro: 'Webhook inválido' })
+    if (!valid) return res.status(401).json({ error: 'Webhook inválido' })
 
     if (eventType === 'ORDER_CREATED') {
       const orderData = await adapter.toInternalOrder(rawPayload, config)
@@ -651,7 +651,7 @@ app.post('/marketplace/:platform/webhook', async (req, res) => {
     res.json({ received: true })
   } catch (err) {
     console.error('[Marketplace Webhook] Erro ao processar:', err)
-    res.status(500).json({ erro: err.message || 'Erro interno' })
+    res.status(500).json({ error: err.message || 'Erro interno' })
   }
 })
 
