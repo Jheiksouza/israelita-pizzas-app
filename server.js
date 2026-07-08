@@ -745,6 +745,9 @@ app.post('/marketplace/:platform/webhook', async (req, res) => {
               }
               orderPayload = orderData || event.metadata
               eventosParaAck.push(event.id)
+              if (orderData) {
+                addWebhookLog(platform, { type: 'FETCH_ORDER_DATA', orderId: event.orderId, preview: JSON.stringify(orderData).substring(0, 1000) })
+              }
             }
 
             const orderData = await adapter.toInternalOrder(orderPayload, config)
