@@ -161,7 +161,7 @@ class IfoodAdapter extends MarketplaceAdapter {
       rawPayload: body,
       parsedEvents: events.map(e => ({
         id: e.id,
-        code: e.code || e.fullCode || '',
+        code: e.fullCode || e.code || '',
         orderId: e.orderId || e.metadata?.orderId || '',
         createdAt: e.createdAt,
         metadata: e.metadata || e
