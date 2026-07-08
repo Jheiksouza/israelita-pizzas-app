@@ -103,7 +103,10 @@ class IfoodAdapter extends MarketplaceAdapter {
   }
 
   async pollOrders(config) {
-    const res = await this.apiFetch('/order/v1.0/orders:polling', config)
+    const res = await this.apiFetch('/order/v1.0/orders:polling', config, {
+      method: 'POST',
+      body: JSON.stringify({ events: ['PLACED', 'CONFIRMED'], groups: 'ALL' })
+    })
     const data = await res.json()
     return data.events || []
   }
