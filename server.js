@@ -529,6 +529,8 @@ app.patch('/orders/:id', async (req, res) => {
         if (config.enabled) {
           const extId = order.cliente?.marketplace_order_id
           const statusMap = {
+            'aceito': 'confirmed',
+            'liberado': 'ready_to_pickup',
             'entregue': 'dispatched',
             'preparando': 'preparation_started',
             'pronto': 'ready_to_pickup',
@@ -540,6 +542,17 @@ app.patch('/orders/:id', async (req, res) => {
             adapter.updateOrderStatus(extId, mappedStatus, config).catch(err =>
               console.error(`[${origem}] Erro ao atualizar status ${order.status}:`, err.message)
             )
+          }
+          // Cancelamento: se recusou, solicita cancelamento no iFood
+          if (order.status === 'recusado' && extId) {
+            adapter.getCancellationReasons(extId, config).then(reasons => {
+              const reason = (reasons?.reasons || []).find(r => r.code === '503') || { code: '503' }
+              adapter.requestCancellation(extId, reason.code, config).catch(err =>
+                console.error(`[${origem}] Erro ao cancelar pedido ${extId}:`, err.message)
+              )
+            }).catch(err => {
+              console.error(`[${origem}] Erro ao obter motivos de cancelamento:`, err.message)
+            })
           }
         }
       }
@@ -714,10 +727,22 @@ app.post('/marketplace/:platform/webhook', async (req, res) => {
 
             if (event.orderId) {
               addWebhookLog(platform, { type: 'FETCH_ORDER', orderId: event.orderId })
-              const orderData = await adapter.fetchOrderDetails(event.orderId, config).catch(err => {
-                addWebhookLog(platform, { type: 'FETCH_FAIL', orderId: event.orderId, error: err.message })
-                return null
-              })
+              // Retry logic: PLACED pode chegar antes dos detalhes estarem disponíveis
+              let orderData = null
+              for (let attempt = 0; attempt < 3; attempt++) {
+                try {
+                  orderData = await adapter.fetchOrderDetails(event.orderId, config)
+                  break
+                } catch (err) {
+                  if (attempt < 2) {
+                    const delay = Math.pow(2, attempt) * 2000
+                    addWebhookLog(platform, { type: 'FETCH_RETRY', orderId: event.orderId, attempt: attempt + 1, delay })
+                    await new Promise(r => setTimeout(r, delay))
+                  } else {
+                    addWebhookLog(platform, { type: 'FETCH_FAIL', orderId: event.orderId, error: err.message })
+                  }
+                }
+              }
               orderPayload = orderData || event.metadata
               eventosParaAck.push(event.id)
             }
@@ -759,6 +784,26 @@ app.post('/marketplace/:platform/webhook', async (req, res) => {
           } catch (err) {
             addWebhookLog(platform, { type: 'ERROR', eventId: event.id, error: err.message })
             console.error(`[ifood] Erro ao processar evento ${event.id}:`, err.message || err)
+          }
+        } else if (event.code === 'CONCLUDED') {
+          // iFood marcou como concluído -> atualiza local
+          if (event.orderId) {
+            await supabase.from('orders').update({
+              status: 'entregue',
+              updatedAt: new Date().toISOString()
+            }).filter('cliente->>marketplace_order_id', 'eq', event.orderId)
+            addWebhookLog(platform, { type: 'STATUS_UPDATED', orderId: event.orderId, status: 'entregue' })
+            eventosParaAck.push(event.id)
+          }
+        } else if (event.code === 'CANCELLED') {
+          // iFood cancelou -> atualiza local
+          if (event.orderId) {
+            await supabase.from('orders').update({
+              status: 'recusado',
+              updatedAt: new Date().toISOString()
+            }).filter('cliente->>marketplace_order_id', 'eq', event.orderId)
+            addWebhookLog(platform, { type: 'STATUS_UPDATED', orderId: event.orderId, status: 'recusado' })
+            eventosParaAck.push(event.id)
           }
         } else if (event.code === 'PRESENCE') {
           eventosParaAck.push(event.id)

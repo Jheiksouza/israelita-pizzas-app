@@ -102,6 +102,18 @@ class IfoodAdapter extends MarketplaceAdapter {
     await this.apiFetch(path, config, { method: 'POST' })
   }
 
+  async getCancellationReasons(orderId, config) {
+    const res = await this.apiFetch(`/order/v1.0/orders/${orderId}/cancellationReasons`, config)
+    return res.json()
+  }
+
+  async requestCancellation(orderId, reasonCode, config) {
+    await this.apiFetch(`/order/v1.0/orders/${orderId}/requestCancellation`, config, {
+      method: 'POST',
+      body: JSON.stringify({ reason: reasonCode })
+    })
+  }
+
   async pollOrders(config) {
     const body = { events: ['PLACED', 'CONFIRMED'], groups: 'ALL' }
     if (config.merchant_id) {
