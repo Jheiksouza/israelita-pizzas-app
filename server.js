@@ -680,7 +680,11 @@ app.post('/marketplace/:platform/webhook', async (req, res) => {
 
     const { valid, eventType, rawPayload, parsedEvents } = await adapter.validateWebhook(req, config)
 
-    addWebhookLog(platform, { type: 'VALIDATE', valid, eventType, eventsCount: parsedEvents?.length || 0 })
+    addWebhookLog(platform, {
+      type: 'VALIDATE', valid, eventType, eventsCount: parsedEvents?.length || 0,
+      bodyPreview: JSON.stringify(req.body).substring(0, 500),
+      headers: JSON.stringify(Object.keys(req.headers).filter(h => h.startsWith('x-') || h === 'content-type' || h === 'content-length'))
+    })
 
     if (!valid) return res.status(401).json({ error: 'Webhook inválido' })
 
