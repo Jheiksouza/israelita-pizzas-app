@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "buildCommand": "cd client && npm install && npm run build && cd ../admin && npm install && npm run build && cd ../motoboy && npm install && npm run build && cd ../chat && npm install && npm run build",
+  "buildCommand": "cd client && npm install && npm run build && cd ../admin && npm install && npm run build && cd ../motoboy && npm install && npm run build",
   "outputDirectory": "client/dist",
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api" },
@@ -8,7 +8,6 @@
     { "source": "/firebase-messaging-sw.js", "destination": "/firebase-messaging-sw.js" },
     { "source": "/admin(.*)", "destination": "/admin/index.html" },
     { "source": "/motoboy(.*)", "destination": "/motoboy/index.html" },
-    { "source": "/chat(.*)", "destination": "/chat/index.html" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }

@@ -9,9 +9,20 @@
     <link href="https://fonts.googleapis.com/css2?family=Lora:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script async src="https://widgets.ifood.com.br/widget.js"></script>
   </head>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
+    <script>
+      window.addEventListener('load', () => {
+        if (typeof iFoodWidget !== 'undefined') {
+          iFoodWidget.init({
+            widgetId: 'fc0a0506-74ce-4f48-9d15-7089dd57aef3',
+            merchantIds: ['87338588-ed69-4b80-82fc-bb6c0b76a1c8'],
+          });
+        }
+      });
+    </script>
   </body>
 </html>

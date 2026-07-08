@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react'
 import { MapContainer, TileLayer, Marker, Polyline, useMapEvents, useMap } from 'react-leaflet'
 import L from 'leaflet'
-import { Pizza, MapPin, Store, Lock, Clock, Timer, Check, X, Truck, CheckCircle, Bike, Search, Plus, Pencil, DollarSign, List, Sun, Moon, LogOut, Settings, ChevronRight, ChevronLeft, Wifi, WifiOff, AlertCircle, MessageCircle } from 'lucide-react'
+import { Pizza, MapPin, Store, Lock, Clock, Timer, Check, X, Truck, CheckCircle, Bike, Search, Plus, Pencil, DollarSign, List, Sun, Moon, LogOut, Settings, ChevronRight, ChevronLeft, Wifi, WifiOff, AlertCircle } from 'lucide-react'
 
 window.__googleCallback = (response) => {
   const s = window.__adminAuthSetters
@@ -47,7 +47,6 @@ const allNavItems = [
   { key: 'pizzaria', label: 'Pizzaria', icon: Store, roles: ['admin'], section: 'Admin' },
   { key: 'permissoes', label: 'Permissões', icon: Lock, roles: ['admin'], section: 'Admin' },
   { key: 'configuracoes', label: 'Configurações', icon: Settings, roles: ['admin'], section: 'Admin' },
-  { key: 'chat', label: 'Chat iFood', icon: MessageCircle, roles: ['admin', 'atendente'], section: 'Admin', external: '/chat' },
 ]
 
 function App() {
@@ -166,13 +165,7 @@ function App() {
               {navItems.filter(n => n.section === section).map(item => {
                 const Icon = item.icon
                 return (
-                  <button key={item.key} className={`sidebar-nav-item ${aba === item.key ? 'active' : ''}`} onClick={() => {
-                    if (item.external) {
-                      window.open(item.external, '_blank', 'width=1200,height=800')
-                    } else {
-                      setAba(item.key)
-                    }
-                  }}>
+                  <button key={item.key} className={`sidebar-nav-item ${aba === item.key ? 'active' : ''}`} onClick={() => setAba(item.key)}>
                     <Icon size={18} />
                     <span>{item.label}</span>
                   </button>

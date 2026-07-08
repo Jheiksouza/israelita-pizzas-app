@@ -925,32 +925,6 @@ app.put('/admin/config/pizzaria', async (req, res) => {
   }
 })
 
-// Configuração do Chat iFood Widget
-app.get('/config/chat', async (req, res) => {
-  if (!checkSupabase(res)) return
-  try {
-    const { data } = await supabase.from('app_config').select('valor').eq('chave', 'chat').maybeSingle()
-    res.json(data?.valor || { widgetId: '' })
-  } catch (err) {
-    res.status(500).json({ erro: err.message })
-  }
-})
-
-app.put('/config/chat', async (req, res) => {
-  if (!checkSupabase(res)) return
-  try {
-    const { widgetId } = req.body
-    const { data, error } = await supabase.from('app_config').upsert(
-      { chave: 'chat', valor: { widgetId, updatedAt: new Date().toISOString() }, updated_at: new Date().toISOString() },
-      { onConflict: 'chave' }
-    ).select()
-    if (error) throw error
-    res.json({ ok: true, widgetId })
-  } catch (err) {
-    res.status(500).json({ erro: err.message })
-  }
-})
-
 // Login
 app.post('/login', async (req, res) => {
   const { senha, userId } = req.body
