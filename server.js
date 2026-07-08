@@ -630,6 +630,11 @@ app.post('/marketplace/:platform/webhook', async (req, res) => {
     const { valid, eventType, rawPayload } = await adapter.validateWebhook(req, config)
     if (!valid) return res.status(401).json({ error: 'Webhook inválido' })
 
+    // Evento de presença — iFood testa conectividade, deve responder 202
+    if (eventType === 'PRESENCE') {
+      return res.status(202).json({ received: true })
+    }
+
     if (eventType === 'ORDER_CREATED') {
       const orderData = await adapter.toInternalOrder(rawPayload, config)
       const pedido = {
