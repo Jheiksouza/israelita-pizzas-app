@@ -62,7 +62,7 @@ try {
   console.error('Erro ao criar cliente Supabase:', e)
 }
 
-const { getAdapter, getPlatformInfo, getConfigDefaults } = setupMarketplaces()
+const { getAdapter, getPlatformInfo, getConfigDefaults, getPlatformStatuses } = setupMarketplaces()
 
 // Health check (pra testar se o Express está rodando no Vercel)
 app.get('/health', (req, res) => {
@@ -526,6 +526,37 @@ app.patch('/orders/:id', async (req, res) => {
 // Informações dos adapters registrados (para o admin montar formulários)
 app.get('/marketplaces/info', (req, res) => {
   res.json(getPlatformInfo())
+})
+
+// Status de cada marketplace (configurado, pendente, etc)
+app.get('/marketplaces/status', async (req, res) => {
+  if (!checkSupabase(res)) return
+  try {
+    const { data } = await supabase.from('app_config').select('valor').eq('chave', 'marketplaces').maybeSingle()
+    res.json(getPlatformStatuses(data?.valor || {}))
+  } catch (err) {
+    res.status(500).json({ erro: err.message })
+  }
+})
+
+// Testa conexão com um marketplace específico
+app.post('/marketplace/:platform/test', async (req, res) => {
+  if (!checkSupabase(res)) return
+  try {
+    const { platform } = req.params
+    const adapter = getAdapter(platform)
+    if (!adapter) return res.status(404).json({ erro: 'Marketplace não encontrado' })
+
+    const { data: configData } = await supabase.from('app_config').select('valor').eq('chave', 'marketplaces').maybeSingle()
+    const allConfigs = configData?.valor || {}
+    const config = allConfigs[platform] || {}
+
+    const result = await adapter.testConnection(config)
+    res.json(result)
+  } catch (err) {
+    console.error('[Marketplace Test] Erro:', err)
+    res.status(500).json({ success: false, message: err.message || 'Erro ao testar conexão' })
+  }
 })
 
 // Carrega configuração salva de todos os marketplaces (merge com defaults)

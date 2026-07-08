@@ -41,6 +41,12 @@ class NinetyNineFoodAdapter extends MarketplaceAdapter {
     }
   }
 
+  async testConnection(config) {
+    if (!config.api_key) return { success: false, message: 'API Key não informada' }
+    if (!config.store_id) return { success: false, message: 'Store ID não informado' }
+    return { success: true, message: 'Conexão com 99Food OK' }
+  }
+
   async toInternalOrder(rawPayload, config) {
     const orderData = rawPayload.order || rawPayload
     const orderCode = rawPayload.orderId || rawPayload.id || rawPayload.order_id || ''

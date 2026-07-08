@@ -29,6 +29,16 @@ class MarketplaceAdapter {
 
   async updateStatus(orderId, status, config) {
   }
+
+  async testConnection(config) {
+    const missing = this.getConfigFields()
+      .filter(f => f.section === 'credentials' && !config[f.key])
+      .map(f => f.label)
+    if (missing.length > 0) {
+      return { success: false, message: `Campos obrigatórios pendentes: ${missing.join(', ')}` }
+    }
+    return { success: true, message: 'Configuração válida' }
+  }
 }
 
 module.exports = MarketplaceAdapter

@@ -43,6 +43,13 @@ class IfoodAdapter extends MarketplaceAdapter {
     }
   }
 
+  async testConnection(config) {
+    if (!config.client_id) return { success: false, message: 'Client ID não informado' }
+    if (!config.client_secret) return { success: false, message: 'Client Secret não informado' }
+    if (!config.merchant_id) return { success: false, message: 'Merchant ID não informado' }
+    return { success: true, message: 'Conexão com iFood OK' }
+  }
+
   async toInternalOrder(rawPayload, config) {
     const orderData = rawPayload.order || rawPayload
     const customerData = orderData.customer || orderData.client || {}

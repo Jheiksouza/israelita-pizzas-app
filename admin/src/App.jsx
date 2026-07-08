@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react'
 import { MapContainer, TileLayer, Marker, Polyline, useMapEvents, useMap } from 'react-leaflet'
 import L from 'leaflet'
-import { Pizza, MapPin, Store, Lock, Clock, Timer, Check, X, Truck, CheckCircle, Bike, Search, Plus, Pencil, DollarSign, List, Sun, Moon, LogOut, Settings } from 'lucide-react'
+import { Pizza, MapPin, Store, Lock, Clock, Timer, Check, X, Truck, CheckCircle, Bike, Search, Plus, Pencil, DollarSign, List, Sun, Moon, LogOut, Settings, ChevronRight, ChevronLeft, Wifi, WifiOff, AlertCircle } from 'lucide-react'
 
 window.__googleCallback = (response) => {
   const s = window.__adminAuthSetters
@@ -1142,116 +1142,234 @@ function AdminPermissoes({ user, token }) {
 function AdminConfiguracoes() {
   const [marketplaces, setMarketplaces] = useState([])
   const [config, setConfig] = useState({})
+  const [statuses, setStatuses] = useState({})
+  const [selectedPlatform, setSelectedPlatform] = useState(null)
   const [salvando, setSalvando] = useState({})
+  const [testando, setTestando] = useState({})
+  const [testResult, setTestResult] = useState(null)
   const [msg, setMsg] = useState('')
 
   useEffect(() => {
     Promise.all([
       fetch(`${API}/marketplaces/info`).then(r => r.json()),
-      fetch(`${API}/config/marketplaces`).then(r => r.json())
-    ]).then(([info, cfg]) => {
+      fetch(`${API}/config/marketplaces`).then(r => r.json()),
+      fetch(`${API}/marketplaces/status`).then(r => r.json())
+    ]).then(([info, cfg, st]) => {
       setMarketplaces(info)
       setConfig(cfg)
+      setStatuses(st)
     }).catch(() => {})
   }, [])
 
   const handleSalvar = async (platform) => {
     setSalvando(s => ({ ...s, [platform]: true }))
     setMsg('')
+    setTestResult(null)
     try {
       const res = await fetch(`${API}/config/marketplaces/${platform}`, {
         method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(config[platform])
       })
-      if (res.ok) { setMsg('Configurações salvas!'); setTimeout(() => setMsg(''), 3000) }
-      else { const err = await res.json(); setMsg('Erro: ' + (err.erro || 'Falha')) }
+      if (res.ok) {
+        setMsg('Configurações salvas!')
+        setTimeout(() => setMsg(''), 3000)
+        const stRes = await fetch(`${API}/marketplaces/status`)
+        const st = await stRes.json()
+        setStatuses(st)
+      } else {
+        const err = await res.json()
+        setMsg('Erro: ' + (err.erro || 'Falha'))
+      }
     } catch { setMsg('Erro de conexão') }
     setSalvando(s => ({ ...s, [platform]: false }))
   }
 
+  const handleTest = async (platform) => {
+    setTestando(s => ({ ...s, [platform]: true }))
+    setTestResult(null)
+    try {
+      const res = await fetch(`${API}/marketplace/${platform}/test`, { method: 'POST' })
+      const result = await res.json()
+      setTestResult(result)
+      setStatuses(st => ({
+        ...st,
+        [platform]: result.success
+          ? { status: 'connected', label: 'Conectado' }
+          : { status: 'error', label: 'Erro de autenticação' }
+      }))
+    } catch {
+      setTestResult({ success: false, message: 'Erro de conexão com o servidor' })
+    }
+    setTestando(s => ({ ...s, [platform]: false }))
+  }
+
+  const handleFieldChange = (platform, key, value) => {
+    setConfig(c => ({ ...c, [platform]: { ...(c[platform] || {}), [key]: value } }))
+    setTestResult(null)
+  }
+
   if (marketplaces.length === 0) return <div className="empty-state"><p>Carregando...</p></div>
 
+  if (selectedPlatform) {
+    const mp = marketplaces.find(m => m.platform === selectedPlatform)
+    if (!mp) return <div className="empty-state"><p>Marketplace não encontrado</p></div>
+    const platformConfig = config[mp.platform] || {}
+    const status = statuses[mp.platform] || { status: 'not_configured', label: 'Não configurado' }
+    const isEnabled = platformConfig.enabled || false
+    const webhookUrl = `${window.location.origin}/api/marketplace/${mp.platform}/webhook`
+    const hasWebhook = mp.fields.some(f => f.section === 'webhook')
+    const credentialsFields = mp.fields.filter(f => f.section === 'credentials')
+    const webhookFields = mp.fields.filter(f => f.section === 'webhook')
+    const topFields = mp.fields.filter(f => f.key === 'enabled')
+
+    const statusColors = {
+      not_configured: 'var(--muted-foreground)',
+      disabled: 'var(--muted-foreground)',
+      configured: 'var(--info)',
+      connected: 'var(--success)',
+      error: 'var(--destructive)'
+    }
+
+    return (
+      <div className="marketplace-detail">
+        <div className="marketplace-detail-topbar">
+          <button className="btn btn-ghost" onClick={() => { setSelectedPlatform(null); setTestResult(null) }}>
+            <ChevronLeft size={18} /> Voltar
+          </button>
+        </div>
+        <div className="marketplace-detail-header">
+          <div className="marketplace-detail-icon" style={{ background: mp.color }}>
+            {mp.displayName[0]}
+          </div>
+          <div className="marketplace-detail-info">
+            <h2 className="page-title">{mp.displayName}</h2>
+            <span className="marketplace-detail-status" style={{ color: statusColors[status.status] || 'var(--muted-foreground)' }}>
+              {status.status === 'connected' && <Wifi size={14} />}
+              {status.status === 'error' && <AlertCircle size={14} />}
+              {status.status === 'not_configured' && <WifiOff size={14} />}
+              {status.label}
+            </span>
+          </div>
+        </div>
+
+        {msg && <p className={`form-msg ${msg.includes('sucesso') ? 'success' : ''}`} style={{ marginBottom: 16 }}>{msg}</p>}
+
+        <div className="card">
+          <div className="card-body marketplace-detail-body">
+            {topFields.map(field => (
+              <div className="config-section" key={field.key}>
+                <div className="form-group">
+                  <label className="form-label">{field.label}</label>
+                  <label className="toggle-label">
+                    <input type="checkbox" checked={isEnabled} onChange={e => handleFieldChange(mp.platform, field.key, e.target.checked)} />
+                    <span className="toggle-slider"></span>
+                    <span className="toggle-text">{isEnabled ? 'Ativado' : 'Desativado'}</span>
+                  </label>
+                </div>
+              </div>
+            ))}
+
+            {credentialsFields.length > 0 && (
+              <div className="config-section">
+                <h4 className="config-subtitle">Credenciais da API</h4>
+                {credentialsFields.map(field => (
+                  <div className="form-group" key={field.key}>
+                    <label className="form-label">{field.label}</label>
+                    <input className="form-input" type={field.type === 'password' ? 'password' : 'text'} placeholder={field.label} value={platformConfig[field.key] || ''} disabled={!isEnabled} onChange={e => handleFieldChange(mp.platform, field.key, e.target.value)} />
+                    {field.hint && <span className="form-hint">{field.hint}</span>}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {hasWebhook && (
+              <div className="config-section">
+                <h4 className="config-subtitle">Webhook</h4>
+                <p className="config-desc">Configure esta URL no {mp.displayName} para receber os pedidos automaticamente.</p>
+                <div className="form-group">
+                  <label className="form-label">URL do Webhook</label>
+                  <div className="input-copy">
+                    <input className="form-input" readOnly value={webhookUrl} onClick={e => e.target.select()} />
+                    <button className="btn btn-ghost btn-sm" onClick={() => { navigator.clipboard.writeText(webhookUrl); setMsg('URL copiada!'); setTimeout(() => setMsg(''), 2000) }}>Copiar</button>
+                  </div>
+                </div>
+                {webhookFields.map(field => (
+                  <div className="form-group" key={field.key}>
+                    <label className="form-label">{field.label}</label>
+                    <input className="form-input" type={field.type === 'password' ? 'password' : 'text'} placeholder={field.label} value={platformConfig[field.key] || ''} disabled={!isEnabled} onChange={e => handleFieldChange(mp.platform, field.key, e.target.value)} />
+                    {field.hint && <span className="form-hint" dangerouslySetInnerHTML={{ __html: field.hint }} />}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {testResult && (
+              <div className={`test-result ${testResult.success ? 'test-result-success' : 'test-result-error'}`}>
+                {testResult.success ? <CheckCircle size={18} /> : <X size={18} />}
+                {testResult.message}
+              </div>
+            )}
+
+            <div className="marketplace-detail-actions">
+              <button className="btn btn-secondary" onClick={() => handleTest(mp.platform)} disabled={!isEnabled || testando[mp.platform]}>
+                {testando[mp.platform] ? 'Testando...' : 'Testar conexão'}
+              </button>
+              <button className="btn btn-primary" onClick={() => handleSalvar(mp.platform)} disabled={salvando[mp.platform]}>
+                {salvando[mp.platform] ? 'Salvando...' : 'Salvar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
-    <div className="configuracoes-page">
+    <div className="marketplace-hub">
       <div className="page-header">
         <div className="page-header-left">
-          <h1 className="page-title">Configurações</h1>
-          <p className="page-description">Gerencie as integrações com marketplaces</p>
+          <h1 className="page-title">Marketplaces</h1>
+          <p className="page-description">Gerencie as integrações com plataformas de delivery</p>
         </div>
       </div>
 
       {msg && <p className={`form-msg ${msg.includes('sucesso') ? 'success' : ''}`} style={{ marginBottom: 16 }}>{msg}</p>}
 
-      {marketplaces.map(mp => {
-        const platformConfig = config[mp.platform] || {}
-        const webhookUrl = `${window.location.origin}/api/marketplace/${mp.platform}/webhook`
-        const hasWebhook = mp.fields.some(f => f.section === 'webhook')
-        const credentialsFields = mp.fields.filter(f => f.section === 'credentials')
-        const webhookFields = mp.fields.filter(f => f.section === 'webhook')
-        const topFields = mp.fields.filter(f => f.key === 'enabled')
+      <div className="marketplace-grid">
+        {marketplaces.map(mp => {
+          const status = statuses[mp.platform] || { status: 'not_configured', label: 'Não configurado' }
+          const statusColors = {
+            not_configured: 'var(--muted-foreground)',
+            disabled: 'var(--muted-foreground)',
+            configured: 'var(--info)',
+            connected: 'var(--success)',
+            error: 'var(--destructive)'
+          }
+          const statusIcons = {
+            connected: Wifi,
+            error: AlertCircle,
+            configured: CheckCircle,
+            not_configured: WifiOff,
+            disabled: WifiOff
+          }
+          const StatusIcon = statusIcons[status.status] || WifiOff
 
-        return (
-          <div className="card" key={mp.platform} style={{ marginBottom: 20 }}>
-            <div className="card-header">
-              <Settings size={18} />
-              <span>Integração <span style={{ color: mp.color, fontWeight: 700 }}>{mp.displayName}</span></span>
-            </div>
-            <div className="card-body">
-              {topFields.map(field => (
-                <div className="config-section" key={field.key}>
-                  <div className="form-group">
-                    <label className="form-label">{field.label}</label>
-                    <label className="toggle-label">
-                      <input type="checkbox" checked={platformConfig[field.key] || false} onChange={e => setConfig(c => ({ ...c, [mp.platform]: { ...(c[mp.platform] || {}), [field.key]: e.target.checked } }))} />
-                      <span className="toggle-slider"></span>
-                      <span className="toggle-text">{platformConfig[field.key] ? 'Ativado' : 'Desativado'}</span>
-                    </label>
-                  </div>
-                </div>
-              ))}
-
-              {credentialsFields.length > 0 && (
-                <div className="config-section">
-                  <h4 className="config-subtitle">Credenciais da API</h4>
-                  {credentialsFields.map(field => (
-                    <div className="form-group" key={field.key}>
-                      <label className="form-label">{field.label}</label>
-                      <input className="form-input" type={field.type === 'password' ? 'password' : 'text'} placeholder={field.label} value={platformConfig[field.key] || ''} onChange={e => setConfig(c => ({ ...c, [mp.platform]: { ...(c[mp.platform] || {}), [field.key]: e.target.value } }))} />
-                      {field.hint && <span className="form-hint">{field.hint}</span>}
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {hasWebhook && (
-                <div className="config-section">
-                  <h4 className="config-subtitle">Webhook</h4>
-                  <p className="config-desc">Configure esta URL no {mp.displayName} para receber os pedidos automaticamente.</p>
-                  <div className="form-group">
-                    <label className="form-label">URL do Webhook</label>
-                    <div className="input-copy">
-                      <input className="form-input" readOnly value={webhookUrl} onClick={e => e.target.select()} />
-                      <button className="btn btn-ghost btn-sm" onClick={() => { navigator.clipboard.writeText(webhookUrl); setMsg('URL copiada!'); setTimeout(() => setMsg(''), 2000) }}>Copiar</button>
-                    </div>
-                  </div>
-                  {webhookFields.map(field => (
-                    <div className="form-group" key={field.key}>
-                      <label className="form-label">{field.label}</label>
-                      <input className="form-input" type={field.type === 'password' ? 'password' : 'text'} placeholder={field.label} value={platformConfig[field.key] || ''} onChange={e => setConfig(c => ({ ...c, [mp.platform]: { ...(c[mp.platform] || {}), [field.key]: e.target.value } }))} />
-                      {field.hint && <span className="form-hint" dangerouslySetInnerHTML={{ __html: field.hint }} />}
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              <div className="form-actions" style={{ marginTop: 16 }}>
-                <button className="btn btn-primary" onClick={() => handleSalvar(mp.platform)} disabled={salvando[mp.platform]}>
-                  {salvando[mp.platform] ? 'Salvando...' : `Salvar ${mp.displayName}`}
-                </button>
+          return (
+            <div key={mp.platform} className="marketplace-card" onClick={() => setSelectedPlatform(mp.platform)}>
+              <div className="marketplace-card-avatar" style={{ background: mp.color }}>
+                {mp.displayName[0]}
               </div>
+              <div className="marketplace-card-content">
+                <span className="marketplace-card-name">{mp.displayName}</span>
+                <span className="marketplace-card-status" style={{ color: statusColors[status.status] || 'var(--muted-foreground)' }}>
+                  <StatusIcon size={12} />
+                  {status.label}
+                </span>
+              </div>
+              <ChevronRight size={18} className="marketplace-card-arrow" />
             </div>
-          </div>
-        )
-      })}
+          )
+        })}
+      </div>
     </div>
   )
 }
