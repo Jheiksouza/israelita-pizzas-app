@@ -174,7 +174,7 @@ class IfoodAdapter extends MarketplaceAdapter {
     const orderCode = rawPayload.code || rawPayload.fullCode || rawPayload.orderId || rawPayload.id || ''
 
     const customerData = orderData.customer || orderData.client || {}
-    const addressData = orderData.deliveryAddress || customerData.deliveryAddress || customerData.address || {}
+    const addressData = orderData.delivery?.deliveryAddress || orderData.deliveryAddress || customerData.deliveryAddress || customerData.address || {}
     const itemsData = orderData.items || orderData.products || []
 
     const formatPhone = (phone) => {
@@ -184,9 +184,12 @@ class IfoodAdapter extends MarketplaceAdapter {
     }
 
     const formatAddress = (addr) => {
-      if (!addr || !addr.streetName) return 'Endereço iFood'
+      if (!addr) return 'Endereço iFood'
+      if (addr.formattedAddress) return addr.formattedAddress
+      if (!addr.streetName) return 'Endereço iFood'
       let end = `${addr.streetName || ''}, ${addr.streetNumber || ''}`
       if (addr.neighborhood) end += ` - ${addr.neighborhood}`
+      if (addr.complement) end += ` (${addr.complement})`
       if (addr.city || addr.state) end += `, ${addr.city || ''}${addr.state ? `/${addr.state}` : ''}`
       return end
     }
