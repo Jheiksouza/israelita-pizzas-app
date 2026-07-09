@@ -45,7 +45,7 @@ app.use((req, res, next) => {
 })
 
 function cp850(str) {
-  return iconv.encode(str, 'CP850')
+  return iconv.encode(str, 'Windows-1252')
 }
 
 function formatEnderecoCompleto(cfg) {
@@ -78,6 +78,7 @@ function gerarBytes(pedido) {
   const cnpj = config.cnpj || ''
 
   esc(0x1B, 0x40)
+  esc(0x1B, 0x74, 0x10)
   esc(0x1B, 0x64, 0x02)
   esc(0x1B, 0x61, 0x01)
   esc(0x1B, 0x21, 0x30)
