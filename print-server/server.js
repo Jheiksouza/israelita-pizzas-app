@@ -1,8 +1,10 @@
 const express = require('express')
+const { exec } = require('child_process')
 const fs = require('fs')
+const path = require('path')
 
 const PORT = process.env.PORT || 13001
-const PRINTER_NAME = process.env.PRINTER_NAME || null
+const PRINTER_NAME = process.env.PRINTER_NAME || 'POS-80'
 
 const app = express()
 app.use(express.json({ limit: '1mb' }))
@@ -39,14 +41,14 @@ function gerarBytes(pedido) {
   function esc(...args) { partes.push(Buffer.from(args)) }
   function txt(str) { partes.push(cp850(str)) }
 
-  esc(0x1B, 0x40) // INIT
-  esc(0x1B, 0x64, 0x03) // FEED 3
-  esc(0x1B, 0x61, 0x01) // center
-  esc(0x1B, 0x21, 0x30) // double height+width
+  esc(0x1B, 0x40)
+  esc(0x1B, 0x64, 0x03)
+  esc(0x1B, 0x61, 0x01)
+  esc(0x1B, 0x21, 0x30)
   txt('ISRAELITA PIZZAS\n')
-  esc(0x1B, 0x21, 0x00) // normal
+  esc(0x1B, 0x21, 0x00)
   txt('Vila Velha - ES\n')
-  esc(0x1B, 0x61, 0x00) // left
+  esc(0x1B, 0x61, 0x00)
   txt(''.padEnd(32, '-') + '\n')
   esc(0x1B, 0x61, 0x01)
   esc(0x1B, 0x21, 0x30)
@@ -58,9 +60,9 @@ function gerarBytes(pedido) {
   if (c.telefone) txt(`Tel: ${c.telefone}\n`)
   if (c.endereco) txt(`End: ${c.endereco}\n`)
   txt(''.padEnd(32, '-') + '\n')
-  esc(0x1B, 0x45, 0x01) // bold on
+  esc(0x1B, 0x45, 0x01)
   txt('ITENS\n')
-  esc(0x1B, 0x45, 0x00) // bold off
+  esc(0x1B, 0x45, 0x00)
   if (pedido.itens) {
     for (const item of pedido.itens) {
       let l = `${item.qtd}x ${item.nome}`
@@ -80,39 +82,41 @@ function gerarBytes(pedido) {
   }
   if (c.observacoes) txt(`\nObs: ${c.observacoes}\n`)
   if (c.codigo_coleta) txt(`Coleta: ${c.codigo_coleta}\n`)
-  esc(0x1B, 0x64, 0x05) // FEED 5
-  esc(0x1D, 0x56, 0x01) // CUT PARTIAL
+  esc(0x1B, 0x64, 0x05)
+  esc(0x1D, 0x56, 0x01)
 
   return Buffer.concat(partes)
 }
 
-function listarImpressoras() {
 app.post('/print', async (req, res) => {
   try {
     const pedido = req.body
     if (!pedido?.id) return res.status(400).json({ error: 'pedido.id required' })
 
     const data = gerarBytes(pedido)
-    const printerName = PRINTER_NAME || 'POS-80'
+    const tmpFile = path.join(__dirname, `_print_${Date.now()}.bin`)
+    fs.writeFileSync(tmpFile, data)
 
-    fs.writeFileSync(`\\\\localhost\\${printerName}`, data)
+    const ps1 = path.join(__dirname, 'rawprint.ps1')
+    const cmd = `powershell -NoProfile -ExecutionPolicy Bypass -File "${ps1}" -PrinterName "${PRINTER_NAME}" -FilePath "${tmpFile}"`
 
-    res.json({ ok: true, pedido: pedido.id })
+    exec(cmd, { timeout: 20000 }, (err, stdout, stderr) => {
+      try { if (fs.existsSync(tmpFile)) fs.unlinkSync(tmpFile) } catch {}
+      if (err) {
+        return res.status(500).json({ error: 'Erro ao imprimir: ' + (stderr || err.message) })
+      }
+      res.json({ ok: true, pedido: pedido.id })
+    })
   } catch (e) {
     res.status(500).json({ error: e.message })
   }
 })
 
 app.get('/status', (req, res) => {
-  res.json({
-    ok: true,
-    printerName: PRINTER_NAME || 'POS-80 (padrao)',
-  })
+  res.json({ ok: true, printerName: PRINTER_NAME })
 })
 
 app.listen(PORT, () => {
   console.log(`Print server rodando em http://localhost:${PORT}`)
-  console.log(`Para configurar a impressora, defina PRINTER_NAME`)
-  console.log(`Ex: $env:PRINTER_NAME="Nome da Impressora"`)
-  console.log(`Liste impressoras: curl http://localhost:${PORT}/printers`)
+  console.log(`Impressora: ${PRINTER_NAME}`)
 })
