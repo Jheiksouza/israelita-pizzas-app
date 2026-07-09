@@ -88,7 +88,7 @@ app.post('/print', async (req, res) => {
     const tmpFile = path.join(__dirname, `_print_${Date.now()}.bin`)
     fs.writeFileSync(tmpFile, data)
 
-    const cmd = `powershell -NoProfile -Command "$p = Get-CimInstance Win32_Printer -Filter \"Name='${PRINTER_NAME}'\"; if ($p -and !$p.Shared) { Set-Printer -Name '${PRINTER_NAME}' -Shared $true }; [System.IO.File]::WriteAllBytes('\\\\localhost\\${PRINTER_NAME}', [System.IO.File]::ReadAllBytes('${tmpFile}')); Remove-Item '${tmpFile}'"`
+    const cmd = `powershell -NoProfile -Command "Get-Content '${tmpFile}' -Encoding Byte | Out-Printer -Name '${PRINTER_NAME}'; Remove-Item '${tmpFile}'"`
 
     exec(cmd, { timeout: 20000 }, (err, stdout, stderr) => {
       try { if (fs.existsSync(tmpFile)) fs.unlinkSync(tmpFile) } catch {}
@@ -107,11 +107,11 @@ app.post('/print', async (req, res) => {
 
 app.get('/test', (req, res) => {
   try {
-    const data = cp850('TESTE DE IMPRESSÃO\r\n\r\nSe voce esta lendo isso\r\na impressora esta OK!\r\n\r\n\r\n\r\n')
+    const data = cp850('TESTE DE IMPRESSAO\n\nSe voce esta lendo isso\na impressora esta OK!\n\n\n\n')
     const tmpFile = path.join(__dirname, `_test_${Date.now()}.bin`)
     fs.writeFileSync(tmpFile, data)
 
-    const cmd = `powershell -NoProfile -Command "$p = Get-CimInstance Win32_Printer -Filter \"Name='${PRINTER_NAME}'\"; if ($p -and !$p.Shared) { Set-Printer -Name '${PRINTER_NAME}' -Shared $true }; [System.IO.File]::WriteAllBytes('\\\\localhost\\${PRINTER_NAME}', [System.IO.File]::ReadAllBytes('${tmpFile}')); Remove-Item '${tmpFile}'"`
+    const cmd = `powershell -NoProfile -Command "Get-Content '${tmpFile}' -Encoding Byte | Out-Printer -Name '${PRINTER_NAME}'; Remove-Item '${tmpFile}'"`
 
     exec(cmd, { timeout: 15000 }, (err, stdout, stderr) => {
       try { if (fs.existsSync(tmpFile)) fs.unlinkSync(tmpFile) } catch {}
