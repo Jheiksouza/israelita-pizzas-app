@@ -1,6 +1,24 @@
 let config = {}
 let printers = []
 
+function addLog(msg, tipo) {
+  const container = $('log-container')
+  const entry = document.createElement('div')
+  entry.className = `log-entry ${tipo || ''}`
+  const time = new Date().toLocaleTimeString('pt-BR')
+  entry.textContent = `[${time}] ${msg}`
+  container.appendChild(entry)
+  container.scrollTop = container.scrollHeight
+  // Remove empty placeholder if present
+  const empty = container.querySelector('.log-empty')
+  if (empty) empty.remove()
+}
+
+$('btn-limpar-logs').addEventListener('click', () => {
+  const container = $('log-container')
+  container.innerHTML = '<div class="log-empty">Nenhum log ainda</div>'
+})
+
 const $ = id => document.getElementById(id)
 
 async function carregarConfig() {
@@ -45,10 +63,12 @@ function mostrarToast(msg, tipo) {
   toast.textContent = msg
   toast.className = `toast show ${tipo || ''}`
   setTimeout(() => toast.className = 'toast', 3000)
+  addLog(msg, tipo === 'error' ? 'error' : tipo === 'success' ? 'success' : 'info')
 }
 
 $('printer-select').addEventListener('change', async (e) => {
   const printer = e.target.value
+  addLog(`Alterando impressora para: ${printer}`, 'info')
   try {
     await window.electronAPI.setPrinter(printer)
     config.printerName = printer
@@ -59,6 +79,7 @@ $('printer-select').addEventListener('change', async (e) => {
 })
 
 $('chk-autostart').addEventListener('change', async (e) => {
+  addLog(e.target.checked ? 'Ativando auto-start' : 'Desativando auto-start', 'info')
   try {
     await window.electronAPI.setAutoStart(e.target.checked)
     mostrarToast(
@@ -71,18 +92,20 @@ $('chk-autostart').addEventListener('change', async (e) => {
 })
 
 $('btn-testar').addEventListener('click', async () => {
-  mostrarToast('Enviando impressão de teste...', '')
+  addLog('Iniciando impressão de teste...', 'info')
   try {
+    addLog(`Impressora: ${config.printerName}`, 'info')
     const result = await window.electronAPI.testPrint()
     if (result.success) {
-      mostrarToast('Impressão de teste enviada com sucesso!', 'success')
+      addLog(`RawPrinter: ${result.output || 'OK'}`, 'success')
+      mostrarToast('Impressão de teste enviada!', 'success')
     } else {
+      addLog(`Falha: ${result.error}`, 'error')
       mostrarToast(`Erro: ${result.error}`, 'error')
-      console.error('Test print error:', result.error)
     }
   } catch (e) {
+      addLog(`Exceção: ${e.message}`, 'error')
     mostrarToast(`Erro: ${e.message}`, 'error')
-    console.error('Test print exception:', e)
   }
 })
 
@@ -95,10 +118,15 @@ $('btn-fechar').addEventListener('click', () => {
   window.close()
 })
 
-const unsub = window.electronAPI.onRefresh(() => {
+const unsubRefresh = window.electronAPI.onRefresh(() => {
   carregarConfig()
   carregarImpressoras()
 })
 
+const unsubLog = window.electronAPI.onLog((msg, type) => {
+  addLog(msg, type || 'info')
+})
+
+addLog('Configurações carregadas', 'info')
 carregarConfig()
 carregarImpressoras()

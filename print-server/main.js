@@ -7,12 +7,6 @@ let tray = null
 let settingsWindow = null
 let serverStarted = false
 
-function getExePath() {
-  return app.isPackaged
-    ? path.join(process.resourcesPath, 'RawPrinter.exe')
-    : path.join(__dirname, 'RawPrinter.exe')
-}
-
 function getStorePath() {
   return app.isPackaged
     ? path.join(app.getPath('userData'), 'store.json')
@@ -113,12 +107,22 @@ app.whenReady().then(() => {
     ? path.join(process.resourcesPath, 'RawPrinter.exe')
     : path.join(__dirname, 'RawPrinter.exe')
   setExePath(exePath)
+  console.log('RawPrinter.exe path:', exePath, 'exists:', require('fs').existsSync(exePath))
 
   startServer()
   serverStarted = true
+  console.log('Express server started on port', getPort())
 
   createSettingsWindow()
   createTray()
+
+  setTimeout(() => {
+    if (settingsWindow) {
+      settingsWindow.webContents.send('log', `RawPrinter.exe: ${exePath}`, 'info')
+      settingsWindow.webContents.send('log', `Servidor rodando na porta ${getPort()}`, 'info')
+      settingsWindow.webContents.send('log', `Impressora: ${getPrinterName()}`, 'info')
+    }
+  }, 500)
 })
 
 app.on('window-all-closed', () => {})
