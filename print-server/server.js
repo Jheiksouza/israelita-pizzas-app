@@ -49,11 +49,21 @@ function getServerStatus() {
   return serverRunning ? `Rodando (porta ${PORT})` : 'Parado'
 }
 
+let exePathOverride = null
+
+function setExePath(p) {
+  exePathOverride = p
+}
+
 function getExePath() {
-  if (process.resourcesPath) {
+  if (exePathOverride && fs.existsSync(exePathOverride)) return exePathOverride
+
+  const isElectron = !!process.versions.electron
+  if (isElectron && process.resourcesPath) {
     const p = path.join(process.resourcesPath, 'RawPrinter.exe')
     if (fs.existsSync(p)) return p
   }
+
   const local = path.join(__dirname, 'RawPrinter.exe')
   if (fs.existsSync(local)) return local
 
@@ -274,5 +284,6 @@ module.exports = {
   getPrinterName,
   getPort,
   getServerStatus,
-  gerarBytes
+  gerarBytes,
+  setExePath
 }

@@ -1,7 +1,7 @@
 const { app, BrowserWindow, Tray, Menu, nativeImage, ipcMain, dialog } = require('electron')
 const path = require('path')
 const { exec } = require('child_process')
-const { startServer, setPrinterName, getPrinterName, getPort, getServerStatus } = require('./server')
+const { startServer, setPrinterName, getPrinterName, getPort, getServerStatus, setExePath } = require('./server')
 
 let tray = null
 let settingsWindow = null
@@ -108,6 +108,11 @@ app.whenReady().then(() => {
   const store = loadStore()
   const printer = store.printerName || 'POS-80'
   setPrinterName(printer)
+
+  const exePath = app.isPackaged
+    ? path.join(process.resourcesPath, 'RawPrinter.exe')
+    : path.join(__dirname, 'RawPrinter.exe')
+  setExePath(exePath)
 
   startServer()
   serverStarted = true
