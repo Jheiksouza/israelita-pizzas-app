@@ -2,6 +2,7 @@ const express = require('express')
 const { exec } = require('child_process')
 const fs = require('fs')
 const path = require('path')
+const iconv = require('iconv-lite')
 
 const PORT = process.env.PORT || 13001
 const PRINTER_NAME = process.env.PRINTER_NAME || 'POS-80'
@@ -44,21 +45,7 @@ app.use((req, res, next) => {
 })
 
 function cp850(str) {
-  const map = {
-    'á':0xA0,'à':0xA1,'â':0xA2,'ã':0xA3,'ä':0xA4,'é':0x82,'è':0x8A,'ê':0x83,'ë':0x89,
-    'í':0xA8,'ì':0x8D,'î':0x8E,'ï':0x8F,'ó':0xE0,'ò':0xE1,'ô':0xE2,'õ':0xE3,'ö':0xE4,
-    'ú':0x82,'ù':0xEB,'û':0xEE,'ü':0x81,'ç':0x87,'Ç':0x80,'ñ':0xA5,'Ñ':0xA6,
-    'º':0xA7,'ª':0xAB,'°':0xF8,
-  }
-  const b = Buffer.alloc(str.length)
-  for (let i = 0; i < str.length; i++) {
-    const ch = str[i]
-    const code = ch.charCodeAt(0)
-    if (code < 128) b[i] = code
-    else if (map[ch] !== undefined) b[i] = map[ch]
-    else b[i] = 0x3F
-  }
-  return b
+  return iconv.encode(str, 'CP850')
 }
 
 function formatEnderecoCompleto(cfg) {
