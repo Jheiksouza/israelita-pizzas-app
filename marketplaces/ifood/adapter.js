@@ -195,6 +195,17 @@ class IfoodAdapter extends MarketplaceAdapter {
       return end
     }
 
+    const formatPayments = (payments) => {
+      if (!payments || !payments.methods || payments.methods.length === 0) return null
+      return payments.methods.map(m => ({
+        metodo: m.method || m.type || '',
+        bandeira: m.brand || '',
+        valor: m.value || 0,
+        prepago: m.prepaid || false,
+        troco: m.changeFor || 0
+      }))
+    }
+
     const flattenItems = (items) => {
       const result = []
       items.forEach((item, idx) => {
@@ -240,13 +251,22 @@ class IfoodAdapter extends MarketplaceAdapter {
     const discount = orderData.total?.discount || orderData.discount || 0
     const total = parseFloat(typeof orderAmount === 'object' ? orderAmount.total || 0 : orderAmount) + parseFloat(deliveryFee) - parseFloat(discount)
 
+    const pagamento = formatPayments(orderData.payments)
+    const delivery = orderData.delivery || {}
+
     return {
       cliente: {
         nome: customerData.name || 'Cliente iFood',
         telefone: formatPhone(customerData.phone),
         endereco: formatAddress(addressData),
         origem: 'ifood',
-        marketplace_order_id: orderCode
+        marketplace_order_id: orderCode,
+        cpf: customerData.cpf || '',
+        pagamento,
+        observacoes: delivery.observations || orderData.observations || '',
+        codigo_coleta: delivery.pickupCode || '',
+        metodo_entrega: delivery.deliveredBy || delivery.mode || '',
+        teste: orderData.isTest || false
       },
       itens: flattenItems(itemsData),
       total: isNaN(total) ? 0 : total,

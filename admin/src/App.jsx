@@ -457,6 +457,7 @@ function AdminOrders() {
   const [filtro, setFiltro] = useState('todos')
   const [, setTick] = useState(0)
   const [marketplaceInfo, setMarketplaceInfo] = useState({})
+  const [expandido, setExpandido] = useState(null)
 
   useEffect(() => {
     fetch(`${API}/marketplaces/info`)
@@ -560,7 +561,7 @@ function AdminOrders() {
             const mpInfo = marketplaceInfo[origem]
             return (
             <div key={pedido.id} className={`pedido-card${pedido.status === 'pendente' ? ' pedido-pendente-destaque' : ''}${mpInfo ? ' pedido-marketplace' : ''}`} style={mpInfo ? { borderLeftColor: mpInfo.color } : {}}>
-              <div className="pedido-card-header">
+              <div className="pedido-card-header" onClick={() => setExpandido(expandido === pedido.id ? null : pedido.id)} style={{ cursor: 'pointer' }}>
                 <span className="pedido-id">
                   Pedido #{pedido.id}
                   {mpInfo && <span className="pedido-origem-badge" style={{ background: mpInfo.color }}>{mpInfo.displayName}</span>}
@@ -597,6 +598,52 @@ function AdminOrders() {
                     </div>
                   </div>
                 )}
+
+                {expandido === pedido.id && (
+                  <div className="pedido-detalhes" style={{ marginTop: 8, padding: 8, background: 'var(--muted)', borderRadius: 8, fontSize: 13 }}>
+                    {pedido.cliente?.cpf && (
+                      <div className="pedido-info-row" style={{ marginBottom: 4 }}>
+                        <div className="pedido-info-label" style={{ minWidth: 70 }}>CPF</div>
+                        <div className="pedido-info-value">{pedido.cliente.cpf}</div>
+                      </div>
+                    )}
+                    {pedido.cliente?.pagamento?.length > 0 && pedido.cliente.pagamento.map((p, i) => (
+                      <div key={i} className="pedido-info-row" style={{ marginBottom: 4 }}>
+                        <div className="pedido-info-label" style={{ minWidth: 70 }}>Pagamento</div>
+                        <div className="pedido-info-value">
+                          {p.metodo === 'ONLINE' ? 'Online' : p.metodo} {p.bandeira ? `- ${p.bandeira}` : ''} · R$ {p.valor?.toFixed(2)}
+                          {p.troco > 0 ? ` (troco: R$ ${p.troco.toFixed(2)})` : ''}
+                          {p.prepago ? ' ✅ Pago' : ''}
+                        </div>
+                      </div>
+                    ))}
+                    {pedido.cliente?.observacoes && (
+                      <div className="pedido-info-row" style={{ marginBottom: 4 }}>
+                        <div className="pedido-info-label" style={{ minWidth: 70 }}>Obs</div>
+                        <div className="pedido-info-value">{pedido.cliente.observacoes}</div>
+                      </div>
+                    )}
+                    {pedido.cliente?.codigo_coleta && (
+                      <div className="pedido-info-row" style={{ marginBottom: 4 }}>
+                        <div className="pedido-info-label" style={{ minWidth: 70 }}>Coleta</div>
+                        <div className="pedido-info-value">Código: {pedido.cliente.codigo_coleta}</div>
+                      </div>
+                    )}
+                    {pedido.cliente?.metodo_entrega && (
+                      <div className="pedido-info-row" style={{ marginBottom: 4 }}>
+                        <div className="pedido-info-label" style={{ minWidth: 70 }}>Entrega</div>
+                        <div className="pedido-info-value">{pedido.cliente.metodo_entrega === 'MERCHANT' ? 'Entrega própria' : 'iFood'}</div>
+                      </div>
+                    )}
+                    {pedido.cliente?.teste && (
+                      <div className="pedido-info-row">
+                        <div className="pedido-info-label" style={{ minWidth: 70 }}>Teste</div>
+                        <div className="pedido-info-value" style={{ color: 'var(--destructive)' }}>Pedido de teste</div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 <div className="pedido-meta">
                   <span className="pedido-meta-item"><Clock size={14} /> {new Date(pedido.data).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
                   <span className="pedido-meta-item pedido-valor">R$ {pedido.total?.toFixed(2)}</span>
