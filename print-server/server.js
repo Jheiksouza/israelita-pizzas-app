@@ -97,13 +97,13 @@ app.post('/print', async (req, res) => {
     const tmpFile = path.join(__dirname, `_print_${Date.now()}.bin`)
     fs.writeFileSync(tmpFile, data)
 
-    const ps1 = path.join(__dirname, 'rawprint.ps1')
-    const cmd = `powershell -NoProfile -ExecutionPolicy Bypass -File "${ps1}" -PrinterName "${PRINTER_NAME}" -FilePath "${tmpFile}"`
+    // Write-Printer envia RAW direto, sem driver intermediario
+    const cmd = `powershell -NoProfile -Command "Write-Printer -Name '${PRINTER_NAME}' -Data (Get-Content '${tmpFile}' -Encoding Byte); Remove-Item '${tmpFile}'"`
 
     exec(cmd, { timeout: 20000 }, (err, stdout, stderr) => {
       try { if (fs.existsSync(tmpFile)) fs.unlinkSync(tmpFile) } catch {}
       if (err) {
-        return res.status(500).json({ error: 'Erro ao imprimir: ' + (stderr || err.message) })
+        return res.status(500).json({ error: 'Erro ao imprimir: ' + (stderr || err.message).trim() })
       }
       res.json({ ok: true, pedido: pedido.id })
     })
