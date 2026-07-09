@@ -560,7 +560,7 @@ function AdminOrders() {
             const origem = pedido.cliente?.origem
             const mpInfo = marketplaceInfo[origem]
             return (
-            <div key={pedido.id} className={`pedido-card${pedido.status === 'pendente' ? ' pedido-pendente-destaque' : ''}${mpInfo ? ' pedido-marketplace' : ''}`} style={mpInfo ? { borderLeftColor: mpInfo.color } : {}}>
+            <div key={pedido.id} className={`pedido-card ${pedido.status}${pedido.status === 'pendente' ? ' pedido-pendente-destaque' : ''}${mpInfo ? ' pedido-marketplace' : ''}`} style={mpInfo ? { borderLeftColor: mpInfo.color } : {}}>
               <div className="pedido-card-header" onClick={() => setExpandido(expandido === pedido.id ? null : pedido.id)} style={{ cursor: 'pointer' }}>
                 <span className="pedido-id">
                   Pedido #{pedido.id}
