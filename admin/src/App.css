@@ -559,6 +559,12 @@ body {
   align-items: start;
 }
 
+.pedidos-col {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
 .pedido-card {
   background: var(--card);
   border-radius: var(--radius-2xl);

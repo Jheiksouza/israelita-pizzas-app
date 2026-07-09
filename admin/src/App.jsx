@@ -556,139 +556,149 @@ function AdminOrders() {
         <div className="empty-state"><p>Nenhum pedido hoje</p></div>
       ) : (
         <div className="pedidos-list">
-          {filtrados.map(pedido => {
-            const origem = pedido.cliente?.origem
-            const mpInfo = marketplaceInfo[origem]
-            return (
-            <div key={pedido.id} className={`pedido-card ${pedido.status}${pedido.status === 'pendente' ? ' pedido-pendente-destaque' : ''}`}>
-              <div className="pedido-card-header" onClick={() => setExpandido(expandido === pedido.id ? null : pedido.id)} style={{ cursor: 'pointer' }}>
-                <span className="pedido-id">
-                  Pedido #{pedido.id}
-                  {mpInfo && <span className="pedido-origem-badge" style={{ background: mpInfo.color }}>{mpInfo.displayName}</span>}
-                </span>
-                <span className={badgeClass[pedido.status]}>{statusLabel[pedido.status]}</span>
-              </div>
-              <div className="pedido-card-body">
-                <div className="pedido-info-row">
-                  <div className="pedido-info-icon"><MapPin size={18} /></div>
-                  <div className="pedido-info-content">
-                    <div className="pedido-info-label">Cliente</div>
-                    <div className="pedido-info-value">
-                      {pedido.cliente?.nome}{pedido.cliente?.telefone ? ` · ${pedido.cliente.telefone}` : ''}
-                    </div>
-                  </div>
-                </div>
-                <div className="pedido-info-row">
-                  <div className="pedido-info-icon"><MapPin size={18} /></div>
-                  <div className="pedido-info-content">
-                    <div className="pedido-info-label">Endereço</div>
-                    <div className="pedido-info-value">{pedido.cliente?.endereco || 'Não informado'}</div>
-                  </div>
-                </div>
-                {pedido.itens?.length > 0 && (
-                  <div className="pedido-info-row">
-                    <div className="pedido-info-icon"><Pizza size={18} /></div>
-                    <div className="pedido-info-content">
-                      <div className="pedido-info-label">Itens</div>
-                      <div className="pedido-itens">
-                        {pedido.itens.map(item => (
-                          <span key={item.id} className="pedido-item">{item.qtd}x {item.nome}</span>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {expandido === pedido.id && (
-                  <div className="pedido-detalhes">
-                    {pedido.cliente?.cpf && (
-                      <div className="detalhe-row">
-                        <FileText size={14} />
-                        <span className="detalhe-label">CPF</span>
-                        <span>{pedido.cliente.cpf}</span>
-                      </div>
-                    )}
-                    {pedido.cliente?.pagamento?.length > 0 && pedido.cliente.pagamento.map((p, i) => (
-                      <div key={i} className="detalhe-row">
-                        <CreditCard size={14} />
-                        <span className="detalhe-label">Pagamento</span>
-                        <span>
-                          {p.metodo === 'ONLINE' ? 'Online' : p.metodo}{p.bandeira ? ` - ${p.bandeira}` : ''}
-                          <span className="detalhe-valor">R$ {p.valor?.toFixed(2)}</span>
-                          {p.prepago && <CheckCircle size={12} className="detalhe-pago" />}
-                        </span>
-                      </div>
-                    ))}
-                    {pedido.cliente?.observacoes && (
-                      <div className="detalhe-row">
-                        <FileText size={14} />
-                        <span className="detalhe-label">Obs</span>
-                        <span>{pedido.cliente.observacoes}</span>
-                      </div>
-                    )}
-                    {pedido.cliente?.codigo_coleta && (
-                      <div className="detalhe-row">
-                        <Hash size={14} />
-                        <span className="detalhe-label">Coleta</span>
-                        <span className="detalhe-codigo">{pedido.cliente.codigo_coleta}</span>
-                      </div>
-                    )}
-                    {pedido.cliente?.metodo_entrega && (
-                      <div className="detalhe-row">
-                        <Truck size={14} />
-                        <span className="detalhe-label">Entrega</span>
-                        <span>{pedido.cliente.metodo_entrega === 'MERCHANT' ? 'Entrega própria' : 'iFood'}</span>
-                      </div>
-                    )}
-                    {pedido.cliente?.teste && (
-                      <div className="detalhe-row">
-                        <AlertTriangle size={14} />
-                        <span className="detalhe-label">Teste</span>
-                        <span className="detalhe-teste">Pedido de teste</span>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                <div className="pedido-meta">
-                  <span className="pedido-meta-item"><Clock size={14} /> {new Date(pedido.data).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
-                  <span className="pedido-meta-item pedido-valor">R$ {pedido.total?.toFixed(2)}</span>
-                  {pedido.data && (
-                    <span className={`pedido-timer ${pedido.status === 'pendente' && tempoRestante(pedido.data) === 'Cancelado' ? 'timer-expirado' : ''}`}>
-                      <Timer size={14} /> {pedido.status === 'pendente' ? tempoRestante(pedido.data) : tempoDecorrido(pedido.data)}
-                    </span>
-                  )}
-                </div>
-              </div>
-              <div className="pedido-card-footer">
-                {pedido.status === 'pendente' && (
-                  <>
-                    <button className="btn btn-approve btn-sm" onClick={() => atualizarStatus(pedido.id, 'aceito')}><Check size={16} /> Aceitar</button>
-                    <button className="btn btn-destructive btn-sm" onClick={() => atualizarStatus(pedido.id, 'recusado')}><X size={16} /> Recusar</button>
-                  </>
-                )}
-                {pedido.status === 'aceito' && (
-                  <>
-                    <button className="btn btn-liberar btn-sm" onClick={() => atualizarStatus(pedido.id, 'liberado')}><Truck size={16} /> Liberar</button>
-                    <button className="btn btn-destructive btn-sm" onClick={() => atualizarStatus(pedido.id, 'recusado')}><X size={16} /> Recusar</button>
-                  </>
-                )}
-                {pedido.status === 'liberado' && (
-                  <>
-                    <button className="btn btn-approve btn-sm" onClick={() => atualizarStatus(pedido.id, 'entregue')}><CheckCircle size={16} /> Entregue</button>
-                    <button className="btn btn-destructive btn-sm" onClick={() => atualizarStatus(pedido.id, 'recusado')}><X size={16} /> Recusar</button>
-                  </>
-                )}
-                {pedido.status === 'entregador_proximo' && (
-                  <>
-                    <button className="btn btn-approve btn-sm" onClick={() => atualizarStatus(pedido.id, 'entregue')}><CheckCircle size={16} /> Entregue</button>
-                    <button className="btn btn-destructive btn-sm" onClick={() => atualizarStatus(pedido.id, 'recusado')}><X size={16} /> Recusar</button>
-                  </>
-                )}
-              </div>
-            </div>
+          {(() => {
+            const cols = 3
+            const chunks = Array.from({ length: cols }, (_, i) =>
+              filtrados.filter((_, j) => j % cols === i)
             )
-          })}
+            return chunks.map((chunk, ci) => (
+              <div key={ci} className="pedidos-col">
+                {chunk.map(pedido => {
+                  const origem = pedido.cliente?.origem
+                  const mpInfo = marketplaceInfo[origem]
+                  return (
+                  <div key={pedido.id} className={`pedido-card ${pedido.status}${pedido.status === 'pendente' ? ' pedido-pendente-destaque' : ''}`}>
+                    <div className="pedido-card-header" onClick={() => setExpandido(expandido === pedido.id ? null : pedido.id)} style={{ cursor: 'pointer' }}>
+                      <span className="pedido-id">
+                        Pedido #{pedido.id}
+                        {mpInfo && <span className="pedido-origem-badge" style={{ background: mpInfo.color }}>{mpInfo.displayName}</span>}
+                      </span>
+                      <span className={badgeClass[pedido.status]}>{statusLabel[pedido.status]}</span>
+                    </div>
+                    <div className="pedido-card-body">
+                      <div className="pedido-info-row">
+                        <div className="pedido-info-icon"><MapPin size={18} /></div>
+                        <div className="pedido-info-content">
+                          <div className="pedido-info-label">Cliente</div>
+                          <div className="pedido-info-value">
+                            {pedido.cliente?.nome}{pedido.cliente?.telefone ? ` · ${pedido.cliente.telefone}` : ''}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="pedido-info-row">
+                        <div className="pedido-info-icon"><MapPin size={18} /></div>
+                        <div className="pedido-info-content">
+                          <div className="pedido-info-label">Endereço</div>
+                          <div className="pedido-info-value">{pedido.cliente?.endereco || 'Não informado'}</div>
+                        </div>
+                      </div>
+                      {pedido.itens?.length > 0 && (
+                        <div className="pedido-info-row">
+                          <div className="pedido-info-icon"><Pizza size={18} /></div>
+                          <div className="pedido-info-content">
+                            <div className="pedido-info-label">Itens</div>
+                            <div className="pedido-itens">
+                              {pedido.itens.map(item => (
+                                <span key={item.id} className="pedido-item">{item.qtd}x {item.nome}</span>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {expandido === pedido.id && (
+                        <div className="pedido-detalhes">
+                          {pedido.cliente?.cpf && (
+                            <div className="detalhe-row">
+                              <FileText size={14} />
+                              <span className="detalhe-label">CPF</span>
+                              <span>{pedido.cliente.cpf}</span>
+                            </div>
+                          )}
+                          {pedido.cliente?.pagamento?.length > 0 && pedido.cliente.pagamento.map((p, i) => (
+                            <div key={i} className="detalhe-row">
+                              <CreditCard size={14} />
+                              <span className="detalhe-label">Pagamento</span>
+                              <span>
+                                {p.metodo === 'ONLINE' ? 'Online' : p.metodo}{p.bandeira ? ` - ${p.bandeira}` : ''}
+                                <span className="detalhe-valor">R$ {p.valor?.toFixed(2)}</span>
+                                {p.prepago && <CheckCircle size={12} className="detalhe-pago" />}
+                              </span>
+                            </div>
+                          ))}
+                          {pedido.cliente?.observacoes && (
+                            <div className="detalhe-row">
+                              <FileText size={14} />
+                              <span className="detalhe-label">Obs</span>
+                              <span>{pedido.cliente.observacoes}</span>
+                            </div>
+                          )}
+                          {pedido.cliente?.codigo_coleta && (
+                            <div className="detalhe-row">
+                              <Hash size={14} />
+                              <span className="detalhe-label">Coleta</span>
+                              <span className="detalhe-codigo">{pedido.cliente.codigo_coleta}</span>
+                            </div>
+                          )}
+                          {pedido.cliente?.metodo_entrega && (
+                            <div className="detalhe-row">
+                              <Truck size={14} />
+                              <span className="detalhe-label">Entrega</span>
+                              <span>{pedido.cliente.metodo_entrega === 'MERCHANT' ? 'Entrega própria' : 'iFood'}</span>
+                            </div>
+                          )}
+                          {pedido.cliente?.teste && (
+                            <div className="detalhe-row">
+                              <AlertTriangle size={14} />
+                              <span className="detalhe-label">Teste</span>
+                              <span className="detalhe-teste">Pedido de teste</span>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      <div className="pedido-meta">
+                        <span className="pedido-meta-item"><Clock size={14} /> {new Date(pedido.data).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
+                        <span className="pedido-meta-item pedido-valor">R$ {pedido.total?.toFixed(2)}</span>
+                        {pedido.data && (
+                          <span className={`pedido-timer ${pedido.status === 'pendente' && tempoRestante(pedido.data) === 'Cancelado' ? 'timer-expirado' : ''}`}>
+                            <Timer size={14} /> {pedido.status === 'pendente' ? tempoRestante(pedido.data) : tempoDecorrido(pedido.data)}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="pedido-card-footer">
+                      {pedido.status === 'pendente' && (
+                        <>
+                          <button className="btn btn-approve btn-sm" onClick={() => atualizarStatus(pedido.id, 'aceito')}><Check size={16} /> Aceitar</button>
+                          <button className="btn btn-destructive btn-sm" onClick={() => atualizarStatus(pedido.id, 'recusado')}><X size={16} /> Recusar</button>
+                        </>
+                      )}
+                      {pedido.status === 'aceito' && (
+                        <>
+                          <button className="btn btn-liberar btn-sm" onClick={() => atualizarStatus(pedido.id, 'liberado')}><Truck size={16} /> Liberar</button>
+                          <button className="btn btn-destructive btn-sm" onClick={() => atualizarStatus(pedido.id, 'recusado')}><X size={16} /> Recusar</button>
+                        </>
+                      )}
+                      {pedido.status === 'liberado' && (
+                        <>
+                          <button className="btn btn-approve btn-sm" onClick={() => atualizarStatus(pedido.id, 'entregue')}><CheckCircle size={16} /> Entregue</button>
+                          <button className="btn btn-destructive btn-sm" onClick={() => atualizarStatus(pedido.id, 'recusado')}><X size={16} /> Recusar</button>
+                        </>
+                      )}
+                      {pedido.status === 'entregador_proximo' && (
+                        <>
+                          <button className="btn btn-approve btn-sm" onClick={() => atualizarStatus(pedido.id, 'entregue')}><CheckCircle size={16} /> Entregue</button>
+                          <button className="btn btn-destructive btn-sm" onClick={() => atualizarStatus(pedido.id, 'recusado')}><X size={16} /> Recusar</button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  )
+                })}
+              </div>
+            ))
+          })()}
         </div>
       )}
     </>
