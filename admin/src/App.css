@@ -761,6 +761,54 @@ body {
   transform: translateY(-1px);
 }
 
+.pedido-card.pendente .btn-approve {
+  background: color-mix(in oklch, var(--warning) 12%, transparent);
+  color: var(--warning);
+  border-color: color-mix(in oklch, var(--warning) 40%, transparent);
+}
+
+.pedido-card.pendente .btn-approve:hover {
+  background: var(--warning);
+  color: var(--warning-foreground);
+}
+
+.pedido-card.pendente .btn-destructive {
+  background: color-mix(in oklch, var(--destructive) 10%, transparent);
+  color: var(--destructive);
+  border-color: color-mix(in oklch, var(--destructive) 35%, transparent);
+}
+
+.pedido-card.pendente .btn-destructive:hover {
+  background: var(--destructive);
+  color: oklch(1 0 0);
+}
+
+.pedido-card.aceito .btn-liberar {
+  background: color-mix(in oklch, var(--info) 12%, transparent);
+  color: var(--info);
+  border-color: color-mix(in oklch, var(--info) 40%, transparent);
+}
+
+.pedido-card.aceito .btn-liberar:hover {
+  background: var(--info);
+  color: var(--info-foreground);
+}
+
+.pedido-card.liberado .btn-approve,
+.pedido-card.em_rota .btn-approve,
+.pedido-card.entregador_proximo .btn-approve {
+  background: color-mix(in oklch, var(--success) 12%, transparent);
+  color: var(--success);
+  border-color: color-mix(in oklch, var(--success) 40%, transparent);
+}
+
+.pedido-card.liberado .btn-approve:hover,
+.pedido-card.em_rota .btn-approve:hover,
+.pedido-card.entregador_proximo .btn-approve:hover {
+  background: var(--success);
+  color: var(--success-foreground);
+}
+
 /* === LOGIN === */
 .login-page {
   display: flex;
