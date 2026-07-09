@@ -261,7 +261,7 @@ class IfoodAdapter extends MarketplaceAdapter {
         endereco: formatAddress(addressData),
         origem: 'ifood',
         marketplace_order_id: orderCode,
-        cpf: customerData.cpf || '',
+        cpf: customerData.cpf || customerData.document || customerData.taxPayerIdentificationNumber || '',
         pagamento,
         observacoes: delivery.observations || orderData.observations || '',
         codigo_coleta: delivery.pickupCode || '',
