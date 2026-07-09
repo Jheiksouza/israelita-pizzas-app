@@ -115,7 +115,7 @@ app.post('/print', async (req, res) => {
   }
 })
 
-app.post('/test', (req, res) => {
+app.get('/test', (req, res) => {
   const cmd = `powershell -NoProfile -Command "Write-Printer -Name '${PRINTER_NAME}' -Data ([byte[]]@(0x1B,0x40,0x1B,0x64,0x03,0x1B,0x61,0x01,0x1B,0x21,0x30,'TESTE'.ToCharArray()|%{[byte]$_},0x0A,0x1B,0x21,0x00,0x1B,0x61,0x00,0x1B,0x64,0x03,0x1D,0x56,0x01))"`
   exec(cmd, { timeout: 10000 }, (err, stdout, stderr) => {
     if (err) return res.status(500).json({ error: (stderr || err.message).trim() })
