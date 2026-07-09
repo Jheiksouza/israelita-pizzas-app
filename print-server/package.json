@@ -1,0 +1,13 @@
+{
+  "name": "israelita-print-server",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "escpos": "^2.5.2",
+    "escpos-usb": "^2.4.0"
+  }
+}
