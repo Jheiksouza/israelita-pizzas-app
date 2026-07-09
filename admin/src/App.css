@@ -394,6 +394,17 @@ body {
   color: var(--foreground);
 }
 
+.btn-outline {
+  background: transparent;
+  color: var(--foreground);
+  border-color: var(--border);
+}
+
+.btn-outline:hover {
+  background: var(--muted);
+  border-color: var(--ring);
+}
+
 .btn-sm { padding: 7px 14px; font-size: 0.82rem; }
 .btn-xs { padding: 5px 10px; font-size: 0.78rem; }
 .btn-icon { padding: 7px; width: 34px; height: 34px; }

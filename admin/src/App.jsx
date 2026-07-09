@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react'
 import { MapContainer, TileLayer, Marker, Polyline, useMapEvents, useMap } from 'react-leaflet'
 import L from 'leaflet'
-import { Pizza, MapPin, Store, Lock, Clock, Timer, Check, X, Truck, CheckCircle, Bike, Search, Plus, Pencil, DollarSign, List, Sun, Moon, LogOut, Settings, ChevronRight, ChevronLeft, Wifi, WifiOff, AlertCircle, CreditCard, FileText, Package, Phone, Hash, AlertTriangle } from 'lucide-react'
+import { Pizza, MapPin, Store, Lock, Clock, Timer, Check, X, Truck, CheckCircle, Bike, Search, Plus, Pencil, DollarSign, List, Sun, Moon, LogOut, Settings, ChevronRight, ChevronLeft, Wifi, WifiOff, AlertCircle, CreditCard, FileText, Package, Phone, Hash, AlertTriangle, Printer } from 'lucide-react'
+import { connectPrinter, disconnectPrinter, isPrinterConnected, printOrder } from './escpos.js'
 
 window.__googleCallback = (response) => {
   const s = window.__adminAuthSetters
@@ -458,6 +459,25 @@ function AdminOrders() {
   const [, setTick] = useState(0)
   const [marketplaceInfo, setMarketplaceInfo] = useState({})
   const [expandido, setExpandido] = useState(null)
+  const [printerConectada, setPrinterConectada] = useState(false)
+
+  useEffect(() => {
+    setPrinterConectada(isPrinterConnected())
+  }, [])
+
+  const conectarImpressora = async () => {
+    if (printerConectada) {
+      await disconnectPrinter()
+      setPrinterConectada(false)
+      return
+    }
+    try {
+      await connectPrinter()
+      setPrinterConectada(true)
+    } catch (e) {
+      console.error('Erro ao conectar impressora:', e)
+    }
+  }
 
   useEffect(() => {
     fetch(`${API}/marketplaces/info`)
@@ -491,10 +511,20 @@ function AdminOrders() {
   }, [pedidos])
 
   const atualizarStatus = async (id, status) => {
-    await fetch(`${API}/orders/${id}`, {
+    const res = await fetch(`${API}/orders/${id}`, {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status })
     })
+    if (res.ok && status === 'aceito' && printerConectada) {
+      const pedido = pedidosDoDia.find(p => p.id === id)
+      if (pedido) {
+        try {
+          await printOrder(pedido)
+        } catch (e) {
+          console.error('Erro ao imprimir:', e)
+        }
+      }
+    }
     carregar()
   }
 
@@ -537,6 +567,13 @@ function AdminOrders() {
         <div className="page-header-left">
           <h1 className="page-title">Pedidos</h1>
           <p className="page-description">Acompanhe e gerencie os pedidos recebidos</p>
+        </div>
+        <div className="page-header-actions">
+          {typeof navigator?.usb !== 'undefined' && (
+            <button className={`btn btn-sm ${printerConectada ? 'btn-approve' : 'btn-outline'}`} onClick={conectarImpressora}>
+              <Printer size={16} /> {printerConectada ? 'Impressora Conectada' : 'Conectar Impressora'}
+            </button>
+          )}
         </div>
       </div>
       <div className="section">
