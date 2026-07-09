@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react'
 import { MapContainer, TileLayer, Marker, Polyline, useMapEvents, useMap } from 'react-leaflet'
 import L from 'leaflet'
-import { Pizza, MapPin, Store, Lock, Clock, Timer, Check, X, Truck, CheckCircle, Bike, Search, Plus, Pencil, DollarSign, List, Sun, Moon, LogOut, Settings, ChevronRight, ChevronLeft, Wifi, WifiOff, AlertCircle } from 'lucide-react'
+import { Pizza, MapPin, Store, Lock, Clock, Timer, Check, X, Truck, CheckCircle, Bike, Search, Plus, Pencil, DollarSign, List, Sun, Moon, LogOut, Settings, ChevronRight, ChevronLeft, Wifi, WifiOff, AlertCircle, CreditCard, FileText, Package, Phone, Hash, AlertTriangle } from 'lucide-react'
 
 window.__googleCallback = (response) => {
   const s = window.__adminAuthSetters
@@ -560,7 +560,7 @@ function AdminOrders() {
             const origem = pedido.cliente?.origem
             const mpInfo = marketplaceInfo[origem]
             return (
-            <div key={pedido.id} className={`pedido-card ${pedido.status}${pedido.status === 'pendente' ? ' pedido-pendente-destaque' : ''}${mpInfo ? ' pedido-marketplace' : ''}`} style={mpInfo ? { borderLeftColor: mpInfo.color } : {}}>
+            <div key={pedido.id} className={`pedido-card ${pedido.status}${pedido.status === 'pendente' ? ' pedido-pendente-destaque' : ''}`}>
               <div className="pedido-card-header" onClick={() => setExpandido(expandido === pedido.id ? null : pedido.id)} style={{ cursor: 'pointer' }}>
                 <span className="pedido-id">
                   Pedido #{pedido.id}
@@ -602,43 +602,49 @@ function AdminOrders() {
                 {expandido === pedido.id && (
                   <div className="pedido-detalhes">
                     {pedido.cliente?.cpf && (
-                      <div className="pedido-info-row" style={{ marginBottom: 4 }}>
-                        <div className="pedido-info-label" style={{ minWidth: 70 }}>CPF</div>
-                        <div className="pedido-info-value">{pedido.cliente.cpf}</div>
+                      <div className="detalhe-row">
+                        <FileText size={14} />
+                        <span className="detalhe-label">CPF</span>
+                        <span>{pedido.cliente.cpf}</span>
                       </div>
                     )}
                     {pedido.cliente?.pagamento?.length > 0 && pedido.cliente.pagamento.map((p, i) => (
-                      <div key={i} className="pedido-info-row" style={{ marginBottom: 4 }}>
-                        <div className="pedido-info-label" style={{ minWidth: 70 }}>Pagamento</div>
-                        <div className="pedido-info-value">
-                          {p.metodo === 'ONLINE' ? 'Online' : p.metodo} {p.bandeira ? `- ${p.bandeira}` : ''} · R$ {p.valor?.toFixed(2)}
-                          {p.troco > 0 ? ` (troco: R$ ${p.troco.toFixed(2)})` : ''}
-                          {p.prepago ? ' ✅ Pago' : ''}
-                        </div>
+                      <div key={i} className="detalhe-row">
+                        <CreditCard size={14} />
+                        <span className="detalhe-label">Pagamento</span>
+                        <span>
+                          {p.metodo === 'ONLINE' ? 'Online' : p.metodo}{p.bandeira ? ` - ${p.bandeira}` : ''}
+                          <span className="detalhe-valor">R$ {p.valor?.toFixed(2)}</span>
+                          {p.prepago && <CheckCircle size={12} className="detalhe-pago" />}
+                        </span>
                       </div>
                     ))}
                     {pedido.cliente?.observacoes && (
-                      <div className="pedido-info-row" style={{ marginBottom: 4 }}>
-                        <div className="pedido-info-label" style={{ minWidth: 70 }}>Obs</div>
-                        <div className="pedido-info-value">{pedido.cliente.observacoes}</div>
+                      <div className="detalhe-row">
+                        <FileText size={14} />
+                        <span className="detalhe-label">Obs</span>
+                        <span>{pedido.cliente.observacoes}</span>
                       </div>
                     )}
                     {pedido.cliente?.codigo_coleta && (
-                      <div className="pedido-info-row" style={{ marginBottom: 4 }}>
-                        <div className="pedido-info-label" style={{ minWidth: 70 }}>Coleta</div>
-                        <div className="pedido-info-value">Código: {pedido.cliente.codigo_coleta}</div>
+                      <div className="detalhe-row">
+                        <Hash size={14} />
+                        <span className="detalhe-label">Coleta</span>
+                        <span className="detalhe-codigo">{pedido.cliente.codigo_coleta}</span>
                       </div>
                     )}
                     {pedido.cliente?.metodo_entrega && (
-                      <div className="pedido-info-row" style={{ marginBottom: 4 }}>
-                        <div className="pedido-info-label" style={{ minWidth: 70 }}>Entrega</div>
-                        <div className="pedido-info-value">{pedido.cliente.metodo_entrega === 'MERCHANT' ? 'Entrega própria' : 'iFood'}</div>
+                      <div className="detalhe-row">
+                        <Truck size={14} />
+                        <span className="detalhe-label">Entrega</span>
+                        <span>{pedido.cliente.metodo_entrega === 'MERCHANT' ? 'Entrega própria' : 'iFood'}</span>
                       </div>
                     )}
                     {pedido.cliente?.teste && (
-                      <div className="pedido-info-row">
-                        <div className="pedido-info-label" style={{ minWidth: 70 }}>Teste</div>
-                        <div className="pedido-info-value" style={{ color: 'var(--destructive)' }}>Pedido de teste</div>
+                      <div className="detalhe-row">
+                        <AlertTriangle size={14} />
+                        <span className="detalhe-label">Teste</span>
+                        <span className="detalhe-teste">Pedido de teste</span>
                       </div>
                     )}
                   </div>

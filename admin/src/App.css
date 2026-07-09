@@ -556,9 +556,6 @@ body {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 20px;
-}
-
-.pedidos-list {
   align-items: start;
 }
 
@@ -718,12 +715,69 @@ body {
 
 .pedido-detalhes {
   margin-top: 8px;
-  padding: 12px;
+  padding: 16px;
   background: var(--muted);
   border-radius: var(--radius-lg);
   font-size: 13px;
   animation: slideDown 0.25s ease both;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.detalhe-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--foreground-secondary);
+  line-height: 1.4;
+}
+
+.detalhe-row svg {
+  flex-shrink: 0;
+  color: var(--foreground-tertiary);
+}
+
+.detalhe-label {
+  font-weight: 600;
+  color: var(--foreground-tertiary);
+  min-width: 80px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.detalhe-valor {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  margin-left: 6px;
+}
+
+.detalhe-pago {
+  color: var(--success);
+  margin-left: 6px;
+  display: inline;
+  vertical-align: middle;
+}
+
+.detalhe-codigo {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  background: var(--background);
+  padding: 1px 8px;
+  border-radius: var(--radius-sm);
+}
+
+.detalhe-teste {
+  color: var(--destructive);
+  font-weight: 600;
 }
 
 @keyframes slideDown {
