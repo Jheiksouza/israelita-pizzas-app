@@ -1,10 +1,9 @@
 const express = require('express')
-const { exec } = require('child_process')
-const fs = require('fs')
-const path = require('path')
+const usb = require('usb')
 
 const PORT = process.env.PORT || 13001
-const PRINTER_NAME = process.env.PRINTER_NAME || 'POS-80'
+const USB_VID = process.env.USB_VID ? parseInt(process.env.USB_VID, 16) : null
+const USB_PID = process.env.USB_PID ? parseInt(process.env.USB_PID, 16) : null
 
 const app = express()
 app.use(express.json({ limit: '1mb' }))
@@ -15,6 +14,45 @@ app.use((req, res, next) => {
   if (req.method === 'OPTIONS') return res.sendStatus(204)
   next()
 })
+
+function findPrinter() {
+  const devices = usb.getDeviceList()
+  return devices.find(d => {
+    if (USB_VID && d.deviceDescriptor.idVendor !== USB_VID) return false
+    if (USB_PID && d.deviceDescriptor.idProduct !== USB_PID) return false
+    return true
+  })
+}
+
+function sendRaw(data) {
+  return new Promise((resolve, reject) => {
+    const device = findPrinter()
+    if (!device) return reject(new Error('Impressora nao encontrada USB'))
+
+    try {
+      device.open()
+      const iface = device.interface(0)
+      iface.claim()
+
+      const outEndpoint = iface.endpoints.find(ep => ep.direction === 'out')
+      if (!outEndpoint) {
+        device.close()
+        return reject(new Error('Endpoint OUT nao encontrado'))
+      }
+
+      outEndpoint.transfer(data, err => {
+        iface.release(err2 => {
+          device.close()
+          if (err) return reject(new Error('Erro ao enviar: ' + err.message))
+          resolve(true)
+        })
+      })
+    } catch (e) {
+      try { device.close() } catch {}
+      reject(new Error('Erro USB: ' + e.message))
+    }
+  })
+}
 
 function cp850(str) {
   const map = {
@@ -94,40 +132,55 @@ app.post('/print', async (req, res) => {
     if (!pedido?.id) return res.status(400).json({ error: 'pedido.id required' })
 
     const data = gerarBytes(pedido)
-    const tmpFile = path.join(__dirname, `_print_${Date.now()}.bin`)
-    fs.writeFileSync(tmpFile, data)
-
-    // Write-Printer envia RAW direto, sem driver intermediario
-    const cmd = `powershell -NoProfile -Command "try { Add-Type -AssemblyName System.Printing; $srv = New-Object System.Printing.LocalPrintServer; $q = $srv.GetPrintQueue('${PRINTER_NAME}'); if (!$q) { exit 2 }; $b = [System.IO.File]::ReadAllBytes('${tmpFile}'); $j = $q.AddJob(); $j.JobStream.Write($b, 0, $b.Length); $j.JobStream.Close(); $q.Commit(); Remove-Item '${tmpFile}' } catch { Remove-Item '${tmpFile}'; exit 1 }"`
-
-    exec(cmd, { timeout: 20000 }, (err, stdout, stderr) => {
-      try { if (fs.existsSync(tmpFile)) fs.unlinkSync(tmpFile) } catch {}
-      if (err) {
-        console.error('Print error:', stderr || err.message)
-        return res.status(500).json({ error: (stderr || err.message).trim() })
-      }
-      console.log('Printed OK:', pedido.id)
-      res.json({ ok: true, pedido: pedido.id })
-    })
+    await sendRaw(data)
+    console.log('Printed OK:', pedido.id)
+    res.json({ ok: true, pedido: pedido.id })
   } catch (e) {
-    console.error('Print exception:', e.message)
+    console.error('Print error:', e.message)
     res.status(500).json({ error: e.message })
   }
 })
 
-app.get('/test', (req, res) => {
-  const cmd = `powershell -NoProfile -Command "Add-Type -AssemblyName System.Printing; $srv = New-Object System.Printing.LocalPrintServer; $q = $srv.GetPrintQueue('${PRINTER_NAME}'); $b = [byte[]]@(0x1B,0x40,0x1B,0x64,0x03,0x54,0x45,0x53,0x54,0x45,0x0A,0x1B,0x64,0x03,0x1D,0x56,0x01); $j = $q.AddJob(); $j.JobStream.Write($b, 0, $b.Length); $j.JobStream.Close(); $q.Commit()"`
-  exec(cmd, { timeout: 10000 }, (err, stdout, stderr) => {
-    if (err) return res.status(500).json({ error: (stderr || err.message).trim() })
+app.get('/test', async (req, res) => {
+  try {
+    const data = Buffer.from([
+      0x1B, 0x40,
+      0x1B, 0x64, 0x03,
+      0x54, 0x45, 0x53, 0x54, 0x45, 0x0A,
+      0x1B, 0x64, 0x03,
+      0x1D, 0x56, 0x01,
+    ])
+    await sendRaw(data)
     res.json({ ok: true })
-  })
+  } catch (e) {
+    res.status(500).json({ error: e.message })
+  }
 })
 
 app.get('/status', (req, res) => {
-  res.json({ ok: true, printerName: PRINTER_NAME })
+  const printer = findPrinter()
+  res.json({
+    ok: true,
+    printerFound: !!printer,
+    vid: printer ? '0x' + printer.deviceDescriptor.idVendor.toString(16).padStart(4, '0') : null,
+    pid: printer ? '0x' + printer.deviceDescriptor.idProduct.toString(16).padStart(4, '0') : null,
+    config: {
+      usbVid: USB_VID ? '0x' + USB_VID.toString(16) : 'auto',
+      usbPid: USB_PID ? '0x' + USB_PID.toString(16) : 'auto',
+    },
+  })
 })
 
 app.listen(PORT, () => {
   console.log(`Print server rodando em http://localhost:${PORT}`)
-  console.log(`Impressora: ${PRINTER_NAME}`)
+  const printer = findPrinter()
+  if (printer) {
+    const vid = '0x' + printer.deviceDescriptor.idVendor.toString(16).padStart(4, '0')
+    const pid = '0x' + printer.deviceDescriptor.idProduct.toString(16).padStart(4, '0')
+    console.log(`Impressora detectada: VID:${vid} PID:${pid}`)
+  } else {
+    console.log('Nenhuma impressora POS-80 detectada!')
+    console.log('Execute: node detect.js')
+    console.log('Depois: $env:USB_VID="0xXXXX"; $env:USB_PID="0xXXXX"; node server.js')
+  }
 })
