@@ -98,18 +98,29 @@ app.post('/print', async (req, res) => {
     fs.writeFileSync(tmpFile, data)
 
     // Write-Printer envia RAW direto, sem driver intermediario
-    const cmd = `powershell -NoProfile -Command "Write-Printer -Name '${PRINTER_NAME}' -Data (Get-Content '${tmpFile}' -Encoding Byte); Remove-Item '${tmpFile}'"`
+    const cmd = `powershell -NoProfile -Command "Write-Printer -Name '${PRINTER_NAME}' -Data (Get-Content '${tmpFile}' -Encoding Byte); if (-not $?) { exit 1 }; Remove-Item '${tmpFile}'"`
 
     exec(cmd, { timeout: 20000 }, (err, stdout, stderr) => {
       try { if (fs.existsSync(tmpFile)) fs.unlinkSync(tmpFile) } catch {}
       if (err) {
-        return res.status(500).json({ error: 'Erro ao imprimir: ' + (stderr || err.message).trim() })
+        console.error('Print error:', stderr || err.message)
+        return res.status(500).json({ error: (stderr || err.message).trim() })
       }
+      console.log('Printed OK:', pedido.id)
       res.json({ ok: true, pedido: pedido.id })
     })
   } catch (e) {
+    console.error('Print exception:', e.message)
     res.status(500).json({ error: e.message })
   }
+})
+
+app.post('/test', (req, res) => {
+  const cmd = `powershell -NoProfile -Command "Write-Printer -Name '${PRINTER_NAME}' -Data ([byte[]]@(0x1B,0x40,0x1B,0x64,0x03,0x1B,0x61,0x01,0x1B,0x21,0x30,'TESTE'.ToCharArray()|%{[byte]$_},0x0A,0x1B,0x21,0x00,0x1B,0x61,0x00,0x1B,0x64,0x03,0x1D,0x56,0x01))"`
+  exec(cmd, { timeout: 10000 }, (err, stdout, stderr) => {
+    if (err) return res.status(500).json({ error: (stderr || err.message).trim() })
+    res.json({ ok: true })
+  })
 })
 
 app.get('/status', (req, res) => {
