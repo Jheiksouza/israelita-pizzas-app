@@ -5,6 +5,21 @@ const path = require('path')
 
 const PORT = process.env.PORT || 13001
 const PRINTER_NAME = process.env.PRINTER_NAME || 'POS-80'
+const API_URL = process.env.API_URL || 'http://localhost:3001'
+
+let config = {}
+
+async function fetchConfig() {
+  try {
+    const res = await fetch(`${API_URL}/admin/config/pizzaria`, { signal: AbortSignal.timeout(5000) })
+    if (res.ok) {
+      config = await res.json()
+      console.log('Config loaded:', config.nome_fantasia)
+    }
+  } catch (e) {
+    console.log('Config fetch failed (will retry):', e.message)
+  }
+}
 
 const app = express()
 app.use(express.json({ limit: '1mb' }))
@@ -34,6 +49,23 @@ function cp850(str) {
   return b
 }
 
+function formatEnderecoCompleto(cfg) {
+  if (!cfg) return ''
+  const partes = []
+  if (cfg.rua) partes.push(`${cfg.rua}${cfg.numero ? ', ' + cfg.numero : ''}`)
+  if (cfg.bairro) partes.push(cfg.bairro)
+  if (cfg.cidade) partes.push(`${cfg.cidade}${cfg.estado ? ' - ' + cfg.estado : ''}`)
+  return partes.join(', ')
+}
+
+function formatData(iso) {
+  if (!iso) return ''
+  try {
+    const d = new Date(iso)
+    return d.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })
+  } catch { return iso }
+}
+
 function gerarBytes(pedido) {
   const c = pedido.cliente || {}
   const partes = []
@@ -41,13 +73,20 @@ function gerarBytes(pedido) {
   function esc(...args) { partes.push(Buffer.from(args)) }
   function txt(str) { partes.push(cp850(str)) }
 
+  const nomeFantasia = config.nome_fantasia || 'Pizzaria'
+  const enderecoCompleto = config ? formatEnderecoCompleto(config) : ''
+  const telefoneConfig = config.telefone || ''
+  const cnpj = config.cnpj || ''
+
   esc(0x1B, 0x40)
-  esc(0x1B, 0x64, 0x03)
+  esc(0x1B, 0x64, 0x02)
   esc(0x1B, 0x61, 0x01)
   esc(0x1B, 0x21, 0x30)
-  txt('ISRAELITA PIZZAS\n')
+  txt(nomeFantasia + '\n')
   esc(0x1B, 0x21, 0x00)
-  txt('Vila Velha - ES\n')
+  if (enderecoCompleto) txt(enderecoCompleto + '\n')
+  if (telefoneConfig) txt(`Tel: ${telefoneConfig}\n`)
+  if (cnpj) txt(`CNPJ: ${cnpj}\n`)
   esc(0x1B, 0x61, 0x00)
   txt(''.padEnd(32, '-') + '\n')
   esc(0x1B, 0x61, 0x01)
@@ -55,9 +94,16 @@ function gerarBytes(pedido) {
   txt(`PEDIDO #${pedido.id}\n`)
   esc(0x1B, 0x21, 0x00)
   esc(0x1B, 0x61, 0x00)
+
+  if (pedido.data) txt(`${formatData(pedido.data)}\n`)
+
   txt(''.padEnd(32, '-') + '\n')
   txt(`Cliente: ${c.nome || ''}\n`)
   if (c.telefone) txt(`Tel: ${c.telefone}\n`)
+  if (c.cpf) txt(`CPF: ${c.cpf}\n`)
+  if (c.origem) txt(`Origem: ${c.origem}\n`)
+  if (c.marketplace_order_id) txt(`ID externo: ${c.marketplace_order_id}\n`)
+  if (c.metodo_entrega) txt(`Entrega: ${c.metodo_entrega === 'MERCHANT' ? 'Propria' : c.metodo_entrega}\n`)
   if (c.endereco) txt(`End: ${c.endereco}\n`)
   txt(''.padEnd(32, '-') + '\n')
   esc(0x1B, 0x45, 0x01)
@@ -66,7 +112,10 @@ function gerarBytes(pedido) {
   if (pedido.itens) {
     for (const item of pedido.itens) {
       let l = `${item.qtd}x ${item.nome}`
-      if (item.valor_unitario) l += `  R$${(item.valor_unitario * item.qtd).toFixed(2)}`
+      if (item.tamanho) l += ` (${item.tamanho})`
+      if (item.sabores && item.sabores.length) l += ` [${item.sabores.join(', ')}]`
+      const preco = item.preco || item.valor_unitario || 0
+      if (preco) l += `  R$${(preco * item.qtd).toFixed(2)}`
       txt(l + '\n')
     }
   }
@@ -77,7 +126,11 @@ function gerarBytes(pedido) {
   if (c.pagamento && c.pagamento.length > 0) {
     txt(''.padEnd(32, '-') + '\n')
     for (const p of c.pagamento) {
-      txt(`${p.metodo} R$${(p.valor || 0).toFixed(2)}\n`)
+      let linha = `${p.metodo} R$${(p.valor || 0).toFixed(2)}`
+      if (p.bandeira) linha += ` (${p.bandeira})`
+      if (p.prepago) linha += ' [PAGO]'
+      if (p.troco) linha += ` Troco: R$${p.troco.toFixed(2)}`
+      txt(linha + '\n')
     }
   }
   if (c.observacoes) txt(`\nObs: ${c.observacoes}\n`)
@@ -118,19 +171,28 @@ app.post('/print', async (req, res) => {
 
 app.get('/test', (req, res) => {
   try {
-    const data = Buffer.from([
-      0x1B, 0x40,                  // Initialize
-      0x1B, 0x61, 0x01,            // Center
-      0x1B, 0x21, 0x30,            // Double size
-      0x54, 0x45, 0x53, 0x54, 0x45, 0x0A, // TESTE\n
-      0x1B, 0x21, 0x00,            // Normal
-      0x1B, 0x61, 0x00,            // Left
-      0x53, 0x65, 0x20, 0x76, 0x6F, 0x63, 0x65, 0x20, 0x65, 0x73, 0x74, 0x61, 0x20, 0x6C, 0x65, 0x6E, 0x64, 0x6F, 0x0A, // Se voce esta lendo\n
-      0x61, 0x20, 0x69, 0x6D, 0x70, 0x72, 0x65, 0x73, 0x73, 0x6F, 0x72, 0x61, 0x20, 0x65, 0x73, 0x74, 0x61, 0x20, 0x4F, 0x4B, 0x21, 0x0A, // a impressora esta OK!\n
-      0x0A, 0x0A, 0x0A,            // feed
-      0x1B, 0x64, 0x03,            // Feed 3
-      0x1D, 0x56, 0x01,            // Cut
-    ])
+    const data = gerarBytes({
+      id: 'TESTE',
+      data: new Date().toISOString(),
+      total: 49.90,
+      itens: [
+        { qtd: 2, nome: 'Calabresa', preco: 24.95, tamanho: 'Grande', sabores: ['Calabresa', 'Mussarela'] },
+        { qtd: 1, nome: 'Refrigerante 2L', preco: 8.00 },
+      ],
+      cliente: {
+        nome: 'Cliente Teste',
+        telefone: '(27) 99999-8888',
+        endereco: 'Rua Teste, 123, Centro, Vila Velha - ES',
+        cpf: '123.456.789-00',
+        origem: 'site',
+        metodo_entrega: 'MERCHANT',
+        pagamento: [
+          { metodo: 'DINHEIRO', valor: 49.90, troco: 57.90 },
+        ],
+        observacoes: 'Sem cebola',
+        codigo_coleta: 'A123',
+      },
+    })
     const tmpFile = path.join(__dirname, `_test_${Date.now()}.bin`)
     fs.writeFileSync(tmpFile, data)
 
@@ -151,6 +213,9 @@ app.get('/test', (req, res) => {
 app.get('/status', (req, res) => {
   res.json({ ok: true, printerName: PRINTER_NAME })
 })
+
+fetchConfig()
+setInterval(fetchConfig, 60000)
 
 app.listen(PORT, () => {
   console.log(`Print server rodando em http://localhost:${PORT}`)
