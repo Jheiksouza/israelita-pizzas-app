@@ -36,56 +36,47 @@ function cp850(str) {
 
 function gerarBytes(pedido) {
   const c = pedido.cliente || {}
-  const partes = []
+  const linhas = []
 
-  function esc(...args) { partes.push(Buffer.from(args)) }
-  function txt(str) { partes.push(cp850(str)) }
-
-  esc(0x1B, 0x40)
-  esc(0x1B, 0x64, 0x03)
-  esc(0x1B, 0x61, 0x01)
-  esc(0x1B, 0x21, 0x30)
-  txt('ISRAELITA PIZZAS\n')
-  esc(0x1B, 0x21, 0x00)
-  txt('Vila Velha - ES\n')
-  esc(0x1B, 0x61, 0x00)
-  txt(''.padEnd(32, '-') + '\n')
-  esc(0x1B, 0x61, 0x01)
-  esc(0x1B, 0x21, 0x30)
-  txt(`PEDIDO #${pedido.id}\n`)
-  esc(0x1B, 0x21, 0x00)
-  esc(0x1B, 0x61, 0x00)
-  txt(''.padEnd(32, '-') + '\n')
-  txt(`Cliente: ${c.nome || ''}\n`)
-  if (c.telefone) txt(`Tel: ${c.telefone}\n`)
-  if (c.endereco) txt(`End: ${c.endereco}\n`)
-  txt(''.padEnd(32, '-') + '\n')
-  esc(0x1B, 0x45, 0x01)
-  txt('ITENS\n')
-  esc(0x1B, 0x45, 0x00)
+  linhas.push('')
+  linhas.push('')
+  linhas.push('   ISRAELITA PIZZAS')
+  linhas.push('   Vila Velha - ES')
+  linhas.push('')
+  linhas.push('--------------------------------')
+  linhas.push('')
+  linhas.push(`         PEDIDO #${pedido.id}`)
+  linhas.push('')
+  linhas.push('--------------------------------')
+  linhas.push(`Cliente: ${c.nome || ''}`)
+  if (c.telefone) linhas.push(`Tel: ${c.telefone}`)
+  if (c.endereco) linhas.push(`End: ${c.endereco}`)
+  linhas.push('--------------------------------')
+  linhas.push('ITENS')
   if (pedido.itens) {
     for (const item of pedido.itens) {
-      let l = `${item.qtd}x ${item.nome}`
+      let l = ` ${item.qtd}x ${item.nome}`
       if (item.valor_unitario) l += `  R$${(item.valor_unitario * item.qtd).toFixed(2)}`
-      txt(l + '\n')
+      linhas.push(l)
     }
   }
-  txt(''.padEnd(32, '-') + '\n')
-  esc(0x1B, 0x45, 0x01)
-  txt(`TOTAL: R$${(pedido.total || 0).toFixed(2)}\n`)
-  esc(0x1B, 0x45, 0x00)
+  linhas.push('--------------------------------')
+  linhas.push(`TOTAL: R$${(pedido.total || 0).toFixed(2)}`)
   if (c.pagamento && c.pagamento.length > 0) {
-    txt(''.padEnd(32, '-') + '\n')
+    linhas.push('--------------------------------')
     for (const p of c.pagamento) {
-      txt(`${p.metodo} R$${(p.valor || 0).toFixed(2)}\n`)
+      linhas.push(`${p.metodo} R$${(p.valor || 0).toFixed(2)}`)
     }
   }
-  if (c.observacoes) txt(`\nObs: ${c.observacoes}\n`)
-  if (c.codigo_coleta) txt(`Coleta: ${c.codigo_coleta}\n`)
-  esc(0x1B, 0x64, 0x05)
-  esc(0x1D, 0x56, 0x01)
+  if (c.observacoes) linhas.push(`Obs: ${c.observacoes}`)
+  if (c.codigo_coleta) linhas.push(`Coleta: ${c.codigo_coleta}`)
+  linhas.push('')
+  linhas.push('')
+  linhas.push('')
+  linhas.push('')
+  linhas.push('')
 
-  return Buffer.concat(partes)
+  return cp850(linhas.join('\r\n') + '\r\n')
 }
 
 app.post('/print', async (req, res) => {
@@ -116,17 +107,11 @@ app.post('/print', async (req, res) => {
 
 app.get('/test', (req, res) => {
   try {
-    const data = Buffer.from([
-      0x1B, 0x40,
-      0x1B, 0x64, 0x03,
-      0x54, 0x45, 0x53, 0x54, 0x45, 0x0A,
-      0x1B, 0x64, 0x03,
-      0x1D, 0x56, 0x01,
-    ])
+    const data = cp850('TESTE DE IMPRESSÃO\r\n\r\nSe voce esta lendo isso\r\na impressora esta OK!\r\n\r\n\r\n\r\n')
     const tmpFile = path.join(__dirname, `_test_${Date.now()}.bin`)
     fs.writeFileSync(tmpFile, data)
 
-    const cmd = `powershell -NoProfile -Command "Set-Printer -Name '${PRINTER_NAME}' -Shared $true -ErrorAction SilentlyContinue; [System.IO.File]::WriteAllBytes('\\\\localhost\\${PRINTER_NAME}', [System.IO.File]::ReadAllBytes('${tmpFile}')); Remove-Item '${tmpFile}'"`
+    const cmd = `powershell -NoProfile -Command "$p = Get-CimInstance Win32_Printer -Filter \"Name='${PRINTER_NAME}'\"; if ($p -and !$p.Shared) { Set-Printer -Name '${PRINTER_NAME}' -Shared $true }; [System.IO.File]::WriteAllBytes('\\\\localhost\\${PRINTER_NAME}', [System.IO.File]::ReadAllBytes('${tmpFile}')); Remove-Item '${tmpFile}'"`
 
     exec(cmd, { timeout: 15000 }, (err, stdout, stderr) => {
       try { if (fs.existsSync(tmpFile)) fs.unlinkSync(tmpFile) } catch {}
