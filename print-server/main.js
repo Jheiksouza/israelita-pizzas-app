@@ -44,7 +44,6 @@ function createSettingsWindow() {
     maximizable: false,
     fullscreenable: false,
     title: 'Israelita Print Server',
-    icon: path.join(__dirname, 'icon.png'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,

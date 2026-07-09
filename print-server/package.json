@@ -1,6 +1,8 @@
 {
   "name": "israelita-print-server",
   "version": "1.0.0",
+  "description": "Servidor de impressão para Israelita Pizzas",
+  "author": "Israelita Pizzas",
   "private": true,
   "main": "main.js",
   "scripts": {
@@ -41,7 +43,6 @@
     ],
     "win": {
       "target": "nsis",
-      "icon": "icon.png",
       "artifactName": "${productName}-${version}-Setup.${ext}"
     },
     "nsis": {
