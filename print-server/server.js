@@ -7,17 +7,29 @@ const PORT = process.env.PORT || 13001
 const PRINTER_NAME = process.env.PRINTER_NAME || 'POS-80'
 const API_URL = process.env.API_URL || 'http://localhost:3001'
 
-let config = {}
+const DEFAULT_CONFIG = {
+  nome_fantasia: process.env.NOME_FANTASIA || 'Israelita Pizzas',
+  telefone: process.env.TEL_CONFIG || '',
+  cnpj: process.env.CNPJ_CONFIG || '',
+  rua: process.env.RUA_CONFIG || '',
+  numero: process.env.NUMERO_CONFIG || '',
+  bairro: process.env.BAIRRO_CONFIG || '',
+  cidade: process.env.CIDADE_CONFIG || '',
+  estado: process.env.ESTADO_CONFIG || '',
+}
+
+let config = { ...DEFAULT_CONFIG }
 
 async function fetchConfig() {
   try {
     const res = await fetch(`${API_URL}/admin/config/pizzaria`, { signal: AbortSignal.timeout(5000) })
     if (res.ok) {
-      config = await res.json()
+      const data = await res.json()
+      config = { ...DEFAULT_CONFIG, ...data }
       console.log('Config loaded:', config.nome_fantasia)
     }
   } catch (e) {
-    console.log('Config fetch failed (will retry):', e.message)
+    console.log('Config fetch failed, using defaults:', e.message)
   }
 }
 
