@@ -4,9 +4,11 @@ const fs = require('fs')
 const path = require('path')
 const iconv = require('iconv-lite')
 
-const PORT = process.env.PORT || 13001
-const PRINTER_NAME = process.env.PRINTER_NAME || 'POS-80'
+const PORT = 13001
+let printerName = 'POS-80'
 const API_URL = process.env.API_URL || 'http://localhost:3001'
+let httpServer = null
+let serverRunning = false
 
 const DEFAULT_CONFIG = {
   nome_fantasia: process.env.NOME_FANTASIA || 'Israelita Pizzas',
@@ -27,22 +29,46 @@ async function fetchConfig() {
     if (res.ok) {
       const data = await res.json()
       config = { ...DEFAULT_CONFIG, ...data }
-      console.log('Config loaded:', config.nome_fantasia)
     }
-  } catch (e) {
-    console.log('Config fetch failed, using defaults:', e.message)
-  }
+  } catch {}
 }
 
-const app = express()
-app.use(express.json({ limit: '1mb' }))
-app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Origin', '*')
-  res.header('Access-Control-Allow-Headers', 'Content-Type')
-  res.header('Access-Control-Allow-Methods', 'POST, GET, OPTIONS')
-  if (req.method === 'OPTIONS') return res.sendStatus(204)
-  next()
-})
+function setPrinterName(name) {
+  printerName = name
+}
+
+function getPrinterName() {
+  return printerName
+}
+
+function getPort() {
+  return PORT
+}
+
+function getServerStatus() {
+  return serverRunning ? `Rodando (porta ${PORT})` : 'Parado'
+}
+
+function getExePath() {
+  if (process.resourcesPath) {
+    const p = path.join(process.resourcesPath, 'RawPrinter.exe')
+    if (fs.existsSync(p)) return p
+  }
+  const local = path.join(__dirname, 'RawPrinter.exe')
+  if (fs.existsSync(local)) return local
+
+  const storePath = path.join(__dirname, 'store.json')
+  try {
+    if (fs.existsSync(storePath)) {
+      const store = JSON.parse(fs.readFileSync(storePath, 'utf-8'))
+      if (store.customExePath) {
+        const custom = path.join(store.customExePath, 'RawPrinter.exe')
+        if (fs.existsSync(custom)) return custom
+      }
+    }
+  } catch {}
+  return path.join(__dirname, 'RawPrinter.exe')
+}
 
 function cp850(str) {
   return iconv.encode(str, 'Windows-1252')
@@ -141,30 +167,42 @@ function gerarBytes(pedido) {
   return Buffer.concat(partes)
 }
 
-app.post('/print', async (req, res) => {
+function enviarParaImpressora(data, pedidoId, res) {
+  const tmpFile = path.join(__dirname, `_print_${Date.now()}.bin`)
+  fs.writeFileSync(tmpFile, data)
+
+  const exe = getExePath()
+  const cmd = `"${exe}" "${tmpFile}" "${printerName}"`
+
+  exec(cmd, { timeout: 20000 }, (err, stdout, stderr) => {
+    try { if (fs.existsSync(tmpFile)) fs.unlinkSync(tmpFile) } catch {}
+    const out = (stdout || '').trim()
+    if (err) {
+      if (res) return res.status(500).json({ error: (stderr || err.message).trim() })
+      console.error('Print error:', (stderr || err.message).trim())
+      return
+    }
+    if (res) res.json({ ok: true, pedido: pedidoId })
+  })
+}
+
+const app = express()
+app.use(express.json({ limit: '1mb' }))
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*')
+  res.header('Access-Control-Allow-Headers', 'Content-Type')
+  res.header('Access-Control-Allow-Methods', 'POST, GET, OPTIONS')
+  if (req.method === 'OPTIONS') return res.sendStatus(204)
+  next()
+})
+
+app.post('/print', (req, res) => {
   try {
     const pedido = req.body
     if (!pedido?.id) return res.status(400).json({ error: 'pedido.id required' })
-
     const data = gerarBytes(pedido)
-    const tmpFile = path.join(__dirname, `_print_${Date.now()}.bin`)
-    fs.writeFileSync(tmpFile, data)
-
-    const exe = path.join(__dirname, 'RawPrinter.exe')
-    const cmd = `"${exe}" "${tmpFile}" "${PRINTER_NAME}"`
-
-    exec(cmd, { timeout: 20000 }, (err, stdout, stderr) => {
-      try { if (fs.existsSync(tmpFile)) fs.unlinkSync(tmpFile) } catch {}
-      const out = (stdout || '').trim()
-      if (err) {
-        console.error('Print error:', (stderr || err.message).trim())
-        return res.status(500).json({ error: (stderr || err.message).trim() })
-      }
-      console.log('RawPrinter:', out)
-      res.json({ ok: true, pedido: pedido.id })
-    })
+    enviarParaImpressora(data, pedido.id, res)
   } catch (e) {
-    console.error('Print exception:', e.message)
     res.status(500).json({ error: e.message })
   }
 })
@@ -186,38 +224,55 @@ app.get('/test', (req, res) => {
         cpf: '123.456.789-00',
         origem: 'site',
         metodo_entrega: 'MERCHANT',
-        pagamento: [
-          { metodo: 'DINHEIRO', valor: 49.90, troco: 57.90 },
-        ],
+        pagamento: [{ metodo: 'DINHEIRO', valor: 49.90, troco: 57.90 }],
         observacoes: 'Sem cebola',
         codigo_coleta: 'A123',
       },
     })
-    const tmpFile = path.join(__dirname, `_test_${Date.now()}.bin`)
-    fs.writeFileSync(tmpFile, data)
-
-    const exe = path.join(__dirname, 'RawPrinter.exe')
-    const cmd = `"${exe}" "${tmpFile}" "${PRINTER_NAME}"`
-
-    exec(cmd, { timeout: 15000 }, (err, stdout, stderr) => {
-      try { if (fs.existsSync(tmpFile)) fs.unlinkSync(tmpFile) } catch {}
-      const out = (stdout || '').trim()
-      if (err) return res.status(500).json({ error: (stderr || err.message).trim() })
-      res.json({ ok: true, rawPrinter: out })
-    })
+    enviarParaImpressora(data, 'TESTE', res)
   } catch (e) {
     res.status(500).json({ error: e.message })
   }
 })
 
 app.get('/status', (req, res) => {
-  res.json({ ok: true, printerName: PRINTER_NAME })
+  res.json({ ok: true, printerName })
 })
 
-fetchConfig()
-setInterval(fetchConfig, 60000)
+function startServer(callback) {
+  if (httpServer) return
+  httpServer = app.listen(PORT, () => {
+    serverRunning = true
+    if (callback) callback()
+  })
+  fetchConfig()
+  setInterval(fetchConfig, 60000)
+}
 
-app.listen(PORT, () => {
-  console.log(`Print server rodando em http://localhost:${PORT}`)
-  console.log(`Impressora: ${PRINTER_NAME}`)
-})
+function stopServer(callback) {
+  if (!httpServer) return
+  httpServer.close(() => {
+    serverRunning = false
+    httpServer = null
+    if (callback) callback()
+  })
+}
+
+// Auto-start when run directly with node server.js
+if (require.main === module) {
+  fetchConfig()
+  startServer(() => {
+    console.log(`Print server rodando em http://localhost:${PORT}`)
+    console.log(`Impressora: ${printerName}`)
+  })
+}
+
+module.exports = {
+  startServer,
+  stopServer,
+  setPrinterName,
+  getPrinterName,
+  getPort,
+  getServerStatus,
+  gerarBytes
+}

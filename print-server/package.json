@@ -2,11 +2,55 @@
   "name": "israelita-print-server",
   "version": "1.0.0",
   "private": true,
+  "main": "main.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "electron .",
+    "dev": "electron .",
+    "build": "electron-builder",
+    "build:win": "electron-builder --win"
   },
   "dependencies": {
     "express": "^4.18.2",
     "iconv-lite": "^0.7.3"
+  },
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "electron-builder": "^25.0.0"
+  },
+  "build": {
+    "appId": "com.israelita.print-server",
+    "productName": "Israelita Print Server",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "server.js",
+      "settings.html",
+      "settings.js",
+      "settings.css",
+      "package.json",
+      "RawPrinter.exe"
+    ],
+    "extraResources": [
+      {
+        "from": "RawPrinter.exe",
+        "to": "RawPrinter.exe"
+      }
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "icon.png",
+      "artifactName": "${productName}-${version}-Setup.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Israelita Print Server",
+      "uninstallDisplayName": "Israelita Print Server"
+    }
   }
 }

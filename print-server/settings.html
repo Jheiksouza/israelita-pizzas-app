@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Israelita Print Server</title>
+  <link rel="stylesheet" href="settings.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="logo">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#E53935" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M6 9V2h12v7"/>
+          <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+          <path d="M18 14h2v4H4v-4h2"/>
+          <circle cx="6" cy="14" r="1.5"/>
+          <circle cx="18" cy="14" r="1.5"/>
+        </svg>
+        <h1>Israelita Print Server</h1>
+      </div>
+    </header>
+
+    <section class="card">
+      <h2>Impressora</h2>
+      <div class="field">
+        <label for="printer-select">Impressora selecionada</label>
+        <div class="printer-row">
+          <select id="printer-select"></select>
+          <button id="btn-refresh" class="btn-icon" title="Atualizar lista de impressoras">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="23 4 23 10 17 10"/>
+              <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+      <button id="btn-testar" class="btn btn-secondary">Imprimir Teste</button>
+    </section>
+
+    <section class="card">
+      <h2>Inicialização</h2>
+      <div class="field">
+        <label class="checkbox-row">
+          <input type="checkbox" id="chk-autostart">
+          <span>Iniciar com o Windows</span>
+        </label>
+        <p class="hint">O programa será iniciado automaticamente quando você ligar o computador</p>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Servidor</h2>
+      <div class="status-row">
+        <span class="status-indicator" id="status-indicator"></span>
+        <span id="status-text">Carregando...</span>
+      </div>
+      <div class="field">
+        <label>Porta</label>
+        <span id="port-display" class="mono">13001</span>
+      </div>
+      <p class="hint">O painel admin envia os pedidos para este servidor. Certifique-se de que o print-server está rodando.</p>
+    </section>
+
+    <footer>
+      <button id="btn-fechar" class="btn btn-primary">Fechar para bandeja</button>
+    </footer>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+  <script src="settings.js"></script>
+</body>
+</html>
