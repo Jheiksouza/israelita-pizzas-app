@@ -583,7 +583,7 @@ body {
   overflow: hidden;
   transition: var(--transition);
   position: relative;
-  border: 1.5px solid var(--border);
+  border: 3px solid var(--border);
 }
 
 .pedido-card:hover { box-shadow: var(--shadow-lg); }
