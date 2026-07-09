@@ -600,7 +600,7 @@ function AdminOrders() {
                 )}
 
                 {expandido === pedido.id && (
-                  <div className="pedido-detalhes" style={{ marginTop: 8, padding: 8, background: 'var(--muted)', borderRadius: 8, fontSize: 13 }}>
+                  <div className="pedido-detalhes">
                     {pedido.cliente?.cpf && (
                       <div className="pedido-info-row" style={{ marginBottom: 4 }}>
                         <div className="pedido-info-label" style={{ minWidth: 70 }}>CPF</div>

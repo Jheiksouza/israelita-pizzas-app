@@ -558,6 +558,10 @@ body {
   gap: 20px;
 }
 
+.pedidos-list {
+  align-items: start;
+}
+
 .pedido-card {
   background: var(--card);
   border-radius: var(--radius-2xl);
@@ -565,28 +569,18 @@ body {
   overflow: hidden;
   transition: var(--transition);
   position: relative;
-}
-
-.pedido-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 3px;
-  border-radius: var(--radius-2xl) var(--radius-2xl) 0 0;
-  transition: var(--transition);
+  border: 1.5px solid var(--border);
 }
 
 .pedido-card:hover { box-shadow: var(--shadow-lg); }
 
-.pedido-card.pendente::before { background: var(--warning); }
-.pedido-card.aceito::before { background: var(--info); }
-.pedido-card.liberado::before { background: var(--liberate); }
-.pedido-card.em_rota::before { background: var(--amber); }
-.pedido-card.entregador_proximo::before { background: var(--amber); }
-.pedido-card.entregue::before { background: var(--success); }
-.pedido-card.recusado::before { background: var(--destructive); }
+.pedido-card.pendente { border-color: color-mix(in oklch, var(--warning) 35%, transparent); }
+.pedido-card.aceito { border-color: color-mix(in oklch, var(--info) 35%, transparent); }
+.pedido-card.liberado { border-color: color-mix(in oklch, var(--liberate) 35%, transparent); }
+.pedido-card.em_rota { border-color: color-mix(in oklch, var(--amber) 35%, transparent); }
+.pedido-card.entregador_proximo { border-color: color-mix(in oklch, var(--amber) 35%, transparent); }
+.pedido-card.entregue { border-color: color-mix(in oklch, var(--success) 35%, transparent); }
+.pedido-card.recusado { border-color: color-mix(in oklch, var(--destructive) 35%, transparent); }
 
 .pedido-card.pedido-pendente-destaque {
   animation: pedidoGlow 1s ease-in-out infinite;
@@ -720,6 +714,21 @@ body {
 @keyframes timerUrgencia {
   from { opacity: 0.5; }
   to { opacity: 1; }
+}
+
+.pedido-detalhes {
+  margin-top: 8px;
+  padding: 12px;
+  background: var(--muted);
+  border-radius: var(--radius-lg);
+  font-size: 13px;
+  animation: slideDown 0.25s ease both;
+  overflow: hidden;
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .pedido-card-footer {
