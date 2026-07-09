@@ -1,7 +1,7 @@
 const { app, BrowserWindow, Tray, Menu, nativeImage, ipcMain, dialog } = require('electron')
 const path = require('path')
 const { exec } = require('child_process')
-const { startServer, setPrinterName, getPrinterName, getPort, getServerStatus, setExePath } = require('./server')
+const { startServer, setPrinterName, getPrinterName, getPort, getServerStatus, setExePath, getExePath } = require('./server')
 
 let tray = null
 let settingsWindow = null
@@ -53,6 +53,7 @@ function createSettingsWindow() {
 
   settingsWindow.loadFile('settings.html')
   settingsWindow.setMenu(null)
+  if (!app.isPackaged) settingsWindow.webContents.openDevTools()
 
   settingsWindow.on('close', (e) => {
     if (!app.isQuitting) {
@@ -184,4 +185,51 @@ ipcMain.handle('select-exe-folder', async () => {
     }
   }
   return null
+})
+
+ipcMain.handle('test-print', async () => {
+  const { gerarBytes } = require('./server')
+  const fs = require('fs')
+  try {
+    const data = gerarBytes({
+      id: 'TESTE',
+      data: new Date().toISOString(),
+      total: 49.90,
+      itens: [
+        { qtd: 2, nome: 'Calabresa', preco: 24.95, tamanho: 'Grande', sabores: ['Calabresa', 'Mussarela'] },
+        { qtd: 1, nome: 'Refrigerante 2L', preco: 8.00 },
+      ],
+      cliente: {
+        nome: 'Cliente Teste',
+        telefone: '(27) 99999-8888',
+        endereco: 'Rua Teste, 123, Centro, Vila Velha - ES',
+        cpf: '123.456.789-00',
+        origem: 'site',
+        metodo_entrega: 'MERCHANT',
+        pagamento: [{ metodo: 'DINHEIRO', valor: 49.90, troco: 57.90 }],
+        observacoes: 'Sem cebola',
+        codigo_coleta: 'A123',
+      },
+    })
+    const tmpFile = path.join(app.getPath('temp'), `_print_test_${Date.now()}.bin`)
+    fs.writeFileSync(tmpFile, data)
+
+    const exe = getExePath()
+    if (!fs.existsSync(exe)) {
+      return { success: false, error: `RawPrinter.exe não encontrado em: ${exe}` }
+    }
+
+    return new Promise((resolve) => {
+      exec(`"${exe}" "${tmpFile}" "${getPrinterName()}"`, { timeout: 20000 }, (err, stdout, stderr) => {
+        try { if (fs.existsSync(tmpFile)) fs.unlinkSync(tmpFile) } catch {}
+        if (err) {
+          resolve({ success: false, error: (stderr || err.message).trim() })
+        } else {
+          resolve({ success: true, output: (stdout || '').trim() })
+        }
+      })
+    })
+  } catch (e) {
+    return { success: false, error: e.message }
+  }
 })

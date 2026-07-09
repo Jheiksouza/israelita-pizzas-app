@@ -285,5 +285,6 @@ module.exports = {
   getPort,
   getServerStatus,
   gerarBytes,
-  setExePath
+  setExePath,
+  getExePath
 }

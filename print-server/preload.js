@@ -9,5 +9,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onRefresh: (cb) => {
     ipcRenderer.on('refresh', cb)
     return () => ipcRenderer.removeListener('refresh', cb)
-  }
+  },
+  testPrint: () => ipcRenderer.invoke('test-print')
 })

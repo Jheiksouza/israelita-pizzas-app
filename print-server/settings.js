@@ -71,16 +71,18 @@ $('chk-autostart').addEventListener('change', async (e) => {
 })
 
 $('btn-testar').addEventListener('click', async () => {
+  mostrarToast('Enviando impressão de teste...', '')
   try {
-    const res = await fetch(`http://localhost:${config.port || 13001}/test`)
-    if (res.ok) {
-      mostrarToast('Impressão de teste enviada!', 'success')
+    const result = await window.electronAPI.testPrint()
+    if (result.success) {
+      mostrarToast('Impressão de teste enviada com sucesso!', 'success')
     } else {
-      const err = await res.json()
-      mostrarToast(`Erro: ${err.error}`, 'error')
+      mostrarToast(`Erro: ${result.error}`, 'error')
+      console.error('Test print error:', result.error)
     }
   } catch (e) {
-    mostrarToast('Servidor não está rodando', 'error')
+    mostrarToast(`Erro: ${e.message}`, 'error')
+    console.error('Test print exception:', e)
   }
 })
 
