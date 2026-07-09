@@ -223,13 +223,17 @@ ipcMain.handle('test-print', async () => {
       return { success: false, error: `RawPrinter.exe não encontrado em: ${exe}` }
     }
 
+    // Save a copy on desktop for debugging
+    const debugFile = path.join(app.getPath('desktop'), 'print_debug.bin')
+    try { fs.copyFileSync(tmpFile, debugFile) } catch {}
+
     return new Promise((resolve) => {
       exec(`"${exe}" "${tmpFile}" "${getPrinterName()}"`, { timeout: 20000 }, (err, stdout, stderr) => {
         try { if (fs.existsSync(tmpFile)) fs.unlinkSync(tmpFile) } catch {}
         if (err) {
-          resolve({ success: false, error: (stderr || err.message).trim() })
+          resolve({ success: false, error: (stderr || err.message).trim(), debugFile })
         } else {
-          resolve({ success: true, output: (stdout || '').trim() })
+          resolve({ success: true, output: (stdout || '').trim(), debugFile })
         }
       })
     })
