@@ -1,93 +1,98 @@
 const express = require('express')
-const escpos = require('escpos')
-const escposUSB = require('escpos-usb')
+const { exec } = require('child_process')
+const fs = require('fs')
+const path = require('path')
 
-const PRINT_VID = process.env.PRINT_VID ? parseInt(process.env.PRINT_VID, 16) : null
-const PRINT_PID = process.env.PRINT_PID ? parseInt(process.env.PRINT_PID, 16) : null
 const PORT = process.env.PORT || 13001
+const PRINTER_NAME = process.env.PRINTER_NAME || null
 
 const app = express()
 app.use(express.json({ limit: '1mb' }))
 
-function imprimir(pedido) {
-  return new Promise((resolve, reject) => {
-    try {
-      const device = new escposUSB.USB(PRINT_VID, PRINT_PID)
-      device.open(err => {
-        if (err) return reject(new Error('Erro ao abrir USB: ' + err.message))
-        const printer = new escpos.Printer(device)
+function cp850(buf) {
+  const map = {
+    'á':0xA0,'à':0xA1,'â':0xA2,'ã':0xA3,'ä':0xA4,'é':0x82,'è':0x8A,'ê':0x83,'ë':0x89,
+    'í':0xA8,'ì':0x8D,'î':0x8E,'ï':0x8F,'ó':0xE0,'ò':0xE1,'ô':0xE2,'õ':0xE3,'ö':0xE4,
+    'ú':0x82,'ù':0xEB,'û':0xEE,'ü':0x81,'ç':0x87,'Ç':0x80,'ñ':0xA5,'Ñ':0xA6,
+    'º':0xA7,'ª':0xAB,'°':0xF8,
+  }
+  const b = Buffer.alloc(buf.length)
+  for (let i = 0; i < buf.length; i++) {
+    const ch = buf[i]
+    const code = ch.charCodeAt(0)
+    if (code < 128) b[i] = code
+    else if (map[ch] !== undefined) b[i] = map[ch]
+    else b[i] = 0x3F
+  }
+  return b
+}
 
-        printer
-          .align('CT')
-          .style('B')
-          .size(1, 1)
-          .text('ISRAELITA PIZZAS')
-          .style('NORMAL')
-          .text('Vila Velha - ES')
-          .text('')
-          .align('LT')
-          .drawLine()
-          .align('CT')
-          .style('B')
-          .size(1, 1)
-          .text(`PEDIDO #${pedido.id}`)
-          .style('NORMAL')
-          .size(0, 0)
-          .align('LT')
-          .drawLine()
-          .text(`Cliente: ${pedido.cliente?.nome || ''}`)
+function gerarBytes(pedido) {
+  const c = pedido.cliente || {}
+  const partes = []
 
-        if (pedido.cliente?.telefone) {
-          printer.text(`Tel: ${pedido.cliente.telefone}`)
-        }
-        if (pedido.cliente?.endereco) {
-          printer.text(`End: ${pedido.cliente.endereco}`)
-        }
+  function esc(...args) { partes.push(Buffer.from(args)) }
+  function txt(str) { partes.push(cp850(Buffer.from(str, 'utf8'))) }
 
-        printer.drawLine()
-          .style('B')
-          .text('ITENS')
-          .style('NORMAL')
-
-        if (pedido.itens) {
-          for (const item of pedido.itens) {
-            let linha = `${item.qtd}x ${item.nome}`
-            if (item.valor_unitario) {
-              linha += ` R$${(item.valor_unitario * item.qtd).toFixed(2)}`
-            }
-            printer.text(linha)
-          }
-        }
-
-        printer.drawLine()
-          .style('B')
-          .text(`TOTAL: R$${(pedido.total || 0).toFixed(2)}`)
-          .style('NORMAL')
-
-        if (pedido.cliente?.pagamento?.length > 0) {
-          printer.drawLine()
-          for (const p of pedido.cliente.pagamento) {
-            printer.text(`${p.metodo} R$${(p.valor || 0).toFixed(2)}`)
-          }
-        }
-
-        if (pedido.cliente?.observacoes) {
-          printer.text('')
-          printer.text(`Obs: ${pedido.cliente.observacoes}`)
-        }
-        if (pedido.cliente?.codigo_coleta) {
-          printer.text(`Coleta: ${pedido.cliente.codigo_coleta}`)
-        }
-
-        printer.feed(3)
-          .cut(true)
-          .close()
-
-        setTimeout(() => resolve(true), 500)
-      })
-    } catch (e) {
-      reject(e)
+  esc(0x1B, 0x40) // INIT
+  esc(0x1B, 0x64, 0x03) // FEED 3
+  esc(0x1B, 0x61, 0x01) // center
+  esc(0x1B, 0x21, 0x30) // double height+width
+  txt('ISRAELITA PIZZAS\n')
+  esc(0x1B, 0x21, 0x00) // normal
+  txt('Vila Velha - ES\n')
+  esc(0x1B, 0x61, 0x00) // left
+  txt(''.padEnd(32, '-') + '\n')
+  esc(0x1B, 0x61, 0x01)
+  esc(0x1B, 0x21, 0x30)
+  txt(`PEDIDO #${pedido.id}\n`)
+  esc(0x1B, 0x21, 0x00)
+  esc(0x1B, 0x61, 0x00)
+  txt(''.padEnd(32, '-') + '\n')
+  txt(`Cliente: ${c.nome || ''}\n`)
+  if (c.telefone) txt(`Tel: ${c.telefone}\n`)
+  if (c.endereco) txt(`End: ${c.endereco}\n`)
+  txt(''.padEnd(32, '-') + '\n')
+  esc(0x1B, 0x45, 0x01) // bold on
+  txt('ITENS\n')
+  esc(0x1B, 0x45, 0x00) // bold off
+  if (pedido.itens) {
+    for (const item of pedido.itens) {
+      let l = `${item.qtd}x ${item.nome}`
+      if (item.valor_unitario) l += `  R$${(item.valor_unitario * item.qtd).toFixed(2)}`
+      txt(l + '\n')
     }
+  }
+  txt(''.padEnd(32, '-') + '\n')
+  esc(0x1B, 0x45, 0x01)
+  txt(`TOTAL: R$${(pedido.total || 0).toFixed(2)}\n`)
+  esc(0x1B, 0x45, 0x00)
+  if (c.pagamento && c.pagamento.length > 0) {
+    txt(''.padEnd(32, '-') + '\n')
+    for (const p of c.pagamento) {
+      txt(`${p.metodo} R$${(p.valor || 0).toFixed(2)}\n`)
+    }
+  }
+  if (c.observacoes) txt(`\nObs: ${c.observacoes}\n`)
+  if (c.codigo_coleta) txt(`Coleta: ${c.codigo_coleta}\n`)
+  esc(0x1B, 0x64, 0x05) // FEED 5
+  esc(0x1D, 0x56, 0x01) // CUT PARTIAL
+
+  return Buffer.concat(partes)
+}
+
+function listarImpressoras() {
+  return new Promise((resolve, reject) => {
+    exec('powershell "Get-CimInstance Win32_Printer | Select-Object Name,DriverName | Format-Table -AutoSize | Out-String -Width 4096"', {
+      timeout: 10000
+    }, (err, stdout) => {
+      if (err) return reject(err)
+      resolve(stdout
+        .split(/\r?\n/)
+        .map(l => l.trim())
+        .filter(l => l && !l.startsWith('-') && !l.startsWith('Name') && !l.startsWith(' '))
+      )
+    })
   })
 }
 
@@ -95,21 +100,47 @@ app.post('/print', async (req, res) => {
   try {
     const pedido = req.body
     if (!pedido?.id) return res.status(400).json({ error: 'pedido.id required' })
-    await imprimir(pedido)
-    res.json({ ok: true, pedido: pedido.id })
+
+    const data = gerarBytes(pedido)
+    const tmpFile = path.join(__dirname, `_print_${Date.now()}.bin`)
+
+    fs.writeFileSync(tmpFile, data)
+
+    const printerName = PRINTER_NAME || '"80mm Thermal Printer"'
+
+    const psCmd = `Get-Content -Path "${tmpFile}" -Encoding Byte | Out-Printer -Name ${printerName}; Remove-Item "${tmpFile}"`
+
+    exec(`powershell -NoProfile -Command "${psCmd.replace(/"/g, '\\"')}"`, { timeout: 15000 }, (err) => {
+      try { if (fs.existsSync(tmpFile)) fs.unlinkSync(tmpFile) } catch {}
+      if (err) {
+        return res.status(500).json({ error: 'Erro ao imprimir: ' + err.message })
+      }
+      res.json({ ok: true, pedido: pedido.id })
+    })
   } catch (e) {
     res.status(500).json({ error: e.message })
+  }
+})
+
+app.get('/printers', async (req, res) => {
+  try {
+    const list = await listarImpressoras()
+    res.json({ printers: list })
+  } catch (e) {
+    res.json({ printers: [], error: e.message })
   }
 })
 
 app.get('/status', (req, res) => {
   res.json({
     ok: true,
-    printer: PRINT_VID ? { vid: '0x' + PRINT_VID.toString(16), pid: '0x' + PRINT_PID.toString(16) } : 'auto',
+    printerName: PRINTER_NAME || '"80mm Thermal Printer" (padrao)',
   })
 })
 
 app.listen(PORT, () => {
   console.log(`Print server rodando em http://localhost:${PORT}`)
-  console.log(`Printer: ${PRINT_VID ? `VID=0x${PRINT_VID.toString(16)} PID=0x${PRINT_PID.toString(16)}` : 'auto-detect'}`)
+  console.log(`Para configurar a impressora, defina PRINTER_NAME`)
+  console.log(`Ex: $env:PRINTER_NAME="Nome da Impressora"`)
+  console.log(`Liste impressoras: curl http://localhost:${PORT}/printers`)
 })
