@@ -1,221 +1,108 @@
-const CP850_MAP = {
-  'á': 0xA0, 'à': 0xA1, 'â': 0xA2, 'ã': 0xA3, 'ä': 0xA4,
-  'é': 0x82, 'è': 0x8A, 'ê': 0x83, 'ë': 0x89,
-  'í': 0xA8, 'ì': 0x8D, 'î': 0x8E, 'ï': 0x8F,
-  'ó': 0xE0, 'ò': 0xE1, 'ô': 0xE2, 'õ': 0xE3, 'ö': 0xE4,
-  'ú': 0x82, 'ù': 0xEB, 'û': 0xEE, 'ü': 0x81,
-  'ç': 0x87, 'Ç': 0x80,
-  'ñ': 0xA5, 'Ñ': 0xA6,
-  'º': 0xA7, 'ª': 0xAB,
-  '°': 0xF8,
-  '¹': 0xB9, '²': 0xB2, '³': 0xB3,
-  '¢': 0x9B, '£': 0x9C,
-  '—': 0x2D, '–': 0x2D,
-  '─': 0x2D,
+function formatMoney(v) {
+  return 'R$ ' + (v || 0).toFixed(2)
 }
 
-function cp850Encode(str) {
-  const bytes = []
-  for (const ch of str) {
-    const code = ch.charCodeAt(0)
-    if (code < 128) {
-      bytes.push(code)
-    } else if (CP850_MAP[ch] !== undefined) {
-      bytes.push(CP850_MAP[ch])
-    } else {
-      bytes.push(0x3F)
-    }
+function linha(len = 32) {
+  return '─'.repeat(len) + '\n'
+}
+
+export function gerarHTMLRecibo(pedido) {
+  const c = pedido.cliente || {}
+
+  let html = `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Pedido #${pedido.id}</title>
+<style>
+  @page { margin: 0; size: 80mm auto; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Courier New', 'Lucida Console', monospace;
+    font-size: 12px;
+    width: 72mm;
+    padding: 3mm 4mm;
+    color: #000;
+    background: #fff;
+    line-height: 1.3;
   }
-  return new Uint8Array(bytes)
-}
-
-function textEncoder(str) {
-  return cp850Encode(str)
-}
-
-const CMD = {
-  INIT: new Uint8Array([0x1B, 0x40]),
-  LF: new Uint8Array([0x0A]),
-  TAB: new Uint8Array([0x09]),
-  BOLD_ON: new Uint8Array([0x1B, 0x45, 0x01]),
-  BOLD_OFF: new Uint8Array([0x1B, 0x45, 0x00]),
-  DOUBLE_ON: new Uint8Array([0x1B, 0x21, 0x30]),
-  DOUBLE_OFF: new Uint8Array([0x1B, 0x21, 0x00]),
-  CUT_PARTIAL: new Uint8Array([0x1D, 0x56, 0x01]),
-  CUT_FULL: new Uint8Array([0x1D, 0x56, 0x00]),
-  FEED: (n) => new Uint8Array([0x1B, 0x64, n]),
-  ALIGN_CENTER: new Uint8Array([0x1B, 0x61, 0x01]),
-  ALIGN_LEFT: new Uint8Array([0x1B, 0x61, 0x00]),
-}
-
-function line(str = '') {
-  const bytes = []
-  bytes.push(...textEncoder(str))
-  bytes.push(...CMD.LF)
-  return new Uint8Array(bytes)
-}
-
-function center(str, bold = false) {
-  const bytes = []
-  bytes.push(...CMD.ALIGN_CENTER)
-  if (bold) bytes.push(...CMD.BOLD_ON)
-  bytes.push(...textEncoder(str))
-  bytes.push(...CMD.LF)
-  if (bold) bytes.push(...CMD.BOLD_OFF)
-  bytes.push(...CMD.ALIGN_LEFT)
-  return new Uint8Array(bytes)
-}
-
-function doubleLine(str) {
-  const bytes = []
-  bytes.push(...CMD.ALIGN_CENTER)
-  bytes.push(...CMD.DOUBLE_ON)
-  bytes.push(...textEncoder(str))
-  bytes.push(...CMD.LF)
-  bytes.push(...CMD.DOUBLE_OFF)
-  bytes.push(...CMD.ALIGN_LEFT)
-  return new Uint8Array(bytes)
-}
-
-function separator() {
-  return line('─'.repeat(32))
-}
-
-function boldLine(label, value) {
-  const bytes = []
-  bytes.push(...CMD.BOLD_ON)
-  bytes.push(...textEncoder(label + ' '))
-  bytes.push(...CMD.BOLD_OFF)
-  bytes.push(...textEncoder(value))
-  bytes.push(...CMD.LF)
-  return new Uint8Array(bytes)
-}
-
-export function buildPrintData(pedido) {
-  const buf = []
-  buf.push(CMD.INIT)
-  buf.push(CMD.FEED(2))
-  buf.push(doubleLine('ISRAELITA PIZZAS'))
-  buf.push(center('(27) 99999-9999'))
-  buf.push(center('Vila Velha - ES'))
-  buf.push(CMD.FEED(1))
-  buf.push(separator())
-  buf.push(CMD.FEED(1))
-
-  buf.push(doubleLine(`PEDIDO #${pedido.id}`))
-  buf.push(CMD.FEED(1))
-
-  buf.push(boldLine('Cliente:', pedido.cliente?.nome || ''))
-  if (pedido.cliente?.telefone) {
-    buf.push(boldLine('Tel:', pedido.cliente.telefone))
+  h1 { text-align: center; font-size: 18px; font-weight: bold; margin-bottom: 2px; }
+  .sub { text-align: center; font-size: 11px; margin-bottom: 4px; }
+  .sep { text-align: center; letter-spacing: 2px; margin: 4px 0; }
+  .pedido-num { text-align: center; font-size: 16px; font-weight: bold; margin: 4px 0; }
+  .row { display: flex; margin: 1px 0; }
+  .row strong { min-width: 70px; }
+  .item { margin: 2px 0 2px 0; }
+  .item-qtd { font-weight: bold; }
+  .total { text-align: right; font-size: 14px; font-weight: bold; margin-top: 4px; }
+  .obs { margin-top: 4px; font-style: italic; }
+  @media print {
+    body { width: auto; }
   }
-  if (pedido.cliente?.endereco) {
-    buf.push(boldLine('Endereco:', pedido.cliente.endereco))
-  }
-  buf.push(CMD.FEED(1))
-  buf.push(separator())
-  buf.push(CMD.FEED(1))
-
-  buf.push(center('--- ITENS ---', true))
-  buf.push(CMD.LF)
+</style>
+</head>
+<body>
+<h1>ISRAELITA PIZZAS</h1>
+<div class="sub">Vila Velha - ES</div>
+<div class="sep">${linha()}</div>
+<div class="pedido-num">PEDIDO #${pedido.id}</div>
+<div class="sep">${linha()}</div>
+<div class="row"><strong>Cliente:</strong> ${c.nome || ''}</div>
+${c.telefone ? `<div class="row"><strong>Tel:</strong> ${c.telefone}</div>` : ''}
+${c.endereco ? `<div class="row"><strong>End:</strong> ${c.endereco}</div>` : ''}
+<div class="sep">${linha()}</div>
+<div><strong>ITENS</strong></div>
+`
 
   if (pedido.itens) {
     for (const item of pedido.itens) {
-      const lineBytes = []
-      lineBytes.push(...textEncoder(`${item.qtd}x ${item.nome}`))
-      if (item.valor_unitario) {
-        lineBytes.push(...textEncoder(`  R$ ${(item.valor_unitario * item.qtd).toFixed(2)}`))
-      }
-      lineBytes.push(...CMD.LF)
-      buf.push(new Uint8Array(lineBytes))
+      html += `<div class="item"><span class="item-qtd">${item.qtd}x</span> ${item.nome}${item.valor_unitario ? '  ' + formatMoney(item.valor_unitario * item.qtd) : ''}</div>\n`
     }
   }
 
-  buf.push(CMD.FEED(1))
-  buf.push(separator())
-  buf.push(CMD.FEED(1))
+  html += `<div class="sep">${linha()}</div>
+<div class="total">TOTAL: ${formatMoney(pedido.total)}</div>
+`
 
-  buf.push(boldLine('Total:', `R$ ${pedido.total?.toFixed(2)}`))
-
-  if (pedido.cliente?.pagamento?.length > 0) {
-    buf.push(CMD.LF)
-    for (const p of pedido.cliente.pagamento) {
-      buf.push(boldLine('Pagamento:', `${p.metodo} R$ ${p.valor?.toFixed(2)}`))
+  if (c.pagamento?.length > 0) {
+    html += `<div class="sep">${linha()}</div>\n`
+    for (const p of c.pagamento) {
+      html += `<div class="row"><strong>Pgto:</strong> ${p.metodo} ${formatMoney(p.valor)}</div>\n`
     }
   }
 
-  if (pedido.cliente?.observacoes) {
-    buf.push(CMD.LF)
-    buf.push(boldLine('Obs:', pedido.cliente.observacoes))
+  if (c.observacoes) {
+    html += `<div class="obs">Obs: ${c.observacoes}</div>\n`
   }
 
-  buf.push(CMD.FEED(3))
-  buf.push(CMD.CUT_PARTIAL)
-
-  const totalLength = buf.reduce((acc, b) => acc + b.length, 0)
-  const result = new Uint8Array(totalLength)
-  let offset = 0
-  for (const b of buf) {
-    result.set(b, offset)
-    offset += b.length
-  }
-  return result
-}
-
-let connectedDevice = null
-
-export async function connectPrinter() {
-  if (connectedDevice) {
-    try {
-      await connectedDevice.close()
-    } catch {}
-    connectedDevice = null
+  if (c.codigo_coleta) {
+    html += `<div class="row"><strong>Coleta:</strong> ${c.codigo_coleta}</div>\n`
   }
 
-  const device = await navigator.usb.requestDevice({
-    filters: []
-  })
+  html += `<div style="text-align:center;margin-top:8px;font-size:10px">Obrigado pela preferencia!</div>
+<script>
+  window.onload = function() { window.print(); window.onafterprint = function() { window.close(); }; };
+<\/script>
+</body>
+</html>`
 
-  await device.open()
-  if (device.configuration === null) {
-    await device.selectConfiguration(1)
-  }
-  await device.claimInterface(0)
-
-  connectedDevice = device
-  return true
-}
-
-export async function disconnectPrinter() {
-  if (connectedDevice) {
-    try {
-      await connectedDevice.close()
-    } catch {}
-    connectedDevice = null
-  }
-}
-
-export function isPrinterConnected() {
-  return connectedDevice !== null
+  return html
 }
 
 export async function printOrder(pedido) {
-  if (!connectedDevice) throw new Error('Impressora nao conectada')
-
-  const data = buildPrintData(pedido)
-  await connectedDevice.transferOut(1, data)
+  const html = gerarHTMLRecibo(pedido)
+  const win = window.open('', '_blank', 'width=400,height=600,menubar=no,toolbar=no,status=no,scrollbars=yes')
+  if (!win) {
+    const blob = new Blob([html], { type: 'text/html' })
+    const url = URL.createObjectURL(blob)
+    window.open(url, '_blank', 'width=400,height=600')
+    setTimeout(() => URL.revokeObjectURL(url), 60000)
+    return
+  }
+  win.document.write(html)
+  win.document.close()
 }
 
-export async function printTest() {
-  if (!connectedDevice) throw new Error('Impressora nao conectada')
-
-  const testData = new Uint8Array([
-    0x1B, 0x40,
-    ...textEncoder('TESTE DE IMPRESSÃO\n'),
-    ...textEncoder('Se esta linha apareceu\n'),
-    ...textEncoder('a impressora esta OK!\n'),
-    ...textEncoder('\n\n\n'),
-    0x1D, 0x56, 0x01,
-  ])
-  await connectedDevice.transferOut(1, testData)
+export function isPrinterConnected() {
+  return true
 }
