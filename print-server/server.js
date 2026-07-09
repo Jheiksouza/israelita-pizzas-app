@@ -98,7 +98,7 @@ app.post('/print', async (req, res) => {
     fs.writeFileSync(tmpFile, data)
 
     // Write-Printer envia RAW direto, sem driver intermediario
-    const cmd = `powershell -NoProfile -Command "Write-Printer -Name '${PRINTER_NAME}' -Data (Get-Content '${tmpFile}' -Encoding Byte); if (-not $?) { exit 1 }; Remove-Item '${tmpFile}'"`
+    const cmd = `powershell -NoProfile -Command "try { Add-Type -AssemblyName System.Printing; $srv = New-Object System.Printing.LocalPrintServer; $q = $srv.GetPrintQueue('${PRINTER_NAME}'); if (!$q) { exit 2 }; $b = [System.IO.File]::ReadAllBytes('${tmpFile}'); $j = $q.AddJob(); $j.JobStream.Write($b, 0, $b.Length); $j.JobStream.Close(); $q.Commit(); Remove-Item '${tmpFile}' } catch { Remove-Item '${tmpFile}'; exit 1 }"`
 
     exec(cmd, { timeout: 20000 }, (err, stdout, stderr) => {
       try { if (fs.existsSync(tmpFile)) fs.unlinkSync(tmpFile) } catch {}
@@ -116,7 +116,7 @@ app.post('/print', async (req, res) => {
 })
 
 app.get('/test', (req, res) => {
-  const cmd = `powershell -NoProfile -Command "Write-Printer -Name '${PRINTER_NAME}' -Data ([byte[]]@(0x1B,0x40,0x1B,0x64,0x03,0x1B,0x61,0x01,0x1B,0x21,0x30,'TESTE'.ToCharArray()|%{[byte]$_},0x0A,0x1B,0x21,0x00,0x1B,0x61,0x00,0x1B,0x64,0x03,0x1D,0x56,0x01))"`
+  const cmd = `powershell -NoProfile -Command "Add-Type -AssemblyName System.Printing; $srv = New-Object System.Printing.LocalPrintServer; $q = $srv.GetPrintQueue('${PRINTER_NAME}'); $b = [byte[]]@(0x1B,0x40,0x1B,0x64,0x03,0x54,0x45,0x53,0x54,0x45,0x0A,0x1B,0x64,0x03,0x1D,0x56,0x01); $j = $q.AddJob(); $j.JobStream.Write($b, 0, $b.Length); $j.JobStream.Close(); $q.Commit()"`
   exec(cmd, { timeout: 10000 }, (err, stdout, stderr) => {
     if (err) return res.status(500).json({ error: (stderr || err.message).trim() })
     res.json({ ok: true })
