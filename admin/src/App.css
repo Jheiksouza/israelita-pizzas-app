@@ -594,7 +594,7 @@ body {
 .pedido-card.em_rota { border-color: color-mix(in oklch, var(--amber) 35%, transparent); }
 .pedido-card.entregador_proximo { border-color: color-mix(in oklch, var(--amber) 35%, transparent); }
 .pedido-card.entregue { border-color: color-mix(in oklch, var(--success) 35%, transparent); }
-.pedido-card.recusado { border-color: color-mix(in oklch, var(--destructive) 35%, transparent); }
+.pedido-card.cancelado { border-color: color-mix(in oklch, var(--destructive) 35%, transparent); }
 
 .pedido-card.pedido-pendente-destaque {
   animation: pedidoGlow 1s ease-in-out infinite;

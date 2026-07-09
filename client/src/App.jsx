@@ -609,8 +609,8 @@ function AuthModal({ onLogin, onClose }) {
 const pedidoSteps = [
   { key: 'pendente', label: 'Pendente' },
   { key: 'aceito', label: 'Preparo' },
-  { key: 'liberado', label: 'Pronto' },
-  { key: 'em_rota', label: 'Saiu' },
+  { key: 'liberado', label: 'Saiu' },
+  { key: 'em_rota', label: 'Rota' },
   { key: 'entregador_proximo', label: 'Chegou!' },
   { key: 'entregue', label: 'Entregue' },
 ]
@@ -619,18 +619,18 @@ const stepIndexPedido = s => pedidoSteps.findIndex(st => st.key === s)
 function PedidoProgresso({ status }) {
   if (!status) return null
   let idx = stepIndexPedido(status)
-  if (status === 'recusado') idx = -2
+  if (status === 'cancelado') idx = -2
   if (idx === -1) return null
-  const isRecusado = idx === -2
-  const pct = isRecusado ? 0 : (idx / (pedidoSteps.length - 1)) * 100
-  const circleIdx = isRecusado ? 0 : idx
+  const isCancelado = idx === -2
+  const pct = isCancelado ? 0 : (idx / (pedidoSteps.length - 1)) * 100
+  const circleIdx = isCancelado ? 0 : idx
   return (
     <div className="pedido-steps">
-      <div className={`pedido-steps-track${isRecusado ? ' recusado' : ''}`}>
+      <div className={`pedido-steps-track${isCancelado ? ' cancelado' : ''}`}>
         <div className="pedido-steps-fill" style={{ width: `${pct}%` }} />
         {pedidoSteps.map((st, i) => (
-          <span key={`l${st.key}`} className={`pedido-step-label${isRecusado && i === 0 ? ' active recusado' : ''}${!isRecusado && i < idx ? ' done' : ''}${!isRecusado && i === idx ? ' active' : ''}`} style={{ left: `${(i / (pedidoSteps.length - 1)) * 100}%` }}>
-            {isRecusado && i === 0 ? 'Cancelado' : st.label}
+          <span key={`l${st.key}`} className={`pedido-step-label${isCancelado && i === 0 ? ' active cancelado' : ''}${!isCancelado && i < idx ? ' done' : ''}${!isCancelado && i === idx ? ' active' : ''}`} style={{ left: `${(i / (pedidoSteps.length - 1)) * 100}%` }}>
+            {isCancelado && i === 0 ? 'Cancelado' : st.label}
           </span>
         ))}
         <div className="pedido-step-circle active" style={{ left: `${(circleIdx / (pedidoSteps.length - 1)) * 100}%` }} />
@@ -840,8 +840,8 @@ function MeusPedidos({ token, onVoltar, qtdCarrinho, onCartOpen, onPagina }) {
     } catch (_) { alert('Erro ao buscar pedido') }
   }
 
-  const statusLabel = { pendente: 'Pendente', aceito: 'Em preparo', liberado: 'À caminho', entregador_proximo: 'Entregador chegou!', entregue: 'Entregue', recusado: 'Recusado' }
-  const statusClass = { pendente: 'status-pendente', aceito: 'status-aceito', liberado: 'status-liberado', entregador_proximo: 'status-entregador_proximo', entregue: 'status-entregue', recusado: 'status-recusado' }
+  const statusLabel = { pendente: 'Pendente', aceito: 'Em preparo', liberado: 'Saiu p/ entrega', em_rota: 'Em rota', entregador_proximo: 'Chegando!', entregue: 'Entregue', cancelado: 'Cancelado' }
+  const statusClass = { pendente: 'status-pendente', aceito: 'status-aceito', liberado: 'status-liberado', em_rota: 'status-em_rota', entregador_proximo: 'status-entregador_proximo', entregue: 'status-entregue', cancelado: 'status-cancelado' }
 
   const fecharMenu = () => setMenuOpen(false)
 

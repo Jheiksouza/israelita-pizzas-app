@@ -34,8 +34,8 @@ const VALID_ROLES = ['admin', 'atendente', 'financeiro']
 const pedidoSteps = [
   { key: 'pendente', label: 'Pendente' },
   { key: 'aceito', label: 'Preparo' },
-  { key: 'liberado', label: 'Pronto' },
-  { key: 'em_rota', label: 'Saiu' },
+  { key: 'liberado', label: 'Saiu' },
+  { key: 'em_rota', label: 'Rota' },
   { key: 'entregador_proximo', label: 'Chegou!' },
   { key: 'entregue', label: 'Entregue' },
 ]
@@ -483,7 +483,7 @@ function AdminOrders() {
         if (elapsed >= 300000) {
           fetch(`${API}/orders/${p.id}`, {
             method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ status: 'recusado' })
+            body: JSON.stringify({ status: 'cancelado' })
           }).then(() => carregar()).catch(() => {})
         }
       })
@@ -538,9 +538,9 @@ function AdminOrders() {
     return `${h}h${min % 60}min`
   }
 
-  const statusLabel = { pendente: 'Pendente', aceito: 'Em preparo', liberado: 'À caminho', entregador_proximo: 'Entregador Próximo', entregue: 'Entregue', recusado: 'Recusado' }
-  const badgeClass = { pendente: 'badge badge-warning', aceito: 'badge badge-info', liberado: 'badge badge-liberate', entregador_proximo: 'badge badge-amber', entregue: 'badge badge-success', recusado: 'badge badge-destructive' }
-  const FILTROS = ['pendente', 'aceito', 'liberado', 'entregador_proximo', 'entregue', 'recusado', 'todos']
+  const statusLabel = { pendente: 'Pendente', aceito: 'Em preparo', liberado: 'Saiu p/ entrega', em_rota: 'Em rota', entregador_proximo: 'Chegando!', entregue: 'Entregue', cancelado: 'Cancelado' }
+  const badgeClass = { pendente: 'badge badge-warning', aceito: 'badge badge-info', liberado: 'badge badge-liberate', em_rota: 'badge badge-amber', entregador_proximo: 'badge badge-amber', entregue: 'badge badge-success', cancelado: 'badge badge-destructive' }
+  const FILTROS = ['pendente', 'aceito', 'liberado', 'em_rota', 'entregador_proximo', 'entregue', 'cancelado', 'todos']
 
   return (
     <>
@@ -682,25 +682,25 @@ function AdminOrders() {
                       {pedido.status === 'pendente' && (
                         <>
                           <button className="btn btn-approve btn-sm" onClick={() => atualizarStatus(pedido.id, 'aceito')}><Check size={16} /> Aceitar</button>
-                          <button className="btn btn-destructive btn-sm" onClick={() => atualizarStatus(pedido.id, 'recusado')}><X size={16} /> Recusar</button>
+                          <button className="btn btn-destructive btn-sm" onClick={() => atualizarStatus(pedido.id, 'cancelado')}><X size={16} /> Cancelar</button>
                         </>
                       )}
                       {pedido.status === 'aceito' && (
                         <>
                           <button className="btn btn-liberar btn-sm" onClick={() => atualizarStatus(pedido.id, 'liberado')}><Truck size={16} /> Liberar</button>
-                          <button className="btn btn-destructive btn-sm" onClick={() => atualizarStatus(pedido.id, 'recusado')}><X size={16} /> Recusar</button>
+                          <button className="btn btn-destructive btn-sm" onClick={() => atualizarStatus(pedido.id, 'cancelado')}><X size={16} /> Cancelar</button>
                         </>
                       )}
                       {pedido.status === 'liberado' && (
                         <>
                           <button className="btn btn-approve btn-sm" onClick={() => atualizarStatus(pedido.id, 'entregue')}><CheckCircle size={16} /> Entregue</button>
-                          <button className="btn btn-destructive btn-sm" onClick={() => atualizarStatus(pedido.id, 'recusado')}><X size={16} /> Recusar</button>
+                          <button className="btn btn-destructive btn-sm" onClick={() => atualizarStatus(pedido.id, 'cancelado')}><X size={16} /> Cancelar</button>
                         </>
                       )}
                       {pedido.status === 'entregador_proximo' && (
                         <>
                           <button className="btn btn-approve btn-sm" onClick={() => atualizarStatus(pedido.id, 'entregue')}><CheckCircle size={16} /> Entregue</button>
-                          <button className="btn btn-destructive btn-sm" onClick={() => atualizarStatus(pedido.id, 'recusado')}><X size={16} /> Recusar</button>
+                          <button className="btn btn-destructive btn-sm" onClick={() => atualizarStatus(pedido.id, 'cancelado')}><X size={16} /> Cancelar</button>
                         </>
                       )}
                     </div>
@@ -759,8 +759,8 @@ function AdminFinanceiro() {
           <span className="stat-value">{stats.entregues}</span>
         </div>
         <div className="stat-card">
-          <span className="stat-label">Recusados</span>
-          <span className="stat-value">{stats.recusados}</span>
+          <span className="stat-label">Cancelados</span>
+          <span className="stat-value">{stats.cancelados}</span>
         </div>
       </div>
     </>
@@ -839,7 +839,7 @@ function RastreioPage() {
   })
   comCoords.forEach(p => rotaCoords.push([getLat(p), getLng(p)]))
 
-  const statusLabel = { pendente: 'Pendente', aceito: 'Em preparo', liberado: 'Saiu p/ entrega', em_rota: 'Em rota', entregador_proximo: 'Chegando!', entregue: 'Entregue' }
+  const statusLabel = { pendente: 'Pendente', aceito: 'Em preparo', liberado: 'Saiu p/ entrega', em_rota: 'Em rota', entregador_proximo: 'Chegando!', entregue: 'Entregue', cancelado: 'Cancelado' }
 
   return (
     <div className="rastreio-page">

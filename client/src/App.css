@@ -4647,7 +4647,7 @@ html.pedidos-open {
   z-index: 0;
 }
 
-.pedido-card.recusado { opacity: 0.65; }
+.pedido-card.cancelado { opacity: 0.65; }
 
 @media (max-width: 768px) {
   .pedidos-lista {
@@ -4894,7 +4894,7 @@ html.pedidos-open {
   color: #2E7D32;
   border: 1px solid #A5D6A7;
 }
-.status-recusado {
+.status-cancelado {
   background: #FFEBEE;
   color: #C62828;
   border: 1px solid #EF9A9A;
@@ -4903,6 +4903,11 @@ html.pedidos-open {
   background: #F3E5F5;
   color: #7B1FA2;
   border: 1px solid #CE93D8;
+}
+.status-em_rota {
+  background: #FFF8E1;
+  color: #F57F17;
+  border: 1px solid #FFE082;
 }
 .status-entregador_proximo {
   background: #1A0F08;
@@ -4930,10 +4935,15 @@ html.pedidos-open {
   color: #A5D6A7;
   border: 1px solid #1A4A2A;
 }
-.theme-classic .status-recusado {
+.theme-classic .status-cancelado {
   background: #3A0A0A;
   color: #EF9A9A;
   border: 1px solid #5A1A1A;
+}
+.theme-classic .status-em_rota {
+  background: #2A1A00;
+  color: #FFD54F;
+  border: 1px solid #5A3A00;
 }
 .theme-classic .status-liberado {
   background: #1A0A2E;
@@ -5087,11 +5097,11 @@ html.pedidos-open {
   font-size: 0.63rem;
 }
 
-.pedido-step-label.active.recusado {
+.pedido-step-label.active.cancelado {
   color: var(--text-muted);
 }
 
-.pedido-steps-track.recusado::before {
+.pedido-steps-track.cancelado::before {
   opacity: 0.3;
 }
 

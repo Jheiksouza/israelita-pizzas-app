@@ -476,8 +476,8 @@ function MotoboyDashboard({ user, token, onLogout }) {
     return `${min} min`
   }
 
-  const statusLabel = { pendente: 'Pendente', aceito: 'Em preparo', liberado: 'Saiu p/ entrega', em_rota: 'Em rota', entregador_proximo: 'Chegando!', entregue: 'Entregue', recusado: 'Cancelado' }
-  const badgeClass = { pendente: 'badge badge-warning', aceito: 'badge badge-info', liberado: 'badge badge-liberate', em_rota: 'badge badge-amber', entregador_proximo: 'badge badge-amber', entregue: 'badge badge-success', recusado: 'badge badge-destructive' }
+  const statusLabel = { aceito: 'Em preparo', liberado: 'Saiu p/ entrega', em_rota: 'Em rota', entregador_proximo: 'Chegando!', entregue: 'Entregue', cancelado: 'Cancelado' }
+  const badgeClass = { aceito: 'badge badge-info', liberado: 'badge badge-liberate', em_rota: 'badge badge-amber', entregador_proximo: 'badge badge-amber', entregue: 'badge badge-success', cancelado: 'badge badge-destructive' }
 
   return (
     <div className="motoboy-app">
@@ -802,7 +802,7 @@ function TelaEntrega({ pedido, indice, total, onFinalizar, badgeClass, statusLab
     }
   }
 
-  const cancelado = pedido.status === 'recusado'
+  const cancelado = pedido.status === 'cancelado'
   const lat = getLat(pedido)
   const lng = getLng(pedido)
   const podeIniciarNavegacao = lat && lng

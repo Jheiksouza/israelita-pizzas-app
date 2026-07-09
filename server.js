@@ -119,7 +119,7 @@ const FINAL_STATUS = {
   em_rota: 'entregue',
   liberado: 'entregue',
   aceito: 'entregue',
-  pendente: 'recusado',
+  pendente: 'cancelado',
 }
 
 async function autoExpireOrders(orders) {
@@ -386,7 +386,7 @@ app.get('/orders/stats', async (req, res) => {
       pendentes: orders.filter(o => o.status === 'pendente').length,
       aceitos: orders.filter(o => o.status === 'aceito').length,
       entregues: orders.filter(o => o.status === 'entregue').length,
-      recusados: orders.filter(o => o.status === 'recusado').length,
+      cancelados: orders.filter(o => o.status === 'cancelado').length,
       receitaPendente: orders.filter(o => o.status === 'aceito').reduce((s, o) => s + (o.total || 0), 0),
       proximos: orders.filter(o => o.status === 'entregador_proximo').length
     })
@@ -529,22 +529,19 @@ app.patch('/orders/:id', async (req, res) => {
         if (config.enabled) {
           const extId = order.cliente?.marketplace_order_id
           const statusMap = {
-            'aceito': 'confirmed',
-            'liberado': 'ready_to_pickup',
-            'entregue': 'dispatched',
-            'preparando': 'preparation_started',
-            'pronto': 'ready_to_pickup',
-            'saiu_entrega': 'dispatched',
-            'confirmado': 'confirmed'
+            'aceito': ['confirmed', 'preparation_started'],
+            'liberado': ['dispatched'],
           }
-          const mappedStatus = statusMap[order.status]
-          if (mappedStatus && extId) {
-            adapter.updateOrderStatus(extId, mappedStatus, config).catch(err =>
-              console.error(`[${origem}] Erro ao atualizar status ${order.status}:`, err.message)
-            )
+          const mappedStatuses = statusMap[order.status]
+          if (mappedStatuses && extId) {
+            mappedStatuses.forEach(s => {
+              adapter.updateOrderStatus(extId, s, config).catch(err =>
+                console.error(`[${origem}] Erro ao atualizar status ${order.status} -> ${s}:`, err.message)
+              )
+            })
           }
-          // Cancelamento: se recusou, solicita cancelamento no iFood
-          if (order.status === 'recusado' && extId) {
+          // Cancelamento: se cancelado, solicita cancelamento no iFood
+          if (order.status === 'cancelado' && extId) {
             adapter.getCancellationReasons(extId, config).then(reasons => {
               const reason = (reasons?.reasons || []).find(r => r.code === '503') || { code: '503' }
               adapter.requestCancellation(extId, reason.code, config).catch(err =>
@@ -802,10 +799,10 @@ app.post('/marketplace/:platform/webhook', async (req, res) => {
           // iFood cancelou -> atualiza local
           if (event.orderId) {
             await supabase.from('orders').update({
-              status: 'recusado',
+              status: 'cancelado',
               updatedAt: new Date().toISOString()
             }).filter('cliente->>marketplace_order_id', 'eq', event.orderId)
-            addWebhookLog(platform, { type: 'STATUS_UPDATED', orderId: event.orderId, status: 'recusado' })
+            addWebhookLog(platform, { type: 'STATUS_UPDATED', orderId: event.orderId, status: 'cancelado' })
             eventosParaAck.push(event.id)
           }
         } else if (event.code === 'PRESENCE') {
@@ -1099,7 +1096,7 @@ app.get('/motoboy/pedidos', async (req, res) => {
   if (!checkSupabase(res)) return
   try {
     const [ordersRes, configsRes] = await Promise.all([
-      supabase.from('orders').select('*').in('status', ['liberado', 'em_rota', 'entregador_proximo', 'entregue', 'recusado']).order('id'),
+      supabase.from('orders').select('*').in('status', ['liberado', 'em_rota', 'entregador_proximo', 'entregue', 'cancelado']).order('id'),
       supabase.from('app_config').select('chave, valor').like('chave', 'pedido_motoboy_%')
     ])
     if (ordersRes.error) throw ordersRes.error
