@@ -37,6 +37,7 @@ async function carregarConfig() {
 async function carregarImpressoras() {
   try {
     printers = await window.electronAPI.getPrinters()
+    addLog(`Impressoras encontradas: ${printers.length > 0 ? printers.join(', ') : 'nenhuma'}`, 'info')
     const select = $('printer-select')
     select.innerHTML = ''
     printers.forEach(p => {
@@ -49,12 +50,13 @@ async function carregarImpressoras() {
     if (!printers.includes(config.printerName)) {
       const opt = document.createElement('option')
       opt.value = config.printerName
-      opt.textContent = config.printerName
+      opt.textContent = `${config.printerName} (padrão)`
       opt.selected = true
       select.appendChild(opt)
+      addLog(`Impressora padrão "${config.printerName}" não encontrada na lista`, 'warn')
     }
   } catch (e) {
-    console.error('Erro ao listar impressoras:', e)
+    addLog(`Erro ao listar impressoras: ${e.message}`, 'error')
   }
 }
 
