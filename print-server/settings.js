@@ -1,3 +1,5 @@
+const $ = id => document.getElementById(id)
+
 let config = {}
 let printers = []
 
@@ -18,8 +20,6 @@ $('btn-limpar-logs').addEventListener('click', () => {
   const container = $('log-container')
   container.innerHTML = '<div class="log-empty">Nenhum log ainda</div>'
 })
-
-const $ = id => document.getElementById(id)
 
 async function carregarConfig() {
   try {
