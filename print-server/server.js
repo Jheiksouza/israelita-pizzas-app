@@ -115,9 +115,9 @@ app.post('/print', async (req, res) => {
 
     const printerName = PRINTER_NAME || '"80mm Thermal Printer"'
 
-    const psCmd = `Get-Content -Path "${tmpFile}" -Encoding Byte | Out-Printer -Name ${printerName}; Remove-Item "${tmpFile}"`
+    const psCmd = `Get-Content '${tmpFile}' -Encoding Byte | Out-Printer -Name '${printerName}'; Remove-Item '${tmpFile}'`
 
-    exec(`powershell -NoProfile -Command "${psCmd.replace(/"/g, '\\"')}"`, { timeout: 15000 }, (err) => {
+    exec(`powershell -NoProfile -Command "${psCmd}"`, { timeout: 15000 }, (err) => {
       try { if (fs.existsSync(tmpFile)) fs.unlinkSync(tmpFile) } catch {}
       if (err) {
         return res.status(500).json({ error: 'Erro ao imprimir: ' + err.message })
