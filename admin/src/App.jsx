@@ -480,7 +480,7 @@ function AdminOrders() {
       pedidos.forEach(p => {
         if (p.status !== 'pendente' || !p.data) return
         const elapsed = Date.now() - new Date(p.data).getTime()
-        if (elapsed >= 300000) {
+        if (elapsed >= 480000) {
           fetch(`${API}/orders/${p.id}`, {
             method: 'PATCH', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ status: 'cancelado' })
@@ -521,7 +521,7 @@ function AdminOrders() {
   const tempoRestante = (data) => {
     if (!data) return ''
     const elapsed = Date.now() - new Date(data).getTime()
-    const restante = 300000 - elapsed
+    const restante = 480000 - elapsed
     if (restante <= 0) return 'Cancelado'
     const min = Math.floor(restante / 60000)
     const seg = Math.floor((restante % 60000) / 1000)
