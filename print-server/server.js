@@ -36,47 +36,56 @@ function cp850(str) {
 
 function gerarBytes(pedido) {
   const c = pedido.cliente || {}
-  const linhas = []
+  const partes = []
 
-  linhas.push('')
-  linhas.push('')
-  linhas.push('   ISRAELITA PIZZAS')
-  linhas.push('   Vila Velha - ES')
-  linhas.push('')
-  linhas.push('--------------------------------')
-  linhas.push('')
-  linhas.push(`         PEDIDO #${pedido.id}`)
-  linhas.push('')
-  linhas.push('--------------------------------')
-  linhas.push(`Cliente: ${c.nome || ''}`)
-  if (c.telefone) linhas.push(`Tel: ${c.telefone}`)
-  if (c.endereco) linhas.push(`End: ${c.endereco}`)
-  linhas.push('--------------------------------')
-  linhas.push('ITENS')
+  function esc(...args) { partes.push(Buffer.from(args)) }
+  function txt(str) { partes.push(cp850(str)) }
+
+  esc(0x1B, 0x40)
+  esc(0x1B, 0x64, 0x03)
+  esc(0x1B, 0x61, 0x01)
+  esc(0x1B, 0x21, 0x30)
+  txt('ISRAELITA PIZZAS\n')
+  esc(0x1B, 0x21, 0x00)
+  txt('Vila Velha - ES\n')
+  esc(0x1B, 0x61, 0x00)
+  txt(''.padEnd(32, '-') + '\n')
+  esc(0x1B, 0x61, 0x01)
+  esc(0x1B, 0x21, 0x30)
+  txt(`PEDIDO #${pedido.id}\n`)
+  esc(0x1B, 0x21, 0x00)
+  esc(0x1B, 0x61, 0x00)
+  txt(''.padEnd(32, '-') + '\n')
+  txt(`Cliente: ${c.nome || ''}\n`)
+  if (c.telefone) txt(`Tel: ${c.telefone}\n`)
+  if (c.endereco) txt(`End: ${c.endereco}\n`)
+  txt(''.padEnd(32, '-') + '\n')
+  esc(0x1B, 0x45, 0x01)
+  txt('ITENS\n')
+  esc(0x1B, 0x45, 0x00)
   if (pedido.itens) {
     for (const item of pedido.itens) {
-      let l = ` ${item.qtd}x ${item.nome}`
+      let l = `${item.qtd}x ${item.nome}`
       if (item.valor_unitario) l += `  R$${(item.valor_unitario * item.qtd).toFixed(2)}`
-      linhas.push(l)
+      txt(l + '\n')
     }
   }
-  linhas.push('--------------------------------')
-  linhas.push(`TOTAL: R$${(pedido.total || 0).toFixed(2)}`)
+  txt(''.padEnd(32, '-') + '\n')
+  esc(0x1B, 0x45, 0x01)
+  txt(`TOTAL: R$${(pedido.total || 0).toFixed(2)}\n`)
+  esc(0x1B, 0x45, 0x00)
   if (c.pagamento && c.pagamento.length > 0) {
-    linhas.push('--------------------------------')
+    txt(''.padEnd(32, '-') + '\n')
     for (const p of c.pagamento) {
-      linhas.push(`${p.metodo} R$${(p.valor || 0).toFixed(2)}`)
+      txt(`${p.metodo} R$${(p.valor || 0).toFixed(2)}\n`)
     }
   }
-  if (c.observacoes) linhas.push(`Obs: ${c.observacoes}`)
-  if (c.codigo_coleta) linhas.push(`Coleta: ${c.codigo_coleta}`)
-  linhas.push('')
-  linhas.push('')
-  linhas.push('')
-  linhas.push('')
-  linhas.push('')
+  if (c.observacoes) txt(`\nObs: ${c.observacoes}\n`)
+  if (c.codigo_coleta) txt(`Coleta: ${c.codigo_coleta}\n`)
+  esc(0x1B, 0x64, 0x05)
+  esc(0x1D, 0x56, 0x01)
 
-  return cp850(linhas.join('\r\n') + '\r\n')
+  return Buffer.concat(partes)
 }
 
 app.post('/print', async (req, res) => {
@@ -88,15 +97,17 @@ app.post('/print', async (req, res) => {
     const tmpFile = path.join(__dirname, `_print_${Date.now()}.bin`)
     fs.writeFileSync(tmpFile, data)
 
-    const cmd = `powershell -NoProfile -Command "Get-Content '${tmpFile}' -Encoding Byte | Out-Printer -Name '${PRINTER_NAME}'; Remove-Item '${tmpFile}'"`
+    const exe = path.join(__dirname, 'RawPrinter.exe')
+    const cmd = `"${exe}" "${tmpFile}" "${PRINTER_NAME}"`
 
     exec(cmd, { timeout: 20000 }, (err, stdout, stderr) => {
       try { if (fs.existsSync(tmpFile)) fs.unlinkSync(tmpFile) } catch {}
+      const out = (stdout || '').trim()
       if (err) {
-        console.error('Print error:', stderr || err.message)
+        console.error('Print error:', (stderr || err.message).trim())
         return res.status(500).json({ error: (stderr || err.message).trim() })
       }
-      console.log('Printed OK:', pedido.id)
+      console.log('RawPrinter:', out)
       res.json({ ok: true, pedido: pedido.id })
     })
   } catch (e) {
@@ -107,16 +118,30 @@ app.post('/print', async (req, res) => {
 
 app.get('/test', (req, res) => {
   try {
-    const data = cp850('TESTE DE IMPRESSAO\n\nSe voce esta lendo isso\na impressora esta OK!\n\n\n\n')
+    const data = Buffer.from([
+      0x1B, 0x40,                  // Initialize
+      0x1B, 0x61, 0x01,            // Center
+      0x1B, 0x21, 0x30,            // Double size
+      0x54, 0x45, 0x53, 0x54, 0x45, 0x0A, // TESTE\n
+      0x1B, 0x21, 0x00,            // Normal
+      0x1B, 0x61, 0x00,            // Left
+      0x53, 0x65, 0x20, 0x76, 0x6F, 0x63, 0x65, 0x20, 0x65, 0x73, 0x74, 0x61, 0x20, 0x6C, 0x65, 0x6E, 0x64, 0x6F, 0x0A, // Se voce esta lendo\n
+      0x61, 0x20, 0x69, 0x6D, 0x70, 0x72, 0x65, 0x73, 0x73, 0x6F, 0x72, 0x61, 0x20, 0x65, 0x73, 0x74, 0x61, 0x20, 0x4F, 0x4B, 0x21, 0x0A, // a impressora esta OK!\n
+      0x0A, 0x0A, 0x0A,            // feed
+      0x1B, 0x64, 0x03,            // Feed 3
+      0x1D, 0x56, 0x01,            // Cut
+    ])
     const tmpFile = path.join(__dirname, `_test_${Date.now()}.bin`)
     fs.writeFileSync(tmpFile, data)
 
-    const cmd = `powershell -NoProfile -Command "Get-Content '${tmpFile}' -Encoding Byte | Out-Printer -Name '${PRINTER_NAME}'; Remove-Item '${tmpFile}'"`
+    const exe = path.join(__dirname, 'RawPrinter.exe')
+    const cmd = `"${exe}" "${tmpFile}" "${PRINTER_NAME}"`
 
     exec(cmd, { timeout: 15000 }, (err, stdout, stderr) => {
       try { if (fs.existsSync(tmpFile)) fs.unlinkSync(tmpFile) } catch {}
+      const out = (stdout || '').trim()
       if (err) return res.status(500).json({ error: (stderr || err.message).trim() })
-      res.json({ ok: true })
+      res.json({ ok: true, rawPrinter: out })
     })
   } catch (e) {
     res.status(500).json({ error: e.message })
