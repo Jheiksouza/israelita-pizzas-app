@@ -173,11 +173,14 @@ class IfoodAdapter extends MarketplaceAdapter {
 
   async toInternalOrder(rawPayload, config) {
     const orderData = rawPayload.order || rawPayload
-    const orderCode = rawPayload.code || rawPayload.fullCode || rawPayload.orderId || rawPayload.id || ''
+
+    const orderUuid = orderData.id || ''
+    const displayId = orderData.displayId || orderUuid.substring(0, 8) || ''
 
     const customerData = orderData.customer || orderData.client || {}
     const addressData = orderData.delivery?.deliveryAddress || orderData.deliveryAddress || customerData.deliveryAddress || customerData.address || {}
     const itemsData = orderData.items || orderData.products || []
+    const delivery = orderData.delivery || {}
 
     const formatPhone = (phone) => {
       if (!phone) return ''
@@ -194,6 +197,7 @@ class IfoodAdapter extends MarketplaceAdapter {
       if (addr.complement) end += ` (${addr.complement})`
       if (addr.city || addr.state) end += `, ${addr.city || ''}${addr.state ? `/${addr.state}` : ''}`
       if (addr.reference) end += ` [${addr.reference}]`
+      if (addr.postalCode) end += ` — CEP: ${addr.postalCode}`
       return end
     }
 
@@ -204,9 +208,14 @@ class IfoodAdapter extends MarketplaceAdapter {
         bandeira: m.brand || '',
         valor: m.value || 0,
         prepago: m.prepaid || false,
-        troco: m.changeFor || 0
+        troco: m.changeFor || 0,
+        tipo: m.type || '',
+        cardBrand: m.card?.brand || m.brand || '',
+        authorizationCode: m.transaction?.authorizationCode || ''
       }))
     }
+
+    const itemPrefix = displayId
 
     const flattenItems = (items) => {
       const result = []
@@ -215,46 +224,77 @@ class IfoodAdapter extends MarketplaceAdapter {
         const nome = item.name || item.product || 'Item iFood'
         const preco = parseFloat(item.unitPrice || item.price || 0)
         const total = parseFloat(item.totalPrice || (item.quantity || 1) * (item.unitPrice || item.price || 0) || 0)
+
         result.push({
-          id: `ifood_${orderCode}_${idx}`,
+          id: `ifood_${itemPrefix}_${idx}`,
           qtd,
           nome,
           preco,
-          total
+          total,
+          externalCode: item.externalCode || '',
+          observacoes: item.observations || '',
+          type: item.type || '',
+          imageUrl: item.imageUrl || ''
         })
+
         if (item.subItems && item.subItems.length > 0) {
           item.subItems.forEach((sub, subIdx) => {
             result.push({
-              id: `ifood_${orderCode}_${idx}_sub_${subIdx}`,
+              id: `ifood_${itemPrefix}_${idx}_sub_${subIdx}`,
               qtd: sub.quantity || 1,
               nome: `  ➥ ${sub.name || sub.product || 'Adicional'}`,
               preco: parseFloat(sub.unitPrice || sub.price || 0),
-              total: parseFloat(sub.totalPrice || (sub.quantity || 1) * (sub.unitPrice || sub.price || 0) || 0)
+              total: parseFloat(sub.totalPrice || (sub.quantity || 1) * (sub.unitPrice || sub.price || 0) || 0),
+              externalCode: sub.externalCode || ''
             })
           })
         }
+
         if (item.options && item.options.length > 0) {
           item.options.forEach((opt, optIdx) => {
+            const optNome = `  ➥ ${opt.name || 'Opção'}${opt.groupName ? ` [${opt.groupName}]` : ''}`
+            const optPreco = parseFloat(opt.price || opt.unitPrice || 0)
+
             result.push({
-              id: `ifood_${orderCode}_${idx}_opt_${optIdx}`,
-              qtd: 1,
-              nome: `  ➥ ${opt.name || 'Opção'}: ${opt.optionName || opt.value || ''}`,
-              preco: parseFloat(opt.price || 0),
-              total: parseFloat(opt.price || 0)
+              id: `ifood_${itemPrefix}_${idx}_opt_${optIdx}`,
+              qtd: opt.quantity || 1,
+              nome: optNome,
+              preco: optPreco,
+              total: parseFloat(opt.totalPrice || optPreco * (opt.quantity || 1) || 0),
+              externalCode: opt.externalCode || '',
+              groupName: opt.groupName || '',
+              type: opt.type || ''
             })
+
+            if (opt.customizations && opt.customizations.length > 0) {
+              opt.customizations.forEach((cust, custIdx) => {
+                const custPreco = parseFloat(cust.price || cust.unitPrice || 0)
+                result.push({
+                  id: `ifood_${itemPrefix}_${idx}_opt_${optIdx}_cust_${custIdx}`,
+                  qtd: cust.quantity || 1,
+                  nome: `    ▪ ${cust.name || 'Customização'}${cust.groupName ? ` [${cust.groupName}]` : ''}`,
+                  preco: custPreco,
+                  total: parseFloat(cust.totalPrice || custPreco * (cust.quantity || 1) || 0),
+                  externalCode: cust.externalCode || '',
+                  groupName: cust.groupName || '',
+                  type: cust.type || ''
+                })
+              })
+            }
           })
         }
       })
       return result
     }
 
-    const orderAmount = orderData.total?.orderAmount || orderData.total?.subTotal || orderData.total || orderData.orderAmount || 0
-    const deliveryFee = orderData.total?.deliveryFee || orderData.deliveryFee || 0
-    const discount = orderData.total?.discount || orderData.discount || 0
-    const total = parseFloat(typeof orderAmount === 'object' ? orderAmount.total || 0 : orderAmount) + parseFloat(deliveryFee) - parseFloat(discount)
+    const totalObj = orderData.total || {}
+    const total = parseFloat(totalObj.orderAmount || 0) ||
+      (parseFloat(totalObj.subTotal || 0) + parseFloat(totalObj.deliveryFee || 0) - parseFloat(totalObj.benefits || 0))
 
     const pagamento = formatPayments(orderData.payments)
-    const delivery = orderData.delivery || {}
+
+    const lat = addressData.coordinates?.latitude ?? addressData.latitude
+    const lng = addressData.coordinates?.longitude ?? addressData.longitude
 
     return {
       cliente: {
@@ -262,18 +302,31 @@ class IfoodAdapter extends MarketplaceAdapter {
         telefone: formatPhone(customerData.phone),
         endereco: formatAddress(addressData),
         origem: 'ifood',
-        marketplace_order_id: orderCode,
-        cpf: customerData.cpf || customerData.document || customerData.taxPayerIdentificationNumber || '',
+        marketplace_order_id: orderUuid,
+        displayId,
+        cpf: customerData.cpf || customerData.documentNumber || customerData.document || customerData.taxPayerIdentificationNumber || '',
+        documentType: customerData.documentType || '',
         pagamento,
         observacoes: delivery.observations || orderData.observations || '',
         codigo_coleta: delivery.pickupCode || '',
         metodo_entrega: delivery.deliveredBy || delivery.mode || '',
-        teste: orderData.isTest || false
+        deliveryMode: delivery.mode || '',
+        deliveryDateTime: delivery.deliveryDateTime || '',
+        createdAt: orderData.createdAt || '',
+        category: orderData.category || '',
+        orderType: orderData.orderType || '',
+        orderTiming: orderData.orderTiming || '',
+        salesChannel: orderData.salesChannel || '',
+        isTest: orderData.isTest || false,
+        taxas_adicionais: orderData.additionalFees || [],
+        merchantId: orderData.merchant?.id || '',
+        merchantName: orderData.merchant?.name || '',
+        phoneLocalizer: customerData.phone?.localizer || ''
       },
       itens: flattenItems(itemsData),
       total: isNaN(total) ? 0 : total,
-      entrega_lat: addressData.coordinates?.latitude || addressData.latitude ? parseFloat(addressData.coordinates?.latitude || addressData.latitude) : null,
-      entrega_lng: addressData.coordinates?.longitude || addressData.longitude ? parseFloat(addressData.coordinates?.longitude || addressData.longitude) : null
+      entrega_lat: lat != null ? parseFloat(lat) : null,
+      entrega_lng: lng != null ? parseFloat(lng) : null
     }
   }
 
