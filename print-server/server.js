@@ -108,6 +108,7 @@ function gerarBytes(pedido) {
   function esc(...args) { partes.push(Buffer.from(args)) }
   function txt(str) { partes.push(cp850(str)) }
 
+  const SEP = ''.padEnd(48, '-')
   const nomeFantasia = config.nome_fantasia || 'Pizzaria'
   const enderecoCompleto = config ? formatEnderecoCompleto(config) : ''
   const telefoneConfig = config.telefone || ''
@@ -115,6 +116,8 @@ function gerarBytes(pedido) {
 
   esc(0x1B, 0x40)
   esc(0x1B, 0x74, 0x10)
+  esc(0x1B, 0x32)
+  esc(0x1B, 0x33, 0x2C)
   esc(0x1B, 0x64, 0x02)
   esc(0x1B, 0x61, 0x01)
   esc(0x1B, 0x21, 0x30)
@@ -124,7 +127,7 @@ function gerarBytes(pedido) {
   if (telefoneConfig) txt(`Tel: ${telefoneConfig}\n`)
   if (cnpj) txt(`CNPJ: ${cnpj}\n`)
   esc(0x1B, 0x61, 0x00)
-  txt(''.padEnd(32, '-') + '\n')
+  txt(SEP + '\n')
   esc(0x1B, 0x61, 0x01)
   esc(0x1B, 0x21, 0x30)
   txt(`PEDIDO #${pedido.id}\n`)
@@ -133,7 +136,7 @@ function gerarBytes(pedido) {
 
   if (pedido.data) txt(`${formatData(pedido.data)}\n`)
 
-  txt(''.padEnd(32, '-') + '\n')
+  txt(SEP + '\n')
   txt(`Cliente: ${c.nome || ''}\n`)
   if (c.telefone) txt(`Tel: ${c.telefone}\n`)
   if (c.cpf) txt(`CPF: ${c.cpf}\n`)
@@ -141,7 +144,7 @@ function gerarBytes(pedido) {
   if (c.marketplace_order_id) txt(`ID externo: ${c.marketplace_order_id}\n`)
   if (c.metodo_entrega) txt(`Entrega: ${c.metodo_entrega === 'MERCHANT' ? 'Propria' : c.metodo_entrega}\n`)
   if (c.endereco) txt(`End: ${c.endereco}\n`)
-  txt(''.padEnd(32, '-') + '\n')
+  txt(SEP + '\n')
   esc(0x1B, 0x45, 0x01)
   txt('ITENS\n')
   esc(0x1B, 0x45, 0x00)
@@ -155,12 +158,12 @@ function gerarBytes(pedido) {
       txt(l + '\n')
     }
   }
-  txt(''.padEnd(32, '-') + '\n')
+  txt(SEP + '\n')
   esc(0x1B, 0x45, 0x01)
   txt(`TOTAL: R$${(pedido.total || 0).toFixed(2)}\n`)
   esc(0x1B, 0x45, 0x00)
   if (c.pagamento && c.pagamento.length > 0) {
-    txt(''.padEnd(32, '-') + '\n')
+    txt(SEP + '\n')
     for (const p of c.pagamento) {
       let linha = `${p.metodo} R$${(p.valor || 0).toFixed(2)}`
       if (p.bandeira) linha += ` (${p.bandeira})`
@@ -169,8 +172,17 @@ function gerarBytes(pedido) {
       txt(linha + '\n')
     }
   }
-  if (c.observacoes) txt(`\nObs: ${c.observacoes}\n`)
+  if (c.observacoes) {
+    txt(SEP + '\n')
+    esc(0x1B, 0x45, 0x01)
+    esc(0x1B, 0x2D, 0x01)
+    txt('OBSERVACOES:\n')
+    esc(0x1B, 0x2D, 0x00)
+    esc(0x1B, 0x45, 0x00)
+    txt(c.observacoes + '\n')
+  }
   if (c.codigo_coleta) txt(`Coleta: ${c.codigo_coleta}\n`)
+  txt('\n\n')
   esc(0x1B, 0x64, 0x05)
   esc(0x1D, 0x56, 0x01)
 
