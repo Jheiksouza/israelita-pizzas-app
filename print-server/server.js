@@ -42,7 +42,7 @@ function getPrinterName() {
 }
 
 function getPort() {
-  return PORT
+  return actualPort
 }
 
 function getServerStatus() {
@@ -249,12 +249,28 @@ app.get('/status', (req, res) => {
   res.json({ ok: true, printerName })
 })
 
+let actualPort = PORT
+
 function startServer(callback) {
   if (httpServer) return
-  httpServer = app.listen(PORT, () => {
-    serverRunning = true
-    if (callback) callback()
-  })
+  const tryPort = (port) => {
+    httpServer = app.listen(port, () => {
+      actualPort = port
+      serverRunning = true
+      console.log(`Print server rodando em http://localhost:${port}`)
+      if (callback) callback(null, port)
+    })
+    httpServer.on('error', (err) => {
+      if (err.code === 'EADDRINUSE' && port < PORT + 10) {
+        console.log(`Porta ${port} ocupada, tentando ${port + 1}`)
+        tryPort(port + 1)
+      } else {
+        console.error('Erro ao iniciar servidor:', err.message)
+        if (callback) callback(err)
+      }
+    })
+  }
+  tryPort(PORT)
   fetchConfig()
   setInterval(fetchConfig, 60000)
 }

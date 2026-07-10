@@ -59,14 +59,10 @@ function createSettingsWindow() {
 }
 
 function createTray() {
-  const iconSize = process.platform === 'darwin' ? 16 : 32
-  const canvas = Buffer.from(
-    `iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAAA7AAAAOwBeShxvQAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoAAAIASURBVFiF7Ze9S8N AFMYf0dBBkS4dBBcXQRB0cHFw8B9w0j9AEEEQdHBRcHBRcHBRcHBRcHBRcHAQBEEQBBdxcXARdH ARBEEQBEGp0g/S0nMNjY0YGuOVBw5y97489/veexNyOBz4T4QQA1TT6QwAoNfroa+vD0II9Ho9ZLNZEkJgtVqRTCbhdDphtVpRKBQQjUbh9/sRDAYBAF6vF+l0GqFQCA6HA4VCAYlEAk6nE6lUCtlsFgAgiqJOp9OZm5uT0+k0VFWVZVnOZDLy0tKSTBAESVVVWVVVORaLyevr6/La2poMAIVCQdY0TY5Go/Lm5qacTqflWq0GAOj3+zSdTlNVVSqVChVFoel0mk6nU0ajUQqCQEqSREFVVQqCQKqqkuFwmIIgUBAEWq1WqdPpUBAEWq/XKQgC9Xo9CseWnZ0dyufz1O/3Z4Zh3DqOSqUSmc1mkSzLN4lE4iaRSJwDwNXV1U2pVDoGAKfT+WZZlmmz2bx7enqidrudVqvVg1wudwAA8/Pzz0tLS29LS0tvAPD8/Pz28vLyDgDZbPaz2WySqqrdZrN5YJomAUBRFFqv1ykIAhUEgZbLZSoIApVlmURRpCiK1G63kxACQggMw4BlWZBlGQ6HA4qiIJvNQtE0kCQJ8/PzME0TnU4Huq5DkiS0Wi0YhgFVVUEIgSiK0DQNqqqC1+tFr9dDq9WCw+GA3++Hoiio1WowTROiKGJhYQGqqsI0TfT7fQiCgH6/j3q9Dk3T4Pf7IUkSCoUCVFWFLMvQNA2ZTAayLKNer0PTNAwGA8iyjHw+D13XIQgCqtUqKpUKJEmCJElIp9NoNpsYj8fQNA2FQgHj8Riz2QyVSgXpdBqWZbYT5H8B+W4I5Y0c0u0AAAAASUVORK5CYII=`,
-    'base64'
-  )
-
-  const icon = nativeImage.createFromBuffer(canvas)
-  tray = new Tray(icon.resize({ width: iconSize, height: iconSize }))
+  const iconPath = path.join(__dirname, 'tray-icon.png')
+  let img
+  try { img = nativeImage.createFromPath(iconPath) } catch { img = nativeImage.createEmpty() }
+  tray = new Tray(img)
 
   const contextMenu = Menu.buildFromTemplate([
     {
@@ -112,14 +108,14 @@ app.whenReady().then(() => {
   setExePath(exePath)
   console.log('RawPrinter.exe path:', exePath, 'exists:', require('fs').existsSync(exePath))
 
-  startServer()
-  serverStarted = true
-  console.log('Express server started on port', getPort())
+  startServer((err, port) => {
+    serverStarted = !err
+    if (err) console.error('Falha ao iniciar servidor:', err.message)
+    else console.log('Express server started on port', port)
+  })
 
   createSettingsWindow()
   createTray()
-
-
 })
 
 app.on('window-all-closed', () => {})
