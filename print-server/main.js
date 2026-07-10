@@ -37,7 +37,7 @@ function createSettingsWindow() {
     resizable: false,
     maximizable: false,
     fullscreenable: false,
-    title: 'Israelita Print Server',
+    title: 'QueroPizza Print Server',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -47,7 +47,6 @@ function createSettingsWindow() {
 
   settingsWindow.loadFile('settings.html')
   settingsWindow.setMenu(null)
-  if (!app.isPackaged) settingsWindow.webContents.openDevTools()
 
   settingsWindow.on('close', (e) => {
     if (!app.isQuitting) {
@@ -90,7 +89,7 @@ function createTray() {
     }
   ])
 
-  tray.setToolTip('Israelita Print Server')
+  tray.setToolTip('QueroPizza Print Server')
   tray.setContextMenu(contextMenu)
   tray.on('click', () => {
     if (settingsWindow && !settingsWindow.isDestroyed()) {
@@ -120,13 +119,7 @@ app.whenReady().then(() => {
   createSettingsWindow()
   createTray()
 
-  setTimeout(() => {
-    if (settingsWindow) {
-      settingsWindow.webContents.send('log', `RawPrinter.exe: ${exePath}`, 'info')
-      settingsWindow.webContents.send('log', `Servidor rodando na porta ${getPort()}`, 'info')
-      settingsWindow.webContents.send('log', `Impressora: ${getPrinterName()}`, 'info')
-    }
-  }, 500)
+
 })
 
 app.on('window-all-closed', () => {})

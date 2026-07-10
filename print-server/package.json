@@ -1,5 +1,5 @@
 {
-  "name": "israelita-print-server",
+  "name": "queropizza-print-server",
   "version": "1.0.0",
   "description": "Servidor de impressão para Israelita Pizzas",
   "author": "Israelita Pizzas",
@@ -21,7 +21,7 @@
   },
   "build": {
     "appId": "com.israelita.print-server",
-    "productName": "Israelita Print Server",
+    "productName": "QueroPizza Print Server",
     "directories": {
       "output": "dist"
     },
@@ -50,8 +50,8 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "Israelita Print Server",
-      "uninstallDisplayName": "Israelita Print Server"
+      "shortcutName": "QueroPizza Print Server",
+      "uninstallDisplayName": "QueroPizza Print Server"
     }
   }
 }
