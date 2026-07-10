@@ -2,6 +2,7 @@ const express = require('express')
 const { exec } = require('child_process')
 const fs = require('fs')
 const path = require('path')
+const os = require('os')
 const iconv = require('iconv-lite')
 
 const PORT = 13001
@@ -190,7 +191,7 @@ function gerarBytes(pedido) {
 }
 
 function enviarParaImpressora(data, pedidoId, res) {
-  const tmpFile = path.join(__dirname, `_print_${Date.now()}.bin`)
+  const tmpFile = path.join(os.tmpdir(), `_print_${Date.now()}.bin`)
   fs.writeFileSync(tmpFile, data)
 
   const exe = getExePath()

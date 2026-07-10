@@ -79,7 +79,9 @@ class IfoodAdapter extends MarketplaceAdapter {
 
   async fetchOrderDetails(orderId, config) {
     const res = await this.apiFetch(`/order/v1.0/orders/${orderId}`, config)
-    return res.json()
+    const data = await res.json()
+    console.log(`[ifood] 📦 Detalhes do pedido ${orderId}:`, JSON.stringify(data, null, 2))
+    return data
   }
 
   async acknowledgeEvents(eventIds, config) {

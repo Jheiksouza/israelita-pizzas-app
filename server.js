@@ -690,6 +690,10 @@ app.post('/marketplace/:platform/webhook', async (req, res) => {
 
     const { valid, eventType, rawPayload, parsedEvents } = await adapter.validateWebhook(req, config)
 
+    if (rawPayload && (eventType === 'EVENTS' || eventType === 'PRESENCE')) {
+      console.log(`[${platform}] 📨 Payload recebido do webhook:`, JSON.stringify(rawPayload, null, 2))
+    }
+
     addWebhookLog(platform, {
       type: 'VALIDATE', valid, eventType, eventsCount: parsedEvents?.length || 0,
       bodyPreview: JSON.stringify(req.body).substring(0, 500),
@@ -747,6 +751,7 @@ app.post('/marketplace/:platform/webhook', async (req, res) => {
               }
             }
 
+            console.log(`[${platform}] 🔄 Convertendo orderPayload:`, JSON.stringify(orderPayload, null, 2))
             const orderData = await adapter.toInternalOrder(orderPayload, config)
             orderData.cliente.marketplace_order_id = event.orderId || orderData.cliente.marketplace_order_id
 
@@ -842,12 +847,15 @@ app.post('/marketplace/:platform/poll', async (req, res) => {
       return res.status(400).json({ error: `API iFood retornou ${err.message}. O webhook é o método recomendado. Verifique se o Polling está habilitado no Portal iFood.` })
     }
 
+    console.log(`[${platform}] 🔄 Eventos recebidos no polling:`, JSON.stringify(events, null, 2))
+
     const imported = []
 
     for (const event of events) {
       if (event.code === 'CONFIRMED' || event.code === 'PLACED') {
         try {
           const orderData = await adapter.fetchOrderDetails(event.orderId, config)
+          console.log(`[${platform}] 🔄 Raw payload antes do toInternalOrder (polling):`, JSON.stringify(orderData, null, 2))
           const internal = await adapter.toInternalOrder(orderData, config)
 
           const { data: existente } = await supabase
