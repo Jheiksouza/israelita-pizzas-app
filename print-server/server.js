@@ -94,6 +94,10 @@ function formatEnderecoCompleto(cfg) {
   return partes.join(', ')
 }
 
+function sanitizarNome(nome) {
+  return nome.replace(/^\s*[➥▪]\s*/, '').trim()
+}
+
 function formatData(iso) {
   if (!iso) return ''
   try {
@@ -151,7 +155,7 @@ function gerarBytes(pedido) {
   esc(0x1B, 0x45, 0x00)
   if (pedido.itens) {
     for (const item of pedido.itens) {
-      let l = `${item.qtd}x ${item.nome}`
+      let l = `${item.qtd}x ${sanitizarNome(item.nome)}`
       if (item.tamanho) l += ` (${item.tamanho})`
       if (item.sabores && item.sabores.length) l += ` [${item.sabores.join(', ')}]`
       const preco = item.preco || item.valor_unitario || 0
