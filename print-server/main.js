@@ -73,8 +73,8 @@ function createTray() {
     {
       label: 'Abrir Configurações',
       click: () => {
-        if (settingsWindow) settingsWindow.show()
-        else createSettingsWindow()
+        if (settingsWindow && !settingsWindow.isDestroyed()) settingsWindow.show()
+        else { settingsWindow = null; createSettingsWindow() }
       }
     },
     { type: 'separator' },
@@ -93,8 +93,12 @@ function createTray() {
   tray.setToolTip('Israelita Print Server')
   tray.setContextMenu(contextMenu)
   tray.on('click', () => {
-    if (settingsWindow) settingsWindow.show()
-    else createSettingsWindow()
+    if (settingsWindow && !settingsWindow.isDestroyed()) {
+      settingsWindow.show()
+    } else {
+      settingsWindow = null
+      createSettingsWindow()
+    }
   })
 }
 
