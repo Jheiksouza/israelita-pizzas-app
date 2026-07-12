@@ -1,6 +1,18 @@
-# Israelita Pizzas App
+# Quero Pizza
 
-Sistema de pedidos para Pizzaria Israelita — cardápio online + painel admin.
+Sistema de pedidos online para pizzarias — cardápio digital, painel admin, app motoboy.
+
+## Domínios
+
+| Domínio | Finalidade |
+|---------|-----------|
+| `queropizza.com` | Landing page de vendas do sistema |
+| `israelita.queropizza.com` | Cardápio + pedidos da Pizzaria Israelita (primeiro cliente) |
+| `israelita.queropizza.com/admin` | Painel administrativo |
+| `israelita.queropizza.com/motoboy` | App do entregador |
+
+A landing page (`queropizza.com`) detecta o hostname e exibe uma página de vendas.
+Quando o cliente acessar `israelita.queropizza.com`, o sistema de pedidos da Israelita é exibido.
 
 ## Regra para IA
 
@@ -25,10 +37,14 @@ Sistema de pedidos para Pizzaria Israelita — cardápio online + painel admin.
 │   ├── index.js           # Express app (lida com /api/*)
 │   ├── health.js          # Teste simples de env vars
 │   └── test-env.js        # Debug: mostra as env vars
-├── client/                # Frontend React
+├── client/                # Frontend React (cardápio + landing page)
 │   ├── src/
-│   │   ├── App.jsx       # App inteiro (644 linhas)
-│   │   └── App.css       # Estilos dark theme
+│   │   ├── App.jsx       # App principal (detecta domínio e roteia)
+│   │   ├── App.css       # Estilos (inclui landing page)
+│   │   ├── LandingPage.jsx # Landing page de vendas (queropizza.com)
+│   │   ├── config.js     # Config de domínios
+│   │   ├── main.jsx
+│   │   └── ...
 │   ├── vite.config.js
 │   └── package.json
 ├── admin/                 # Painel admin (React, build → client/dist/admin)
@@ -141,7 +157,10 @@ O Vercel está conectado ao GitHub (`github.com/Jheiksouza/israelita-pizzas-app`
 
 ### O que o Vercel faz no deploy:
 
-1. Roda `cd client && npm install && npm run build` (build do React com Vite)
+1. Roda `cd client && npm install && npm run build` (build do React com Vite — inclui landing page + cardápio)
+2. Roda `cd admin && npm install && npm run build` (build do admin)
+3. Roda `cd motoboy && npm install && npm run build` (build do motoboy)
+4. Gera a estrutura `client/dist/{admin,motoboy}/`
 2. Gera a pasta `dist/` com os arquivos estáticos
 3. Compila as **Serverless Functions** da pasta `api/`
 4. Aplica as **rewrites** do `vercel.json`
@@ -150,14 +169,16 @@ O Vercel está conectado ao GitHub (`github.com/Jheiksouza/israelita-pizzas-app`
 
 ```json
 "rewrites": [
-  { "source": "/api/(.*)", "destination": "/api" },  // API → Express
-  { "source": "/(.*)", "destination": "/index.html" } // SPA → index.html
+  { "source": "/api/(.*)", "destination": "/api" },                    // API → Express
+  { "source": "/admin(.*)", "destination": "/admin/index.html" },     // Admin
+  { "source": "/motoboy(.*)", "destination": "/motoboy/index.html" }, // Motoboy
+  { "source": "/(.*)", "destination": "/index.html" }                 // SPA → index.html
 ]
 ```
 
-1. Requisições para `/api/*` (exceto funções individuais como `/api/test-env`) vão pro Express em `/api`
-2. Qualquer outra rota serve `index.html` (pro React Router funcionar)
-3. Funções individuais em `api/*.js` (ex: `api/health.js`) são prioridade antes das rewrites
+1. Requisições para `/api/*` vão pro Express em `/api`
+2. `/admin/*` e `/motoboy/*` servem os builds separados do admin e motoboy
+3. Qualquer outra rota serve `index.html` (pro React Router funcionar)
 
 ### Configuração crítica no Vercel Dashboard
 
@@ -170,7 +191,7 @@ Se algo não funcionar:
 
 1. **Verificar se as env vars chegam:**
    ```
-   https://israelita-pizzas-app.vercel.app/api/test-env
+    https://queropizza.com/api/test-env
    ```
 
 2. **Verificar logs do deploy:**
@@ -178,7 +199,7 @@ Se algo não funcionar:
 
 3. **Verificar se o Express está rodando:**
    ```
-   https://israelita-pizzas-app.vercel.app/api/health
+    https://queropizza.com/api/health
    ```
 
 ---
@@ -208,7 +229,9 @@ git push
 | `api/index.js` | Apenas `require('../server')` e exporta pro Vercel |
 | `vercel.json` | Configuração de build, output e rewrites |
 | `client/vite.config.js` | Config do Vite com proxy e output dir |
-| `client/src/App.jsx` | Frontend do cliente (React) |
+| `client/src/App.jsx` | Frontend principal (cardápio + landing) |
+| `client/src/LandingPage.jsx` | Landing page de vendas (queropizza.com) |
+| `client/src/config.js` | Configuração de domínios |
 | `admin/src/App.jsx` | Admin painel (React) |
 | `motoboy/src/App.jsx` | App do entregador (React) |
 | `supabase-setup.sql` | Schema e seed do banco |

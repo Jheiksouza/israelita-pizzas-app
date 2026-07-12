@@ -3,6 +3,8 @@ import { buscarCEP, formatCEP, formatEndereco } from './cepHelper'
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMapEvents, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import { registerFCMToken } from './firebase'
+import { isLandingPage } from './config'
+import LandingPage from './LandingPage'
 
 const API = '/api'
 
@@ -40,6 +42,9 @@ window.__googleCallback = (response) => {
 }
 
 function App() {
+  if (isLandingPage()) {
+    return <LandingPage />
+  }
   if (window.location.pathname.startsWith('/motoboy')) {
     return <MotoboyStandalone />
   }
