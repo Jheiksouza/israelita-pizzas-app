@@ -1,6 +1,5 @@
 export const DOMAINS = {
   QUERO_PIZZA: 'queropizza.com',
-  ISRAELITA: 'israelita.queropizza.com',
 }
 
 export function getCurrentDomain() {
@@ -12,11 +11,24 @@ export function isLandingPage() {
   return host === DOMAINS.QUERO_PIZZA || host === `www.${DOMAINS.QUERO_PIZZA}`
 }
 
-export function isIsraelitaPage() {
+export function getStoreSlug() {
   const host = getCurrentDomain()
-  return host === DOMAINS.ISRAELITA
+  const match = host.match(/^(.+)\.queropizza\.com$/)
+  return match ? match[1] : null
+}
+
+export function getStoreUrl(slug) {
+  return `https://${slug}.queropizza.com`
 }
 
 export function getIsraelitaLoginUrl() {
-  return `https://${DOMAINS.ISRAELITA}`
+  return getStoreUrl('israelita')
+}
+
+// API headers including store slug for multi-tenant detection
+export function apiHeaders(extra = {}) {
+  const slug = getStoreSlug()
+  const headers = { 'Content-Type': 'application/json', ...extra }
+  if (slug) headers['X-Store-Slug'] = slug
+  return headers
 }

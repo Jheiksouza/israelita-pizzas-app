@@ -52,6 +52,45 @@ app.use((req, res, next) => {
   next()
 })
 
+// ===== MULTI-TENANT: Store detection =====
+// Detecta o slug do subdomínio (ex: israelita.queropizza.com → israelita)
+// Em desenvolvimento, usa X-Store-Slug header ou fallback default
+app.use(async (req, res, next) => {
+  let slug = null
+  const host = req.headers.host || ''
+  const match = host.match(/^(.+)\.queropizza\.com(:\d+)?$/)
+  if (match) {
+    slug = match[1]
+  } else if (req.headers['x-store-slug']) {
+    slug = req.headers['x-store-slug']
+  }
+  if (slug && supabase) {
+    try {
+      const { data } = await supabase.from('stores').select('*').eq('slug', slug).maybeSingle()
+      req.store = data || null
+    } catch { req.store = null }
+  } else {
+    req.store = null
+  }
+  next()
+})
+
+// Helper: query builder com store_id scoped
+function sb(table) {
+  return (req) => {
+    const storeId = req.store?.id
+    const q = supabase.from(table)
+    return storeId ? q.eq('store_id', storeId) : q
+  }
+}
+
+function storeId(req) {
+  if (req.store?.id) return req.store.id
+  // Fallback: DEFAULT_STORE_ID do .env (usado em localhost / preview)
+  const defaultId = parseInt(process.env.DEFAULT_STORE_ID)
+  return isNaN(defaultId) ? null : defaultId
+}
+
 const supabaseUrl = process.env.SUPABASE_URL
 const supabaseKey = process.env.SUPABASE_ANON_KEY
 
@@ -163,10 +202,10 @@ app.post('/auth/signup', async (req, res) => {
       : endereco ? [{ id: 'addr1', rua: endereco, lat: endereco_lat, lng: endereco_lng }] : []
     
     const { data, error } = await supabase.from('users').insert({
-      nome: nome || '', email, senha: hash, telefone: telefone || '', endereco: endereco || '', enderecos: enderecosIniciais, enderecoselecionado: endereco ? 'addr1' : null, role: 'cliente', status: 'ativo'
+      store_id: storeId(req), nome: nome || '', email, senha: hash, telefone: telefone || '', endereco: endereco || '', enderecos: enderecosIniciais, enderecoselecionado: endereco ? 'addr1' : null, role: 'cliente', status: 'ativo'
     }).select()
     if (error) throw error
-    const token = jwt.sign({ id: data[0].id, email: data[0].email, nome: data[0].nome, role: data[0].role }, JWT_SECRET, { expiresIn: '7d' })
+    const token = jwt.sign({ id: data[0].id, email: data[0].email, nome: data[0].nome, role: data[0].role, store_id: data[0].store_id }, JWT_SECRET, { expiresIn: '7d' })
     res.status(201).json({ token, user: { id: data[0].id, nome: data[0].nome, email: data[0].email, telefone: data[0].telefone, endereco: data[0].endereco, enderecos: data[0].enderecos, enderecoSelecionado: data[0].enderecoselecionado, role: data[0].role, status: data[0].status } })
   } catch (err) {
     console.error('Erro ao cadastrar:', err)
@@ -179,11 +218,13 @@ app.post('/auth/login', async (req, res) => {
   try {
     const { email, senha } = req.body
     if (!email || !senha) return res.status(400).json({ erro: 'Email e senha obrigatórios' })
-    const { data: user, error } = await supabase.from('users').select('*').eq('email', email).maybeSingle()
+    let query = supabase.from('users').select('*').eq('email', email)
+    if (storeId(req)) query = query.eq('store_id', storeId(req))
+    const { data: user, error } = await query.maybeSingle()
     if (error || !user) return res.status(401).json({ erro: 'Email ou senha inválidos' })
     const ok = await bcrypt.compare(senha, user.senha)
     if (!ok) return res.status(401).json({ erro: 'Email ou senha inválidos' })
-    const token = jwt.sign({ id: user.id, email: user.email, nome: user.nome, role: user.role }, JWT_SECRET, { expiresIn: '7d' })
+    const token = jwt.sign({ id: user.id, email: user.email, nome: user.nome, role: user.role, store_id: user.store_id }, JWT_SECRET, { expiresIn: '7d' })
     res.json({ token, user: { id: user.id, nome: user.nome, email: user.email, telefone: user.telefone, endereco: user.endereco, enderecos: user.enderecos, enderecoSelecionado: user.enderecoselecionado, role: user.role, status: user.status } })
   } catch (err) {
     console.error('Erro ao logar:', err)
@@ -224,7 +265,7 @@ app.patch('/auth/me', async (req, res) => {
     if (Object.keys(updates).length === 0) return res.status(400).json({ erro: 'Nenhum campo para atualizar' })
     const { data, error } = await supabase.from('users').update(updates).eq('id', req.user.id).select()
     if (error) throw error
-    const token = jwt.sign({ id: data[0].id, email: data[0].email, nome: data[0].nome, role: data[0].role }, JWT_SECRET, { expiresIn: '7d' })
+    const token = jwt.sign({ id: data[0].id, email: data[0].email, nome: data[0].nome, role: data[0].role, store_id: data[0].store_id }, JWT_SECRET, { expiresIn: '7d' })
     res.json({ token, user: { id: data[0].id, nome: data[0].nome, email: data[0].email, telefone: data[0].telefone, endereco: data[0].endereco, enderecos: data[0].enderecos, enderecoSelecionado: data[0].enderecoselecionado, role: data[0].role, status: data[0].status } })
   } catch (err) {
     console.error('Erro ao atualizar usuário:', err)
@@ -269,10 +310,10 @@ app.post('/auth/google', async (req, res) => {
       return res.json({ token, user: { id: existing.id, nome: existing.nome, email: existing.email, telefone: existing.telefone, endereco: existing.endereco, enderecos: existing.enderecos, enderecoSelecionado: existing.enderecoselecionado, role: existing.role, status: existing.status } })
     }
     const { data: created, error } = await supabase.from('users').insert({
-      nome: name || email.split('@')[0], email, senha: '', telefone: '', endereco: '', google_id: sub, role: 'cliente', status: 'ativo'
+      store_id: storeId(req), nome: name || email.split('@')[0], email, senha: '', telefone: '', endereco: '', google_id: sub, role: 'cliente', status: 'ativo'
     }).select()
     if (error) throw error
-    const token = jwt.sign({ id: created[0].id, email: created[0].email, nome: created[0].nome, role: created[0].role }, JWT_SECRET, { expiresIn: '7d' })
+    const token = jwt.sign({ id: created[0].id, email: created[0].email, nome: created[0].nome, role: created[0].role, store_id: created[0].store_id }, JWT_SECRET, { expiresIn: '7d' })
     res.status(201).json({ token, user: { id: created[0].id, nome: created[0].nome, email: created[0].email, telefone: '', endereco: '', enderecos: [], enderecoSelecionado: null, role: created[0].role, status: created[0].status } })
   } catch (err) {
     console.error('Erro auth google:', err.message || err)
@@ -294,7 +335,9 @@ app.get('/auth/users', async (req, res) => {
     return res.status(401).json({ erro: 'Não autorizado' })
   }
   try {
-    const { data, error } = await supabase.from('users').select('id,nome,email,telefone,role,status,created_at').order('id')
+    let query = supabase.from('users').select('id,nome,email,telefone,role,status,created_at,store_id')
+    if (storeId(req)) query = query.eq('store_id', storeId(req))
+    const { data, error } = await query.order('id')
     if (error) throw error
     res.json(data || [])
   } catch (err) {
@@ -352,7 +395,7 @@ app.put('/cart', async (req, res) => {
   try {
     const { itens } = req.body
     if (!Array.isArray(itens)) return res.status(400).json({ erro: 'itens deve ser um array' })
-    const { error } = await supabase.from('carts').upsert({ user_id: req.user.id, itens, updated_at: new Date().toISOString() }, { onConflict: 'user_id' })
+    const { error } = await supabase.from('carts').upsert({ user_id: req.user.id, store_id: storeId(req), itens, updated_at: new Date().toISOString() }, { onConflict: 'user_id' })
     if (error) throw error
     res.json({ ok: true })
   } catch (err) {
@@ -377,7 +420,9 @@ app.get('/orders/mine', async (req, res) => {
 app.get('/orders/stats', async (req, res) => {
   if (!checkSupabase(res)) return
   try {
-    const { data, error } = await supabase.from('orders').select('*')
+    let query = supabase.from('orders').select('*')
+    if (storeId(req)) query = query.eq('store_id', storeId(req))
+    const { data, error } = await query
     if (error) throw error
     const orders = data || []
     res.json({
@@ -398,7 +443,9 @@ app.get('/orders/stats', async (req, res) => {
 app.get('/orders/:id', async (req, res) => {
   if (!checkSupabase(res)) return
   try {
-    const { data, error } = await supabase.from('orders').select('*').eq('id', parseInt(req.params.id)).single()
+    let query = supabase.from('orders').select('*').eq('id', parseInt(req.params.id))
+    if (storeId(req)) query = query.eq('store_id', storeId(req))
+    const { data, error } = await query.single()
     if (error || !data) return res.status(404).json({ erro: 'Pedido não encontrado' })
     res.json(data)
   } catch (err) {
@@ -410,7 +457,9 @@ app.get('/orders/:id', async (req, res) => {
 app.get('/menu', async (req, res) => {
   if (!checkSupabase(res)) return
   try {
-    const { data, error } = await supabase.from('menu').select('*').order('id')
+    let query = supabase.from('menu').select('*')
+    if (storeId(req)) query = query.eq('store_id', storeId(req))
+    const { data, error } = await query.order('id')
     if (error) throw error
     res.json(data)
   } catch (err) {
@@ -422,7 +471,7 @@ app.get('/menu', async (req, res) => {
 app.post('/menu', async (req, res) => {
   if (!checkSupabase(res)) return
   try {
-    const { data, error } = await supabase.from('menu').insert(req.body).select()
+    const { data, error } = await supabase.from('menu').insert({ ...req.body, store_id: storeId(req) }).select()
     if (error) throw error
     res.status(201).json(data[0])
   } catch (err) {
@@ -434,7 +483,9 @@ app.post('/menu', async (req, res) => {
 app.put('/menu/:id', async (req, res) => {
   if (!checkSupabase(res)) return
   try {
-    const { data, error } = await supabase.from('menu').update(req.body).eq('id', parseInt(req.params.id)).select()
+    let query = supabase.from('menu').update(req.body).eq('id', parseInt(req.params.id))
+    if (storeId(req)) query = query.eq('store_id', storeId(req))
+    const { data, error } = await query.select()
     if (error) throw error
     if (!data || data.length === 0) return res.status(404).json({ erro: 'Item não encontrado' })
     res.json(data[0])
@@ -447,7 +498,9 @@ app.put('/menu/:id', async (req, res) => {
 app.delete('/menu/:id', async (req, res) => {
   if (!checkSupabase(res)) return
   try {
-    const { error } = await supabase.from('menu').delete().eq('id', parseInt(req.params.id))
+    let query = supabase.from('menu').delete().eq('id', parseInt(req.params.id))
+    if (storeId(req)) query = query.eq('store_id', storeId(req))
+    const { error } = await query
     if (error) throw error
     res.json({ ok: true })
   } catch (err) {
@@ -460,7 +513,9 @@ app.delete('/menu/:id', async (req, res) => {
 app.get('/orders', async (req, res) => {
   if (!checkSupabase(res)) return
   try {
-    let { data, error } = await supabase.from('orders').select('*').order('id')
+    let query = supabase.from('orders').select('*')
+    if (storeId(req)) query = query.eq('store_id', storeId(req))
+    let { data, error } = await query.order('id')
     if (error) throw error
     data = await autoExpireOrders(data || [])
     res.json(data)
@@ -483,6 +538,7 @@ app.post('/orders', async (req, res) => {
     const entrega_lng = body_lng || cliente.lng || cliente.endereco_lng || null
 
     const pedido = {
+      store_id: storeId(req),
       data: new Date().toISOString(),
       status: 'pendente',
       updatedAt: new Date().toISOString(),
@@ -507,7 +563,9 @@ app.patch('/orders/:id', async (req, res) => {
   if (!checkSupabase(res)) return
   try {
     const updates = { ...req.body, updatedAt: new Date().toISOString() }
-    const { data, error } = await supabase.from('orders').update(updates).eq('id', parseInt(req.params.id)).select()
+    let query = supabase.from('orders').update(updates).eq('id', parseInt(req.params.id))
+    if (storeId(req)) query = query.eq('store_id', storeId(req))
+    const { data, error } = await query.select()
     if (error) throw error
     if (!data || data.length === 0) return res.status(404).json({ erro: 'Pedido não encontrado' })
     const order = data[0]
@@ -572,7 +630,9 @@ app.get('/marketplaces/info', (req, res) => {
 app.get('/marketplaces/status', async (req, res) => {
   if (!checkSupabase(res)) return
   try {
-    const { data } = await supabase.from('app_config').select('valor').eq('chave', 'marketplaces').maybeSingle()
+    let q = supabase.from('app_config').select('valor').eq('chave', 'marketplaces')
+    if (storeId(req)) q = q.eq('store_id', storeId(req))
+    const { data } = await q.maybeSingle()
     res.json(getPlatformStatuses(data?.valor || {}))
   } catch (err) {
     res.status(500).json({ erro: err.message })
@@ -591,7 +651,9 @@ app.post('/marketplace/:platform/test', async (req, res) => {
     // Usa config enviado no body (formulário); fallback pra DB se vazio
     let config = req.body
     if (!config || Object.keys(config).length === 0) {
-      const { data: configData } = await supabase.from('app_config').select('valor').eq('chave', 'marketplaces').maybeSingle()
+      let q = supabase.from('app_config').select('valor').eq('chave', 'marketplaces')
+      if (storeId(req)) q = q.eq('store_id', storeId(req))
+      const { data: configData } = await q.maybeSingle()
       const allConfigs = configData?.valor || {}
       config = allConfigs[platform] || {}
     }
@@ -608,7 +670,9 @@ app.post('/marketplace/:platform/test', async (req, res) => {
 app.get('/config/marketplaces', async (req, res) => {
   if (!checkSupabase(res)) return
   try {
-    const { data } = await supabase.from('app_config').select('valor').eq('chave', 'marketplaces').maybeSingle()
+    let q = supabase.from('app_config').select('valor').eq('chave', 'marketplaces')
+    if (storeId(req)) q = q.eq('store_id', storeId(req))
+    const { data } = await q.maybeSingle()
     const defaults = getConfigDefaults()
     const saved = data?.valor || {}
     const merged = {}
@@ -633,14 +697,25 @@ app.put('/config/marketplaces/:platform', async (req, res) => {
     const adapter = getAdapter(platform)
     if (!adapter) return res.status(404).json({ erro: 'Marketplace não encontrado' })
 
-    const { data: currentData } = await supabase.from('app_config').select('valor').eq('chave', 'marketplaces').maybeSingle()
+    let q = supabase.from('app_config').select('valor').eq('chave', 'marketplaces')
+    if (storeId(req)) q = q.eq('store_id', storeId(req))
+    const { data: currentData } = await q.maybeSingle()
     const current = currentData?.valor || {}
     current[platform] = req.body
 
-    const { data, error } = await supabase.from('app_config').upsert(
-      { chave: 'marketplaces', valor: current, updated_at: new Date().toISOString() },
-      { onConflict: 'chave' }
-    ).select()
+    const sid = storeId(req)
+    const { data: existing } = await supabase.from('app_config')
+      .select('id').eq('chave', 'marketplaces')
+      .eq('store_id', sid).maybeSingle()
+    const payload = { store_id: sid, chave: 'marketplaces', valor: current, updated_at: new Date().toISOString() }
+    let result
+    if (existing) {
+      result = await supabase.from('app_config').update(payload).eq('id', existing.id).select()
+    } else {
+      result = await supabase.from('app_config').insert(payload).select()
+    }
+    if (result.error) throw result.error
+    const { data, error } = result
     if (error) throw error
     const novoValor = data?.[0]?.valor || {}
     const status = getPlatformStatuses(novoValor)
@@ -680,7 +755,9 @@ app.post('/marketplace/:platform/webhook', async (req, res) => {
     const adapter = getAdapter(platform)
     if (!adapter) return res.status(404).json({ error: 'Marketplace não encontrado' })
 
-    const { data: configData } = await supabase.from('app_config').select('valor').eq('chave', 'marketplaces').maybeSingle()
+    let q = supabase.from('app_config').select('valor').eq('chave', 'marketplaces')
+    if (storeId(req)) q = q.eq('store_id', storeId(req))
+    const { data: configData } = await q.maybeSingle()
     const allConfigs = configData?.valor || {}
     const config = allConfigs[platform] || {}
 
@@ -772,6 +849,7 @@ app.post('/marketplace/:platform/webhook', async (req, res) => {
             }
 
             const pedido = {
+              store_id: storeId(req),
               data: new Date().toISOString(),
               status: 'pendente',
               updatedAt: new Date().toISOString(),
@@ -835,7 +913,9 @@ app.post('/marketplace/:platform/poll', async (req, res) => {
     if (!adapter) return res.status(404).json({ error: 'Marketplace não encontrado' })
     if (!adapter.pollOrders) return res.status(400).json({ error: 'Polling não suportado' })
 
-    const { data: configData } = await supabase.from('app_config').select('valor').eq('chave', 'marketplaces').maybeSingle()
+    let q = supabase.from('app_config').select('valor').eq('chave', 'marketplaces')
+    if (storeId(req)) q = q.eq('store_id', storeId(req))
+    const { data: configData } = await q.maybeSingle()
     const allConfigs = configData?.valor || {}
     const config = allConfigs[platform] || {}
     if (!config.enabled) return res.status(403).json({ error: 'Integração desabilitada' })
@@ -866,6 +946,7 @@ app.post('/marketplace/:platform/poll', async (req, res) => {
           if (existente) continue
 
           const pedido = {
+            store_id: storeId(req),
             data: new Date().toISOString(),
             status: 'pendente',
             updatedAt: new Date().toISOString(),
@@ -896,16 +977,19 @@ app.post('/marketplace/:platform/poll', async (req, res) => {
   }
 })
 
-// Configuração da pizzaria
+// Configuração da pizzaria (agora em stores.config)
 app.get('/admin/config/pizzaria', async (req, res) => {
   if (!checkSupabase(res)) return
   try {
-    const { data } = await supabase.from('app_config').select('valor').eq('chave', 'pizzaria').maybeSingle()
-    res.json(data?.valor || {
-      cnpj: '', nome_fantasia: 'Israelita Pizzas', razao_social: '', telefone: '',
-      cep: '82840-080', rua: 'Rua Eloir Dide Maria', numero: '283',
-      complemento: '', bairro: 'Tatuquara', cidade: 'Curitiba', estado: 'PR',
-      lat: -25.590233, lng: -49.321738
+    if (req.store) {
+      const { data } = await supabase.from('stores').select('config').eq('id', req.store.id).single()
+      return res.json(data?.config || {})
+    }
+    // Fallback: sem store (localhost / preview)
+    res.json({
+      cnpj: '', nome_fantasia: 'Minha Pizzaria', razao_social: '', telefone: '',
+      cep: '', rua: '', numero: '', complemento: '', bairro: '', cidade: '', estado: '',
+      lat: -23.5505, lng: -46.6333
     })
   } catch (err) {
     console.error('Erro ao ler config:', err)
@@ -917,13 +1001,11 @@ app.put('/admin/config/pizzaria', async (req, res) => {
   if (!checkSupabase(res)) return
   const { senha, ...valor } = req.body
   if (senha !== 'admin123') return res.status(401).json({ erro: 'Não autorizado' })
+  if (!req.store) return res.status(400).json({ erro: 'Store não identificada' })
   try {
-    const { data, error } = await supabase.from('app_config').upsert(
-      { chave: 'pizzaria', valor, updated_at: new Date().toISOString() },
-      { onConflict: 'chave' }
-    ).select()
+    const { error } = await supabase.from('stores').update({ config: valor }).eq('id', req.store.id)
     if (error) throw error
-    res.json({ ok: true, config: data?.[0]?.valor })
+    res.json({ ok: true, config: valor })
   } catch (err) {
     console.error('Erro ao salvar config:', err)
     res.status(500).json({ erro: err.message })
@@ -938,12 +1020,12 @@ app.post('/login', async (req, res) => {
       try {
         const { data } = await supabase.from('users').select('id,nome,email,telefone,role,status,endereco,enderecos,enderecoselecionado').eq('id', parseInt(userId)).maybeSingle()
         if (data) {
-          const token = jwt.sign({ id: data.id, email: data.email, nome: data.nome, role: data.role }, JWT_SECRET, { expiresIn: '7d' })
+          const token = jwt.sign({ id: data.id, email: data.email, nome: data.nome, role: data.role, store_id: data.store_id }, JWT_SECRET, { expiresIn: '7d' })
           return res.json({ autenticado: true, token, user: { ...data, enderecoSelecionado: data.enderecoselecionado } })
         }
       } catch (_) {}
     }
-    const token = jwt.sign({ id: 0, email: 'admin@israelita', nome: 'Admin', role: 'admin' }, JWT_SECRET, { expiresIn: '7d' })
+    const token = jwt.sign({ id: 0, email: 'admin@israelita', nome: 'Admin', role: 'admin', store_id: storeId(req) }, JWT_SECRET, { expiresIn: '7d' })
     return res.json({ autenticado: true, token, user: { nome: 'Admin', role: 'admin' } })
   }
   res.status(401).json({ autenticado: false, erro: 'Senha incorreta' })
@@ -961,7 +1043,7 @@ app.post('/motoboy/login', async (req, res) => {
     if (user.status !== 'ativo') return res.status(403).json({ erro: 'Conta desativada' })
     const ok = await bcrypt.compare(senha, user.senha)
     if (!ok) return res.status(401).json({ erro: 'Senha incorreta' })
-    const token = jwt.sign({ id: user.id, email: user.email, nome: user.nome, role: user.role }, JWT_SECRET, { expiresIn: '7d' })
+    const token = jwt.sign({ id: user.id, email: user.email, nome: user.nome, role: user.role, store_id: user.store_id }, JWT_SECRET, { expiresIn: '7d' })
     res.json({ token, user: { id: user.id, nome: user.nome, email: user.email, telefone: user.telefone, role: user.role, status: user.status } })
   } catch (err) {
     console.error('Erro ao logar motoboy:', err)
@@ -991,15 +1073,26 @@ app.post('/motoboy/position', async (req, res) => {
   }
   try {
     const chave = sanitizarChave(nomeMotoboy)
-    await supabase.from('app_config').upsert({ chave, valor: dados, updated_at: new Date().toISOString() }, { onConflict: 'chave' })
+    const sid = storeId(req)
+    const { data: posExist } = await supabase.from('app_config').select('id').eq('chave', chave).eq('store_id', sid).maybeSingle()
+    const payload = { store_id: sid, chave, valor: dados, updated_at: new Date().toISOString() }
+    if (posExist) {
+      await supabase.from('app_config').update(payload).eq('id', posExist.id)
+    } else {
+      await supabase.from('app_config').insert(payload)
+    }
   } catch (_) {}
 
   // Geofence: verificar se motoboy está a <100m de algum pedido atribuído a ele
-  if (lat != null && lng != null) {
+    if (lat != null && lng != null) {
     try {
+      let geofenceQuery = supabase.from('orders').select('id, entrega_lat, entrega_lng, status, user_id').in('status', ['em_rota'])
+      if (storeId(req)) geofenceQuery = geofenceQuery.eq('store_id', storeId(req))
+      let pedidoConfigQuery = supabase.from('app_config').select('chave, valor').like('chave', `pedido_motoboy_%`)
+      if (storeId(req)) pedidoConfigQuery = pedidoConfigQuery.eq('store_id', storeId(req))
       const [ordersRes, configsRes] = await Promise.all([
         supabase.from('orders').select('id, entrega_lat, entrega_lng, status, user_id').in('status', ['em_rota']),
-        supabase.from('app_config').select('chave, valor').like('chave', `pedido_motoboy_%`)
+        pedidoConfigQuery
       ])
       if (ordersRes.data && configsRes.data) {
         const meusIds = configsRes.data.filter(c => c.valor?.motoboy === nomeMotoboy).map(c => c.valor.orderId)
@@ -1028,14 +1121,23 @@ app.post('/motoboy/offline', async (req, res) => {
   const dados = { online: false, lat: null, lng: null, timestamp: new Date().toISOString(), nome: nomeMotoboy }
   try {
     const chave = sanitizarChave(nomeMotoboy)
-    await supabase.from('app_config').upsert({ chave, valor: dados, updated_at: new Date().toISOString() }, { onConflict: 'chave' })
+    const sid = storeId(req)
+    const { data: posExist } = await supabase.from('app_config').select('id').eq('chave', chave).eq('store_id', sid).maybeSingle()
+    const payload = { store_id: sid, chave, valor: dados, updated_at: new Date().toISOString() }
+    if (posExist) {
+      await supabase.from('app_config').update(payload).eq('id', posExist.id)
+    } else {
+      await supabase.from('app_config').insert(payload)
+    }
   } catch (_) {}
   res.json({ ok: true })
 })
 
 app.get('/motoboy/positions', async (req, res) => {
   try {
-    const { data } = await supabase.from('app_config').select('chave, valor').like('chave', 'motoboy_pos_%')
+    let q = supabase.from('app_config').select('chave, valor').like('chave', 'motoboy_pos_%')
+    if (storeId(req)) q = q.eq('store_id', storeId(req))
+    const { data } = await q
     if (data) {
       const motoboys = data.map(r => r.valor).filter(Boolean)
       return res.json(motoboys)
@@ -1048,8 +1150,10 @@ app.get('/motoboy/positions', async (req, res) => {
 app.get('/motoboy/pedidos-disponiveis', async (req, res) => {
   if (!checkSupabase(res)) return
   try {
+    let ordersQuery = supabase.from('orders').select('*').in('status', ['aceito', 'liberado'])
+    if (storeId(req)) ordersQuery = ordersQuery.eq('store_id', storeId(req))
     const [ordersRes, configsRes] = await Promise.all([
-      supabase.from('orders').select('*').in('status', ['aceito', 'liberado']).order('id'),
+      ordersQuery.order('id'),
       supabase.from('app_config').select('chave, valor').like('chave', 'pedido_motoboy_%')
     ])
     if (ordersRes.error) throw ordersRes.error
@@ -1077,20 +1181,28 @@ app.post('/motoboy/pegar-pedido', async (req, res) => {
     const idNum = Number(pedidoId)
     if (!Number.isFinite(idNum)) return res.status(400).json({ erro: 'ID inválido' })
     // Busca todos os orders liberados e filtra em memoria (evita problemas com coluna)
-    const { data: todos, error: findErr } = await supabase.from('orders').select('*').in('status', ['liberado'])
+    let findQuery = supabase.from('orders').select('*').in('status', ['liberado'])
+    if (storeId(req)) findQuery = findQuery.eq('store_id', storeId(req))
+    const { data: todos, error: findErr } = await findQuery
     if (findErr) return res.status(500).json({ erro: 'Erro ao buscar pedido' })
     // Verifica app_config se pedido já foi pego
-    const { data: configs } = await supabase.from('app_config').select('chave, valor').like('chave', `pedido_motoboy_${idNum}`)
+    let pegarQuery = supabase.from('app_config').select('chave, valor').like('chave', `pedido_motoboy_${idNum}`)
+    if (storeId(req)) pegarQuery = pegarQuery.eq('store_id', storeId(req))
+    const { data: configs } = await pegarQuery
     const jaPego = configs && configs.length > 0 && configs[0].valor
     if (jaPego) return res.status(409).json({ erro: 'Pedido já está sendo atendido por outro entregador' })
     const current = (todos || []).find(o => o.id === idNum && o.status === 'liberado')
     if (!current) return res.status(404).json({ erro: 'Pedido não encontrado ou não está mais disponível' })
     // Salva atribuição no app_config (já que a coluna motoboy_nome não existe na tabela orders)
-    await supabase.from('app_config').upsert({
-      chave: `pedido_motoboy_${idNum}`,
-      valor: { orderId: idNum, motoboy: nome, timestamp: new Date().toISOString() },
-      updated_at: new Date().toISOString()
-    }, { onConflict: 'chave' })
+    const sid = storeId(req)
+    // Upsert manual (app_config tem unique index composto)
+    const { data: existente } = await supabase.from('app_config').select('id').eq('chave', `pedido_motoboy_${idNum}`).eq('store_id', sid).maybeSingle()
+    const payload = { store_id: sid, chave: `pedido_motoboy_${idNum}`, valor: { orderId: idNum, motoboy: nome, timestamp: new Date().toISOString() }, updated_at: new Date().toISOString() }
+    if (existente) {
+      await supabase.from('app_config').update(payload).eq('id', existente.id)
+    } else {
+      await supabase.from('app_config').insert(payload)
+    }
     res.json({ ok: true, id: idNum, motoboy: nome })
   } catch (err) {
     console.error('Erro ao pegar pedido:', err)
@@ -1103,9 +1215,13 @@ app.get('/motoboy/pedidos', async (req, res) => {
   if (!req.user) return res.status(401).json({ erro: 'Não autenticado' })
   if (!checkSupabase(res)) return
   try {
+    let ordersQuery = supabase.from('orders').select('*').in('status', ['liberado', 'em_rota', 'entregador_proximo', 'entregue', 'cancelado'])
+    if (storeId(req)) ordersQuery = ordersQuery.eq('store_id', storeId(req))
+    let motoConfQuery = supabase.from('app_config').select('chave, valor').like('chave', 'pedido_motoboy_%')
+    if (storeId(req)) motoConfQuery = motoConfQuery.eq('store_id', storeId(req))
     const [ordersRes, configsRes] = await Promise.all([
-      supabase.from('orders').select('*').in('status', ['liberado', 'em_rota', 'entregador_proximo', 'entregue', 'cancelado']).order('id'),
-      supabase.from('app_config').select('chave, valor').like('chave', 'pedido_motoboy_%')
+      ordersQuery.order('id'),
+      motoConfQuery
     ])
     if (ordersRes.error) throw ordersRes.error
     const configs = configsRes.data || []
@@ -1125,7 +1241,7 @@ let fcmMotoboyTokens = []
 async function carregarFcmTokens() {
   if (!supabase) return
   try {
-    const { data } = await supabase.from('app_config').select('valor').eq('chave', 'fcm_tokens').maybeSingle()
+    const { data } = await supabase.from('app_config').select('valor').eq('chave', 'fcm_tokens').is('store_id', null).maybeSingle()
     if (data?.valor) {
       fcmTokens = data.valor.userTokens || {}
       fcmMotoboyTokens = data.valor.motoboyTokens || []
@@ -1136,10 +1252,13 @@ async function carregarFcmTokens() {
 async function salvarFcmTokens() {
   if (!supabase) return
   try {
-    await supabase.from('app_config').upsert(
-      { chave: 'fcm_tokens', valor: { userTokens: fcmTokens, motoboyTokens: fcmMotoboyTokens } },
-      { onConflict: 'chave' }
-    )
+    const { data: fcmExist } = await supabase.from('app_config').select('id').eq('chave', 'fcm_tokens').is('store_id', null).maybeSingle()
+    const payload = { store_id: null, chave: 'fcm_tokens', valor: { userTokens: fcmTokens, motoboyTokens: fcmMotoboyTokens } }
+    if (fcmExist) {
+      await supabase.from('app_config').update(payload).eq('id', fcmExist.id)
+    } else {
+      await supabase.from('app_config').insert(payload)
+    }
   } catch {}
 }
 
@@ -1180,6 +1299,55 @@ async function sendPushToMotoboys(title, body) {
     console.error('FCM send to motoboys error:', err)
   }
 }
+
+// ===== STORE CREATION (multi-tenant signup) =====
+app.post('/stores', async (req, res) => {
+  if (!checkSupabase(res)) return
+  try {
+    const { slug, nome, adminNome, adminEmail, adminSenha } = req.body
+    if (!slug || !nome || !adminNome || !adminEmail || !adminSenha) {
+      return res.status(400).json({ erro: 'slug, nome, adminNome, adminEmail e adminSenha são obrigatórios' })
+    }
+    const slugLimpo = slug.toLowerCase().replace(/[^a-z0-9]/g, '')
+    if (!slugLimpo || slugLimpo.length < 3) return res.status(400).json({ erro: 'Slug inválido (mínimo 3 caracteres, apenas letras e números)' })
+
+    // Verifica se slug já existe
+    const { data: existente } = await supabase.from('stores').select('id').eq('slug', slugLimpo).maybeSingle()
+    if (existente) return res.status(409).json({ erro: 'Este slug já está em uso' })
+
+    // Hash da senha do admin
+    const hash = await bcrypt.hash(adminSenha, 10)
+
+    // Cria store + admin user em transação
+    const { data: store, error: storeErr } = await supabase.from('stores').insert({
+      slug: slugLimpo, nome, config: {}
+    }).select()
+    if (storeErr) throw storeErr
+
+    const { data: admin, error: userErr } = await supabase.from('users').insert({
+      store_id: store[0].id, nome: adminNome, email: adminEmail, senha: hash,
+      role: 'admin', status: 'ativo'
+    }).select()
+    if (userErr) {
+      // Rollback: deleta a store criada
+      await supabase.from('stores').delete().eq('id', store[0].id)
+      throw userErr
+    }
+
+    // Atualiza owner_id da store
+    await supabase.from('stores').update({ owner_id: admin[0].id }).eq('id', store[0].id)
+
+    const token = jwt.sign({ id: admin[0].id, email: admin[0].email, nome: admin[0].nome, role: 'admin', store_id: store[0].id }, JWT_SECRET, { expiresIn: '7d' })
+    res.status(201).json({
+      token, store: store[0],
+      user: { id: admin[0].id, nome: admin[0].nome, email: admin[0].email, role: 'admin' },
+      urls: { site: `https://${slugLimpo}.queropizza.com`, admin: `https://${slugLimpo}.queropizza.com/admin`, motoboy: `https://${slugLimpo}.queropizza.com/motoboy` }
+    })
+  } catch (err) {
+    console.error('Erro ao criar loja:', err)
+    res.status(500).json({ erro: err.message || 'Erro ao criar loja' })
+  }
+})
 
 // Debug endpoint
 app.get('/api/debug', (req, res) => {

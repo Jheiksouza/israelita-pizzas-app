@@ -7436,6 +7436,46 @@ html.pedidos-open {
   margin: 0;
 }
 
+/* SIGNUP FORM */
+.landing-signup {
+  padding: 100px 24px;
+  max-width: 640px;
+  margin: 0 auto;
+}
+.landing-signup-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.landing-form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.landing-form-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--l-text);
+}
+.landing-form-hint {
+  font-size: 0.8rem;
+  color: var(--l-primary);
+  margin: 2px 0 0;
+}
+.landing-form-erro {
+  color: var(--l-primary);
+  font-size: 0.85rem;
+  text-align: center;
+  margin: 0;
+}
+.landing-success-links {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-top: 8px;
+}
+
 @media (max-width: 768px) {
   .landing-nav-links { display: none; }
   .landing-features-grid { grid-template-columns: 1fr; }
@@ -7445,5 +7485,7 @@ html.pedidos-open {
   .landing-hero { padding: 100px 20px 60px; }
   .landing-hero-actions { flex-direction: column; align-items: stretch; }
   .landing-hero-actions .landing-btn { width: 100%; }
+  .landing-success-links { flex-direction: column; align-items: stretch; }
+  .landing-success-links .landing-btn { width: 100%; }
 }
 

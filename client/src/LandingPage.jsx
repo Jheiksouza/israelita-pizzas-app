@@ -1,5 +1,7 @@
-import React from 'react'
-import { getIsraelitaLoginUrl } from './config'
+import React, { useState } from 'react'
+import { getIsraelitaLoginUrl, getStoreUrl } from './config'
+
+const API = '/api'
 
 const features = [
   {
@@ -34,34 +36,65 @@ const features = [
   }
 ]
 
-const plans = [
-  {
-    name: 'Começar',
-    price: 'Grátis',
-    period: '',
-    features: ['Cardápio online ilimitado', 'Gestão de pedidos', '3 usuários', 'Painel admin completo', 'Suporte por email'],
-    cta: 'Começar agora'
-  },
-  {
-    name: 'Profissional',
-    price: 'R$ 97',
-    period: '/mês',
-    features: ['Tudo do plano Grátis', 'Usuários ilimitados', 'App motoboy completo', 'Financeiro', 'Integração iFood', 'Impressão térmica', 'Suporte prioritário'],
-    cta: 'Ver planos',
-    popular: true
-  },
-  {
-    name: 'Personalizado',
-    price: 'Sob consulta',
-    period: '',
-    features: ['Tudo do Profissional', 'Domínio personalizado', 'API whitelabel', 'Migração de dados', 'Treinamento da equipe', 'Suporte 24h'],
-    cta: 'Falar com time'
-  }
-]
-
 export default function LandingPage() {
+  const [form, setForm] = useState({ nome: '', adminNome: '', adminEmail: '', adminSenha: '' })
+  const [erro, setErro] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [success, setSuccess] = useState(null)
+
   const scrollTo = (id) => {
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' })
+  }
+
+  const generateSlug = (name) => {
+    return name.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 30) || 'minhapizzaria'
+  }
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    setErro('')
+    setLoading(true)
+    try {
+      const slug = generateSlug(form.nome)
+      const res = await fetch(`${API}/stores`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ slug, ...form })
+      })
+      const data = await res.json()
+      if (!res.ok) return setErro(data.erro || 'Erro ao criar')
+      setSuccess(data)
+      localStorage.setItem('token', data.token)
+      localStorage.setItem('user', JSON.stringify(data.user))
+    } catch { setErro('Erro de conexão') }
+    finally { setLoading(false) }
+  }
+
+  if (success) {
+    return (
+      <div className="landing">
+        <div className="landing-hero" style={{ minHeight: '60vh' }}>
+          <div className="landing-hero-bg" />
+          <div className="landing-hero-content">
+            <div className="landing-hero-badge">✅ Sua loja foi criada!</div>
+            <h1 className="landing-hero-title" style={{ fontSize: 'clamp(1.8rem, 4vw, 2.5rem)' }}>
+              {success.store.nome} já está no ar
+            </h1>
+            <p className="landing-hero-sub">
+              Seu sistema está pronto nos links abaixo. Guarde-os com cuidado.
+            </p>
+            <div className="landing-success-links">
+              <a href={success.urls.site} className="landing-btn landing-btn-hero">🍕 Site de pedidos</a>
+              <a href={success.urls.admin} className="landing-btn landing-btn-outline">⚙️ Painel admin</a>
+              <a href={success.urls.motoboy} className="landing-btn landing-btn-outline">🛵 App motoboy</a>
+            </div>
+            <p className="landing-hero-meta" style={{ marginTop: 16 }}>
+              Seu login: {success.user.email} · já está autenticado no admin
+            </p>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -75,7 +108,7 @@ export default function LandingPage() {
           </div>
           <div className="landing-nav-links">
             <button onClick={() => scrollTo('features')} className="landing-nav-link">Recursos</button>
-            <button onClick={() => scrollTo('plans')} className="landing-nav-link">Planos</button>
+            <button onClick={() => scrollTo('signup')} className="landing-nav-link">Criar loja</button>
             <button onClick={() => scrollTo('contact')} className="landing-nav-link">Contato</button>
           </div>
           <a href={getIsraelitaLoginUrl()} className="landing-btn landing-btn-primary">Entrar na Israelita</a>
@@ -96,8 +129,8 @@ export default function LandingPage() {
             Tudo que sua pizzaria precisa em um só lugar.
           </p>
           <div className="landing-hero-actions">
-            <button onClick={() => scrollTo('plans')} className="landing-btn landing-btn-hero">
-              Começar grátis
+            <button onClick={() => scrollTo('signup')} className="landing-btn landing-btn-hero">
+              Criar minha loja grátis
             </button>
             <button onClick={() => scrollTo('features')} className="landing-btn landing-btn-outline">
               Ver recursos
@@ -139,33 +172,71 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* PLANS */}
-      <section id="plans" className="landing-plans">
+      {/* SIGNUP */}
+      <section id="signup" className="landing-signup">
         <div className="landing-section-header">
-          <span className="landing-section-badge">Planos</span>
-          <h2 className="landing-section-title">Comece grátis. Escale quando quiser.</h2>
-          <p className="landing-section-sub">Teste grátis por 15 dias. Sem compromisso.</p>
+          <span className="landing-section-badge">Começar</span>
+          <h2 className="landing-section-title">Crie sua loja grátis</h2>
+          <p className="landing-section-sub">
+            Em menos de 1 minuto sua pizzaria está no ar. Teste grátis por 15 dias.
+          </p>
         </div>
-        <div className="landing-plans-grid">
-          {plans.map((p, i) => (
-            <div key={i} className={`landing-plan-card${p.popular ? ' landing-plan-popular' : ''}`}>
-              {p.popular && <span className="landing-plan-badge">Mais popular</span>}
-              <h3 className="landing-plan-name">{p.name}</h3>
-              <div className="landing-plan-price">
-                <span className="landing-plan-value">{p.price}</span>
-                {p.period && <span className="landing-plan-period">{p.period}</span>}
-              </div>
-              <ul className="landing-plan-features">
-                {p.features.map((f, j) => (
-                  <li key={j} className="landing-plan-feature">✓ {f}</li>
-                ))}
-              </ul>
-              <button className={`landing-btn ${p.popular ? 'landing-btn-hero' : 'landing-btn-outline'}`}>
-                {p.cta}
-              </button>
+        <form className="landing-signup-form" onSubmit={handleSubmit}>
+          <div className="landing-form-row">
+            <div className="landing-form-field">
+              <label className="landing-form-label">Nome da pizzaria</label>
+              <input
+                type="text" placeholder="Ex: Dalle Pizza"
+                className="landing-form-input"
+                value={form.nome}
+                onChange={e => setForm(f => ({ ...f, nome: e.target.value }))}
+                required
+              />
+              {form.nome && (
+                <p className="landing-form-hint">
+                  Seu link: <strong>{generateSlug(form.nome) || '...'}.queropizza.com</strong>
+                </p>
+              )}
             </div>
-          ))}
-        </div>
+            <div className="landing-form-field">
+              <label className="landing-form-label">Seu nome</label>
+              <input
+                type="text" placeholder="Seu nome"
+                className="landing-form-input"
+                value={form.adminNome}
+                onChange={e => setForm(f => ({ ...f, adminNome: e.target.value }))}
+                required
+              />
+            </div>
+          </div>
+          <div className="landing-form-row">
+            <div className="landing-form-field">
+              <label className="landing-form-label">Seu email</label>
+              <input
+                type="email" placeholder="email@exemplo.com"
+                className="landing-form-input"
+                value={form.adminEmail}
+                onChange={e => setForm(f => ({ ...f, adminEmail: e.target.value }))}
+                required
+              />
+            </div>
+            <div className="landing-form-field">
+              <label className="landing-form-label">Senha</label>
+              <input
+                type="password" placeholder="Mínimo 6 caracteres"
+                className="landing-form-input"
+                value={form.adminSenha}
+                onChange={e => setForm(f => ({ ...f, adminSenha: e.target.value }))}
+                minLength={6}
+                required
+              />
+            </div>
+          </div>
+          {erro && <p className="landing-form-erro">{erro}</p>}
+          <button className="landing-btn landing-btn-hero" style={{ width: '100%' }} disabled={loading}>
+            {loading ? 'Criando sua loja...' : 'Criar loja grátis'}
+          </button>
+        </form>
       </section>
 
       {/* CONTACT */}

@@ -7,12 +7,35 @@ Sistema de pedidos online para pizzarias — cardápio digital, painel admin, ap
 | Domínio | Finalidade |
 |---------|-----------|
 | `queropizza.com` | Landing page de vendas do sistema |
-| `israelita.queropizza.com` | Cardápio + pedidos da Pizzaria Israelita (primeiro cliente) |
-| `israelita.queropizza.com/admin` | Painel administrativo |
-| `israelita.queropizza.com/motoboy` | App do entregador |
+| `{slug}.queropizza.com` | Cardápio + pedidos da pizzaria (ex: `israelita.queropizza.com`) |
+| `{slug}.queropizza.com/admin` | Painel administrativo |
+| `{slug}.queropizza.com/motoboy` | App do entregador |
 
-A landing page (`queropizza.com`) detecta o hostname e exibe uma página de vendas.
-Quando o cliente acessar `israelita.queropizza.com`, o sistema de pedidos da Israelita é exibido.
+### Multi-tenant
+
+Cada pizzaria cliente ganha automaticamente um subdomínio `{slug}.queropizza.com`.
+O cadastro é feito pela landing page (`queropizza.com`) — o usuário preenche o nome da pizzaria, e o sistema cria:
+
+1. A loja na tabela `stores` com o slug gerado automaticamente
+2. O primeiro usuário admin
+3. Um JWT válido redirecionando para o painel admin da loja
+
+**Exemplo:** se a pizzaria se chama "Dalle Pizza", o slug será `dallepizza` e os links:
+- `https://dallepizza.queropizza.com` — cardápio
+- `https://dallepizza.queropizza.com/admin` — admin
+- `https://dallepizza.queropizza.com/motoboy` — motoboy
+
+### Como funciona tecnicamente
+
+1. O Vercel aceita domínio coringa `*.queropizza.com` (configurado no dashboard)
+2. O middleware do Express detecta o subdomínio pelo header `Host`
+3. Consulta a tabela `stores` e escopa todas as queries por `store_id`
+4. Em desenvolvimento local, usa `DEFAULT_STORE_ID` do `.env`
+
+### Israelita
+
+A Israelita é o primeiro cliente (store_id = 1, slug = `israelita`).
+Seus dados já estão no banco — a migração só precisa adicionar `store_id = 1` nas linhas existentes.
 
 ## Regra para IA
 
@@ -42,7 +65,7 @@ Quando o cliente acessar `israelita.queropizza.com`, o sistema de pedidos da Isr
 │   │   ├── App.jsx       # App principal (detecta domínio e roteia)
 │   │   ├── App.css       # Estilos (inclui landing page)
 │   │   ├── LandingPage.jsx # Landing page de vendas (queropizza.com)
-│   │   ├── config.js     # Config de domínios
+│   │   ├── config.js     # Config de domínios + helpers multi-tenant
 │   │   ├── main.jsx
 │   │   └── ...
 │   ├── vite.config.js
@@ -75,8 +98,11 @@ Quando o cliente acessar `israelita.queropizza.com`, o sistema de pedidos da Isr
 **URL do projeto:** `https://qnttyikrbuxuhzqybmaa.supabase.co`
 
 **Tabelas:**
+- `stores` — lojas cadastradas (slug, nome, config)
+- `users` — usuários (vinculados a uma store via `store_id`)
 - `menu` — itens do cardápio (sabores, tamanhos, bebidas)
 - `orders` — pedidos feitos pelos clientes
+- `app_config` — configurações por store
 
 **Acessar:**
 1. Vai em https://supabase.com
@@ -230,8 +256,9 @@ git push
 | `vercel.json` | Configuração de build, output e rewrites |
 | `client/vite.config.js` | Config do Vite com proxy e output dir |
 | `client/src/App.jsx` | Frontend principal (cardápio + landing) |
-| `client/src/LandingPage.jsx` | Landing page de vendas (queropizza.com) |
-| `client/src/config.js` | Configuração de domínios |
+| `client/src/LandingPage.jsx` | Landing page de vendas + cadastro |
+| `client/src/config.js` | Config de domínios + helpers multi-tenant |
+| `supabase-setup.sql` | Schema completo (stores, users, menu, orders) |
 | `admin/src/App.jsx` | Admin painel (React) |
 | `motoboy/src/App.jsx` | App do entregador (React) |
 | `supabase-setup.sql` | Schema e seed do banco |
