@@ -330,7 +330,7 @@ app.post('/auth/google', async (req, res) => {
 })
 
 // Google OAuth via redirect (server-side) — funciona em QUALQUER subdomínio sem configurar no Google Cloud
-app.get('/api/auth/google/login', (req, res) => {
+app.get('/auth/google/login', (req, res) => {
   const redirect = req.query.redirect || '/'
   const storeSlug = req.query.store || (req.store ? req.store.slug : '')
   const state = Buffer.from(JSON.stringify({ redirect, storeSlug })).toString('base64')
@@ -343,7 +343,7 @@ app.get('/api/auth/google/login', (req, res) => {
   res.redirect(authUrl)
 })
 
-app.get('/api/auth/google/callback', async (req, res) => {
+app.get('/auth/google/callback', async (req, res) => {
   const { code, state } = req.query
   if (!code) return res.status(400).send('Código ausente')
   // Recupera state
