@@ -113,12 +113,7 @@ app.get('/health', (req, res) => {
   res.json({
     status: 'ok',
     slug: req.store?.slug,
-    storeId: req.store?.id,
-    env: {
-      hasUrl: !!supabaseUrl,
-      hasKey: !!supabaseKey,
-      hasSupabase: !!supabase
-    }
+    storeId: req.store?.id
   })
 })
 
@@ -1447,33 +1442,17 @@ app.post('/stores', async (req, res) => {
 })
 
 // Debug endpoint
-app.get('/debug', async (req, res) => {
+app.get('/debug', (req, res) => {
   const host = req.headers.host || ''
   const match = host.match(/^(.+)\.queropizza\.com(:\d+)?$/)
   const slug = match ? match[1] : null
-
-  // Busca store direto pra debug
-  let storeFromDb = null
-  let dbError = null
-  if (slug && supabase) {
-    try {
-      const result = await supabase.from('stores').select('*').eq('slug', slug).maybeSingle()
-      storeFromDb = result.data
-      dbError = result.error?.message || null
-    } catch (e) { dbError = e.message }
-  }
-
-  const config = req.store?.config || {}
   res.json({
     host,
     slug_match: slug,
-    storeFromDb: storeFromDb ? { id: storeFromDb.id, slug: storeFromDb.slug } : null,
-    dbError,
     hasSupabase: !!supabase,
-    configKeys: Object.keys(config),
-    hasConfig: Object.keys(config).length > 0
+    slug_no_db: req.store?.slug,
+    storeId_no_db: req.store?.id
   })
-})
 })
 
 // Global error handler
