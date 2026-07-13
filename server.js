@@ -1067,7 +1067,17 @@ app.get('/admin/config/pizzaria', async (req, res) => {
   try {
     if (req.store) {
       const { data } = await supabase.from('stores').select('config').eq('id', req.store.id).single()
-      return res.json(data?.config || {})
+      const config = data?.config
+      // Se config está vazio, tenta fallback no app_config (dados da era pré-multi-tenant)
+      if (!config || Object.keys(config).length === 0) {
+        const { data: oldData } = await supabase.from('app_config').select('valor').eq('chave', 'pizzaria').eq('store_id', req.store.id).maybeSingle()
+        if (oldData?.valor) {
+          // Migra para stores.config automaticamente
+          await supabase.from('stores').update({ config: oldData.valor }).eq('id', req.store.id)
+          return res.json(oldData.valor)
+        }
+      }
+      return res.json(config || {})
     }
     // Fallback: sem store (localhost / preview)
     res.json({

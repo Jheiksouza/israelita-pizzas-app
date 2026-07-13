@@ -171,3 +171,12 @@ CREATE POLICY "anon all menu" ON menu FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "anon all orders" ON orders FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "anon all carts" ON carts FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "anon all app_config" ON app_config FOR ALL USING (true) WITH CHECK (true);
+
+-- 7. MIGRAR DADOS ANTIGOS DO app_config PARA stores.config
+-- Dados da pizzaria (se existiam no app_config antes do multi-tenant)
+UPDATE stores SET config = (
+  SELECT valor FROM app_config WHERE chave = 'pizzaria' AND store_id = 1
+)
+WHERE id = 1
+  AND (config IS NULL OR config = '{}')
+  AND EXISTS (SELECT 1 FROM app_config WHERE chave = 'pizzaria' AND store_id = 1 AND valor IS NOT NULL);
