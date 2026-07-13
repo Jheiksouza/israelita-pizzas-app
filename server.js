@@ -1442,17 +1442,66 @@ app.post('/stores', async (req, res) => {
 })
 
 // Debug endpoint
-app.get('/debug', (req, res) => {
-  const host = req.headers.host || ''
-  const match = host.match(/^(.+)\.queropizza\.com(:\d+)?$/)
-  const slug = match ? match[1] : null
-  res.json({
-    host,
-    slug_match: slug,
-    hasSupabase: !!supabase,
-    slug_no_db: req.store?.slug,
-    storeId_no_db: req.store?.id
-  })
+app.get('/debug', async (req, res, next) => {
+  try {
+    const host = req.headers.host || ''
+    const match = host.match(/^(.+)\.queropizza\.com(:\d+)?$/)
+    const slug = match ? match[1] : null
+
+    let storeCount = 0
+    if (supabase) {
+      const { count } = await supabase.from('stores').select('*', { count: 'exact', head: true })
+      storeCount = count || 0
+    }
+
+    let foundStore = null
+    if (slug && supabase) {
+      const { data } = await supabase.from('stores').select('*').eq('slug', slug).maybeSingle()
+      foundStore = data
+    }
+
+    res.json({
+      host,
+      slug_match: slug,
+      hasSupabase: !!supabase,
+      storeCount,
+      foundStoreInDb: foundStore ? { id: foundStore.id, slug: foundStore.slug } : null,
+      reqStoreSlug: req.store?.slug,
+      reqStoreId: req.store?.id
+    })
+  } catch (e) {
+    res.status(500).json({ erro: e.message })
+  }
+})
+
+// Endpoint pra criar a store Israelita se não existir (one-time fix)
+app.get('/repair/seed-israelita', async (req, res) => {
+  try {
+    const { data: existing } = await supabase.from('stores').select('id').eq('slug', 'israelita').maybeSingle()
+    if (existing) return res.json({ ok: true, message: 'Store já existe', id: existing.id })
+
+    const { data, error } = await supabase.from('stores').insert({
+      id: 1, slug: 'israelita', nome: 'Pizzaria Israelita',
+      config: {
+        cnpj: '', nome_fantasia: 'Israelita Pizzas', razao_social: '', telefone: '(41) 99999-9999',
+        cep: '82840-080', rua: 'Rua Eloir Dide Maria', numero: '283',
+        complemento: '', bairro: 'Tatuquara', cidade: 'Curitiba', estado: 'PR',
+        lat: -25.590233, lng: -49.321738
+      }
+    }).select()
+    if (error) throw error
+
+    // Atualiza store_id dos dados existentes para 1
+    await supabase.from('users').update({ store_id: 1 }).is('store_id', null)
+    await supabase.from('menu').update({ store_id: 1 }).is('store_id', null)
+    await supabase.from('orders').update({ store_id: 1 }).is('store_id', null)
+    await supabase.from('carts').update({ store_id: 1 }).is('store_id', null)
+    await supabase.from('app_config').update({ store_id: 1 }).is('store_id', null).neq('chave', 'fcm_tokens')
+
+    res.json({ ok: true, message: 'Store Israelita criada com sucesso', store: data?.[0] })
+  } catch (e) {
+    res.status(500).json({ erro: e.message })
+  }
 })
 
 // Global error handler
