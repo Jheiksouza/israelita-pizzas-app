@@ -2,6 +2,9 @@
 
 Sistema de pedidos online para pizzarias — cardápio digital, painel admin, app motoboy.
 
+> 📖 **Regras de funcionamento validadas:** [`SYSTEM_RULES.md`](./SYSTEM_RULES.md)
+> Regras validadas só devem ser alteradas com instrução explícita do usuário.
+
 ## Domínios
 
 | Domínio | Finalidade |
