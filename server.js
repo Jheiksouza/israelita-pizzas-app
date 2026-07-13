@@ -304,9 +304,11 @@ app.post('/auth/google', async (req, res) => {
     const payload = await resp.json()
     if (!payload || !payload.email) return res.status(401).json({ erro: 'Dados do usuário não encontrados' })
     const { email, name, id: sub } = payload
-    const { data: existing } = await supabase.from('users').select('*').eq('email', email).maybeSingle()
+    let googleQuery = supabase.from('users').select('*').eq('email', email)
+    if (storeId(req)) googleQuery = googleQuery.eq('store_id', storeId(req))
+    const { data: existing } = await googleQuery.maybeSingle()
     if (existing) {
-      const token = jwt.sign({ id: existing.id, email: existing.email, nome: existing.nome, role: existing.role }, JWT_SECRET, { expiresIn: '7d' })
+      const token = jwt.sign({ id: existing.id, email: existing.email, nome: existing.nome, role: existing.role, store_id: existing.store_id }, JWT_SECRET, { expiresIn: '7d' })
       return res.json({ token, user: { id: existing.id, nome: existing.nome, email: existing.email, telefone: existing.telefone, endereco: existing.endereco, enderecos: existing.enderecos, enderecoSelecionado: existing.enderecoselecionado, role: existing.role, status: existing.status } })
     }
     const { data: created, error } = await supabase.from('users').insert({
