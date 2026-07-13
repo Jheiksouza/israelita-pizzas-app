@@ -1078,7 +1078,7 @@ function AdminPizzariaConfig() {
         isOpen={mostrarMapaPizzaria}
         onClose={() => setMostrarMapaPizzaria(false)}
         onConfirm={handleMapaConfirmPizzaria}
-        enderecoInicial={form?.rua ? `${form.rua}, ${form.numero} - ${form.bairro}, ${form.cidade} - ${form.estado}` : ''}
+        enderecoInicial={form?.rua ? `${form.rua}${form.numero ? `, ${form.numero}` : ''}${form.bairro ? ` - ${form.bairro}` : ''}, ${form.cidade || ''} - ${form.estado || ''}${form.cep ? `, CEP ${form.cep}` : ''}, Brasil` : ''}
         initialCoords={form?.lat && form?.lng ? { lat: parseFloat(form.lat), lng: parseFloat(form.lng) } : null}
       />
     </div>
@@ -1508,19 +1508,25 @@ function MapaEntregaModal({ isOpen, onClose, onConfirm, enderecoInicial, initial
     if (!isOpen) return
     mountedRef.current = true
     setPronto(false); setLat(null); setLng(null); setBuscando(true); setBuscaEndereco(''); setErroBusca('')
-    if (initialCoords?.lat && initialCoords?.lng) {
-      setLat(initialCoords.lat); setLng(initialCoords.lng); setBuscando(false); setPronto(true)
+    if (!enderecoInicial) {
+      if (initialCoords?.lat && initialCoords?.lng) {
+        setLat(initialCoords.lat); setLng(initialCoords.lng); setBuscando(false); setPronto(true)
+      } else {
+        setLat(-23.5505); setLng(-46.6333); setBuscando(false); setPronto(true)
+      }
       return
     }
-    if (!enderecoInicial) { setLat(-23.5505); setLng(-46.6333); setBuscando(false); setPronto(true); return }
     const geocode = async () => {
       try {
-        const enderecoLimpo = enderecoInicial.replace(/\s*\([^)]*\)\s*/g, ' ').replace(/- CEP:\s*[\d-]+/gi, '').replace(/\s+/g, ' ').trim()
-        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(enderecoLimpo)}&limit=1`, { headers: { 'User-Agent': 'IsraelitaPizzasApp/1.0' } })
+        const enderecoLimpo = enderecoInicial.replace(/\s*\([^)]*\)\s*/g, ' ').replace(/\s+/g, ' ').trim()
+        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(enderecoLimpo)}&countrycodes=br&limit=5`, { headers: { 'User-Agent': 'IsraelitaPizzasApp/1.0' } })
         const data = await res.json()
         if (!mountedRef.current) return
-        if (data[0]) { setLat(parseFloat(data[0].lat)); setLng(parseFloat(data[0].lon)) }
-        else { setLat(-23.5505); setLng(-46.6333) }
+        if (data[0]) {
+          // Pega o melhor resultado (rua + numero tem mais precisao)
+          const melhor = data.find(d => d.type === 'house' || d.class === 'building' || d.type === 'yes') || data[0]
+          setLat(parseFloat(melhor.lat)); setLng(parseFloat(melhor.lon))
+        } else { setLat(-23.5505); setLng(-46.6333) }
       } catch { if (mountedRef.current) { setLat(-23.5505); setLng(-46.6333) } }
       finally { if (mountedRef.current) { setBuscando(false); setPronto(true) } }
     }
