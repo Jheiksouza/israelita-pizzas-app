@@ -112,9 +112,12 @@ const { getAdapter, getPlatformInfo, getConfigDefaults, getPlatformStatuses } = 
 app.get('/health', (req, res) => {
   res.json({
     status: 'ok',
+    slug: req.store?.slug,
+    storeId: req.store?.id,
     env: {
       hasUrl: !!supabaseUrl,
-      hasKey: !!supabaseKey
+      hasKey: !!supabaseKey,
+      hasSupabase: !!supabase
     }
   })
 })
@@ -1445,12 +1448,16 @@ app.post('/stores', async (req, res) => {
 
 // Debug endpoint
 app.get('/debug', (req, res) => {
+  const host = req.headers.host || ''
+  const match = host.match(/^(.+)\.queropizza\.com(:\d+)?$/)
   const config = req.store?.config || {}
   res.json({
-    host: req.headers.host,
+    host,
+    match: match ? match[1] : null,
     slug: req.store?.slug,
     storeId: req.store?.id,
     url: req.url,
+    hasSupabase: !!supabase,
     configKeys: Object.keys(config),
     hasConfig: Object.keys(config).length > 0
   })
