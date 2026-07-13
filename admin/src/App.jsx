@@ -809,7 +809,10 @@ function RastreioPage() {
 
   const onlineCount = motoboys.filter(m => m.online).length
   const algumOnline = motoboys.some(m => m.online)
-  const center = motoboys.find(m => m.lat) || pizzaria || { lat: -25.4290, lng: -49.2671 }
+  // Prioriza pizzaria como centro; só usa motoboy se não tiver config da pizzaria
+  const center = pizzaria?.lat && pizzaria?.lng
+    ? pizzaria
+    : motoboys.find(m => m.lat) || { lat: -25.4290, lng: -49.2671 }
 
   const comCoords = pedidos.filter(p => getLat(p) && getLng(p))
   const entregues = comCoords.filter(p => p.status === 'entregue')

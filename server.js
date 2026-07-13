@@ -1482,8 +1482,20 @@ app.get('/debug', async (req, res, next) => {
 // Endpoint pra criar a store Israelita se não existir (one-time fix)
 app.get('/repair/seed-israelita', async (req, res) => {
   try {
+    // Tenta usar service_role key primeiro
     const db = supabaseAdmin || supabase
     if (!db) return res.status(500).json({ erro: 'Sem conexão com banco' })
+
+    // Cria política RLS se não existir (via PAT)
+    const pat = process.env.SUPABASE_PAT
+    if (pat) {
+      const sql = `DROP POLICY IF EXISTS "anon all stores" ON stores; CREATE POLICY "anon all stores" ON stores FOR ALL USING (true) WITH CHECK (true);`
+      await fetch('https://api.supabase.com/v1/projects/qnttyikrbuxuhzqybmaa/database/query', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${pat}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: sql })
+      })
+    }
 
     const { data: existing } = await db.from('stores').select('id').eq('slug', 'israelita').maybeSingle()
     if (existing) return res.json({ ok: true, message: 'Store já existe', id: existing.id })
