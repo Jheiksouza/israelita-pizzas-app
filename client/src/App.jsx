@@ -42,6 +42,23 @@ window.__googleCallback = (response) => {
 }
 
 function App() {
+  // Captura token do Google OAuth callback (redirect server-side)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const token = params.get('token')
+    const userData = params.get('user')
+    if (token && userData) {
+      try {
+        const user = JSON.parse(decodeURIComponent(userData))
+        localStorage.setItem('token', token)
+        localStorage.setItem('user', JSON.stringify(user))
+        // Limpa a URL
+        window.history.replaceState({}, '', window.location.pathname)
+        window.location.reload()
+      } catch {}
+    }
+  }, [])
+
   if (isLandingPage()) {
     return <LandingPage />
   }
@@ -522,14 +539,10 @@ function AuthModal({ onLogin, onClose }) {
   window.__authSetters.setErro = setErro
 
   const handleGoogleLogin = () => {
-    try {
-      const client = google.accounts.oauth2.initTokenClient({
-        client_id: GOOGLE_CLIENT_ID,
-        scope: 'openid email profile',
-        callback: window.__googleCallback
-      })
-      client.requestAccessToken()
-    } catch (_) {}
+    // Usa redirect server-side (funciona em qualquer subdomínio sem configurar Google Cloud)
+    const storeSlug = window.location.hostname.replace('.queropizza.com', '')
+    const currentPath = window.location.pathname + window.location.search
+    window.location.href = `${API}/auth/google/login?redirect=${encodeURIComponent(currentPath)}&store=${storeSlug}`
   }
 
   const handleSubmit = async (e) => {
@@ -2464,39 +2477,8 @@ function MotoboyStandalone() {
   }
 
   const handleGoogleLogin = () => {
-    try {
-      const client = google.accounts.oauth2.initTokenClient({
-        client_id: '433687511785-95t4n2nulpja1aotvq6rfo74oui708im.apps.googleusercontent.com',
-        scope: 'openid email profile',
-        callback: async (response) => {
-          if (response.error) { setErro('Erro ao autenticar com Google'); return }
-          try {
-            setLoading(true)
-            const r = await fetch(`${API}/auth/google`, {
-              method: 'POST', headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ accessToken: response.access_token })
-            })
-            const data = await r.json()
-            if (data.token && data.user) {
-              if (data.user.role !== 'motoboy' && data.user.role !== 'admin') {
-                setErro('Você não tem permissão para acessar o painel do motoboy')
-                return
-              }
-              if (data.user.status !== 'ativo' && data.user.status !== 'aprovado') {
-                setSemPermissao(true)
-                return
-              }
-              setUser(data.user)
-              setToken(data.token)
-              localStorage.setItem('motoboy_user', JSON.stringify(data.user))
-              localStorage.setItem('motoboy_token', data.token)
-            } else setErro(data.erro || 'Erro ao autenticar')
-          } catch { setErro('Erro de conexão') }
-          finally { setLoading(false) }
-        }
-      })
-      client.requestAccessToken()
-    } catch { setErro('Erro ao iniciar login Google') }
+    const storeSlug = window.location.hostname.replace('.queropizza.com', '')
+    window.location.href = `${API}/auth/google/login?redirect=${encodeURIComponent('/motoboy')}&store=${storeSlug}`
   }
 
   const handleSignup = async (e) => {

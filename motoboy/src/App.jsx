@@ -8,28 +8,6 @@ const API = '/api'
 
 const GOOGLE_CLIENT_ID = '433687511785-95t4n2nulpja1aotvq6rfo74oui708im.apps.googleusercontent.com'
 
-window.__googleCallback = (response) => {
-  const s = window.__authSetters
-  if (!s) return
-  if (response.error) { if (s.setErro) s.setErro('Erro ao autenticar com Google'); return }
-  ;(async () => {
-    try {
-      const r = await fetch(`${API}/auth/google`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ accessToken: response.access_token })
-      })
-      const data = await r.json()
-      if (data.token && data.user) {
-        if (data.user.role !== 'motoboy') {
-          if (s.setErro) s.setErro('Esta conta não é de um entregador')
-          return
-        }
-        s.onLogin && s.onLogin(data.user, data.token)
-      } else if (s.setErro) s.setErro(data.erro || 'Erro ao autenticar')
-    } catch { if (s.setErro) s.setErro('Erro de conexão') }
-  })()
-}
-
 function App() {
   const [token, setToken] = useState(() => localStorage.getItem('motoboyToken') || '')
   const [user, setUser] = useState(() => {
@@ -37,6 +15,22 @@ function App() {
     return saved ? JSON.parse(saved) : null
   })
   const [autenticado, setAutenticado] = useState(false)
+
+  // Captura token do Google OAuth callback (redirect server-side)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const tokenParam = params.get('token')
+    const userData = params.get('user')
+    if (tokenParam && userData) {
+      try {
+        const user = JSON.parse(decodeURIComponent(userData))
+        localStorage.setItem('motoboyToken', tokenParam)
+        localStorage.setItem('motoboyUser', JSON.stringify(user))
+        window.history.replaceState({}, '', window.location.pathname)
+        window.location.reload()
+      } catch {}
+    }
+  }, [])
 
   useEffect(() => {
     if (token && user) setAutenticado(true)
@@ -70,17 +64,9 @@ function MotoboyLogin({ onLogin }) {
   const [erro, setErro] = useState('')
   const [loading, setLoading] = useState(false)
 
-  window.__authSetters = { onLogin, setErro }
-
   const handleGoogleLogin = () => {
-    try {
-      const client = google.accounts.oauth2.initTokenClient({
-        client_id: GOOGLE_CLIENT_ID,
-        scope: 'openid email profile',
-        callback: window.__googleCallback
-      })
-      client.requestAccessToken()
-    } catch {}
+    const storeSlug = window.location.hostname.replace('.queropizza.com', '')
+    window.location.href = `${API}/auth/google/login?redirect=${encodeURIComponent('/motoboy')}&store=${storeSlug}`
   }
 
   const handleSubmit = async (e) => {

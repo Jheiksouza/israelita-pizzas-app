@@ -4,28 +4,6 @@ import L from 'leaflet'
 import { Pizza, MapPin, Store, Lock, Clock, Timer, Check, X, Truck, CheckCircle, Bike, Search, Plus, Pencil, DollarSign, List, Sun, Moon, LogOut, Settings, ChevronRight, ChevronLeft, Wifi, WifiOff, AlertCircle, CreditCard, FileText, Package, Phone, Hash, AlertTriangle } from 'lucide-react'
 import { printOrder } from './escpos.js'
 
-window.__googleCallback = (response) => {
-  const s = window.__adminAuthSetters
-  if (!s) return
-  if (response.error) { if (s.setErro) s.setErro('Erro ao autenticar com Google'); return }
-  ;(async () => {
-    try {
-      const r = await fetch(`${API}/auth/google`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ accessToken: response.access_token })
-      })
-      const data = await r.json()
-      if (data.token && data.user) {
-        if (VALID_ROLES.includes(data.user.role)) {
-          s.onLogin(data.user, data.token)
-        } else {
-          s.setErro('Sua conta não tem permissão de acesso administrativo.')
-        }
-      } else s.setErro(data.erro || 'Erro ao autenticar')
-    } catch { s.setErro('Erro de conexão') }
-  })()
-}
-
 const API = '/api'
 const GOOGLE_CLIENT_ID = '433687511785-95t4n2nulpja1aotvq6rfo74oui708im.apps.googleusercontent.com'
 
@@ -61,6 +39,22 @@ function App() {
   const [darkMode, setDarkMode] = useState(() => localStorage.getItem('adminDark') === 'true')
 
   useEffect(() => { localStorage.setItem('adminAba', aba) }, [aba])
+
+  // Captura token do Google OAuth callback (redirect server-side)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const tokenParam = params.get('token')
+    const userData = params.get('user')
+    if (tokenParam && userData) {
+      try {
+        const user = JSON.parse(decodeURIComponent(userData))
+        localStorage.setItem('token', tokenParam)
+        localStorage.setItem('user', JSON.stringify(user))
+        window.history.replaceState({}, '', window.location.pathname)
+        window.location.reload()
+      } catch {}
+    }
+  }, [])
 
   useEffect(() => {
     if (token && user && VALID_ROLES.includes(user.role)) {
@@ -208,17 +202,9 @@ function AdminLogin({ onLogin, user, token }) {
   const [erro, setErro] = useState('')
   const [loading, setLoading] = useState(false)
 
-  window.__adminAuthSetters = { onLogin, setErro }
-
   const handleGoogleLogin = () => {
-    try {
-      const client = google.accounts.oauth2.initTokenClient({
-        client_id: GOOGLE_CLIENT_ID,
-        scope: 'openid email profile',
-        callback: window.__googleCallback
-      })
-      client.requestAccessToken()
-    } catch { setErro('Erro ao iniciar login Google') }
+    const storeSlug = window.location.hostname.replace('.queropizza.com', '')
+    window.location.href = `${API}/auth/google/login?redirect=${encodeURIComponent('/admin')}&store=${storeSlug}`
   }
 
   const handleLogin = async (e) => {

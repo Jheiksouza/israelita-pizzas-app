@@ -31,7 +31,10 @@ const setupMarketplaces = require('./marketplaces')
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || ''
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || ''
-const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, 'postmessage')
+const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET)
+
+// Base URL para callbacks (muda entre Vercel e localhost)
+const BASE_URL = process.env.VERCEL ? 'https://queropizza.com' : `http://localhost:${PORT}`
 
 const VALID_ROLES = ['cliente', 'motoboy', 'atendente', 'financeiro', 'admin']
 
@@ -292,6 +295,9 @@ app.patch('/auth/enderecos', async (req, res) => {
   }
 })
 
+// Google OAuth — suporta dois fluxos:
+// 1. POST /auth/google (backward compat, postmessage/implicit)
+// 2. GET /auth/google/login → redirect → GET /auth/google/callback (server-side, funciona em qualquer subdomínio)
 app.post('/auth/google', async (req, res) => {
   if (!checkSupabase(res)) return
   try {
@@ -320,6 +326,82 @@ app.post('/auth/google', async (req, res) => {
   } catch (err) {
     console.error('Erro auth google:', err.message || err)
     res.status(500).json({ erro: err.message || 'Erro ao autenticar com Google' })
+  }
+})
+
+// Google OAuth via redirect (server-side) — funciona em QUALQUER subdomínio sem configurar no Google Cloud
+app.get('/api/auth/google/login', (req, res) => {
+  const redirect = req.query.redirect || '/'
+  const storeSlug = req.query.store || (req.store ? req.store.slug : '')
+  const state = Buffer.from(JSON.stringify({ redirect, storeSlug })).toString('base64')
+  const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
+    `client_id=${GOOGLE_CLIENT_ID}` +
+    `&redirect_uri=${encodeURIComponent(`${BASE_URL}/api/auth/google/callback`)}` +
+    `&response_type=code` +
+    `&scope=${encodeURIComponent('openid email profile')}` +
+    `&state=${encodeURIComponent(state)}`
+  res.redirect(authUrl)
+})
+
+app.get('/api/auth/google/callback', async (req, res) => {
+  const { code, state } = req.query
+  if (!code) return res.status(400).send('Código ausente')
+  // Recupera state
+  let redirectTo = '/'
+  let storeSlug = ''
+  try {
+    const parsed = JSON.parse(Buffer.from(state || '', 'base64').toString())
+    redirectTo = parsed.redirect || '/'
+    storeSlug = parsed.storeSlug || ''
+  } catch {}
+  try {
+    // Troca code por tokens
+    const { tokens } = await googleClient.getToken({
+      code,
+      redirect_uri: `${BASE_URL}/api/auth/google/callback`
+    })
+    // Extrai dados do usuário do id_token
+    const ticket = await googleClient.verifyIdToken({
+      idToken: tokens.id_token,
+      audience: GOOGLE_CLIENT_ID
+    })
+    const payload = ticket.getPayload()
+    if (!payload || !payload.email) return res.status(401).send('Email não encontrado')
+
+    const { email, name, sub } = payload
+    // Descobre store_id a partir do slug (ou fallback)
+    let targetStoreId = storeId(req)
+    if (!targetStoreId && storeSlug) {
+      const { data: store } = await supabase.from('stores').select('id').eq('slug', storeSlug).maybeSingle()
+      if (store) targetStoreId = store.id
+    }
+    if (!targetStoreId) targetStoreId = 1 // fallback Israelita
+
+    // Busca ou cria usuário na store
+    const { data: existing } = await supabase.from('users').select('*').eq('email', email).eq('store_id', targetStoreId).maybeSingle()
+    let user
+    if (existing) {
+      user = existing
+    } else {
+      const { data: created } = await supabase.from('users').insert({
+        store_id: targetStoreId, nome: name || email.split('@')[0], email,
+        senha: '', telefone: '', endereco: '', google_id: sub, role: 'cliente', status: 'ativo'
+      }).select()
+      if (created) user = created[0]
+    }
+    if (!user) return res.status(500).send('Erro ao criar usuário')
+
+    const token = jwt.sign(
+      { id: user.id, email: user.email, nome: user.nome, role: user.role, store_id: user.store_id },
+      JWT_SECRET, { expiresIn: '7d' }
+    )
+    // Redireciona de volta com token na URL
+    const baseUrl = storeSlug ? `https://${storeSlug}.queropizza.com` : ''
+    const dest = baseUrl ? `${baseUrl}${redirectTo}` : redirectTo
+    res.redirect(`${dest}${dest.includes('?') ? '&' : '?'}token=${token}&user=${encodeURIComponent(JSON.stringify(user))}`)
+  } catch (err) {
+    console.error('Erro callback google:', err.message || err)
+    res.status(500).send('Erro ao autenticar com Google')
   }
 })
 
