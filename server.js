@@ -1447,20 +1447,33 @@ app.post('/stores', async (req, res) => {
 })
 
 // Debug endpoint
-app.get('/debug', (req, res) => {
+app.get('/debug', async (req, res) => {
   const host = req.headers.host || ''
   const match = host.match(/^(.+)\.queropizza\.com(:\d+)?$/)
+  const slug = match ? match[1] : null
+
+  // Busca store direto pra debug
+  let storeFromDb = null
+  let dbError = null
+  if (slug && supabase) {
+    try {
+      const result = await supabase.from('stores').select('*').eq('slug', slug).maybeSingle()
+      storeFromDb = result.data
+      dbError = result.error?.message || null
+    } catch (e) { dbError = e.message }
+  }
+
   const config = req.store?.config || {}
   res.json({
     host,
-    match: match ? match[1] : null,
-    slug: req.store?.slug,
-    storeId: req.store?.id,
-    url: req.url,
+    slug_match: slug,
+    storeFromDb: storeFromDb ? { id: storeFromDb.id, slug: storeFromDb.slug } : null,
+    dbError,
     hasSupabase: !!supabase,
     configKeys: Object.keys(config),
     hasConfig: Object.keys(config).length > 0
   })
+})
 })
 
 // Global error handler
