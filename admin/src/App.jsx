@@ -969,10 +969,27 @@ function AdminPizzariaConfig() {
       cepTimer.current = setTimeout(async () => {
         setBuscandoCep(true)
         try {
-          const r = await fetch(`https://viacep.com.br/ws/${digits}/json/`)
+          // Busca endereço e coordenadas via AwesomeAPI (retorna lat/lng)
+          const r = await fetch(`https://cep.awesomeapi.com.br/json/${digits}`)
           const result = await r.json()
-          if (!result.erro) setForm(f => ({ ...f, rua: result.logradouro, bairro: result.bairro, cidade: result.localidade, estado: result.uf }))
-        } catch {}
+          if (!result.error) {
+            setForm(f => ({ ...f,
+              rua: result.address_name || result.address || '',
+              bairro: result.district || '',
+              cidade: result.city || '',
+              estado: result.state || '',
+              lat: result.lat || f.lat,
+              lng: result.lng || f.lng
+            }))
+          }
+        } catch {
+          // Fallback: ViaCEP (sem coordenadas)
+          try {
+            const r = await fetch(`https://viacep.com.br/ws/${digits}/json/`)
+            const result = await r.json()
+            if (!result.erro) setForm(f => ({ ...f, rua: result.logradouro, bairro: result.bairro, cidade: result.localidade, estado: result.uf }))
+          } catch {}
+        }
         setBuscandoCep(false)
       }, 300)
     }
