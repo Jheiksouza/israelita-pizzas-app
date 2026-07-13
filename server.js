@@ -1444,13 +1444,15 @@ app.post('/stores', async (req, res) => {
 })
 
 // Debug endpoint
-app.get('/api/debug', (req, res) => {
+app.get('/debug', (req, res) => {
+  const config = req.store?.config || {}
   res.json({
-    hasSupabase: !!supabase,
-    hasFirebase: !!fbApp,
-    vercel: !!process.env.VERCEL,
-    node: process.version,
-    envKeys: Object.keys(process.env).filter(k => !k.includes('SECRET') && !k.includes('KEY') && !k.includes('TOKEN'))
+    host: req.headers.host,
+    slug: req.store?.slug,
+    storeId: req.store?.id,
+    url: req.url,
+    configKeys: Object.keys(config),
+    hasConfig: Object.keys(config).length > 0
   })
 })
 
