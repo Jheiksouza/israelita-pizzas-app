@@ -1508,30 +1508,36 @@ function MapaEntregaModal({ isOpen, onClose, onConfirm, enderecoInicial, initial
     if (!isOpen) return
     mountedRef.current = true
     setPronto(false); setLat(null); setLng(null); setBuscando(true); setBuscaEndereco(''); setErroBusca('')
-    if (!enderecoInicial) {
-      if (initialCoords?.lat && initialCoords?.lng) {
-        setLat(initialCoords.lat); setLng(initialCoords.lng); setBuscando(false); setPronto(true)
-      } else {
-        setLat(-23.5505); setLng(-46.6333); setBuscando(false); setPronto(true)
-      }
+
+    // Prioriza coordenadas salvas (mais preciso)
+    if (initialCoords?.lat && initialCoords?.lng) {
+      setLat(initialCoords.lat); setLng(initialCoords.lng); setBuscando(false); setPronto(true)
       return
     }
-    const geocode = async () => {
-      try {
-        const enderecoLimpo = enderecoInicial.replace(/\s*\([^)]*\)\s*/g, ' ').replace(/\s+/g, ' ').trim()
-        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(enderecoLimpo)}&countrycodes=br&limit=5`, { headers: { 'User-Agent': 'IsraelitaPizzasApp/1.0' } })
-        const data = await res.json()
-        if (!mountedRef.current) return
-        if (data[0]) {
-          // Pega o melhor resultado (rua + numero tem mais precisao)
-          const melhor = data.find(d => d.type === 'house' || d.class === 'building' || d.type === 'yes') || data[0]
-          setLat(parseFloat(melhor.lat)); setLng(parseFloat(melhor.lon))
-        } else { setLat(-23.5505); setLng(-46.6333) }
-      } catch { if (mountedRef.current) { setLat(-23.5505); setLng(-46.6333) } }
-      finally { if (mountedRef.current) { setBuscando(false); setPronto(true) } }
+
+    // Se tem endereço mas não tem coordenadas, tenta geocode via servidor
+    if (enderecoInicial) {
+      const geocode = async () => {
+        try {
+          const enderecoLimpo = enderecoInicial.replace(/\s*\([^)]*\)\s*/g, ' ').replace(/\s+/g, ' ').trim()
+          const r = await fetch(`${API}/geocode`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ endereco: enderecoLimpo })
+          })
+          const data = await r.json()
+          if (!mountedRef.current) return
+          if (data.result) {
+            setLat(data.result.lat); setLng(data.result.lng)
+          } else { setLat(-23.5505); setLng(-46.6333) }
+        } catch { if (mountedRef.current) { setLat(-23.5505); setLng(-46.6333) } }
+        finally { if (mountedRef.current) { setBuscando(false); setPronto(true) } }
+      }
+      geocode()
+      return () => { mountedRef.current = false }
     }
-    geocode()
-    return () => { mountedRef.current = false }
+
+    // Sem endereço e sem coordenadas
+    setLat(-23.5505); setLng(-46.6333); setBuscando(false); setPronto(true)
   }, [isOpen])
 
   useEffect(() => {
@@ -1542,10 +1548,13 @@ function MapaEntregaModal({ isOpen, onClose, onConfirm, enderecoInicial, initial
     if (!buscaEndereco.trim()) return
     setBuscandoEndereco(true); setErroBusca('')
     try {
-      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(buscaEndereco)}&limit=1`, { headers: { 'User-Agent': 'IsraelitaPizzasApp/1.0' } })
-      const data = await res.json()
+      const r = await fetch(`${API}/geocode`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ endereco: buscaEndereco })
+      })
+      const data = await r.json()
       if (!mountedRef.current) return
-      if (data[0]) { setLat(parseFloat(data[0].lat)); setLng(parseFloat(data[0].lng)); if (mapRef.current) mapRef.current.flyTo([parseFloat(data[0].lat), parseFloat(data[0].lng)], 17) }
+      if (data.result) { setLat(data.result.lat); setLng(data.result.lng); if (mapRef.current) mapRef.current.flyTo([data.result.lat, data.result.lng], 17) }
       else setErroBusca('Endereço não encontrado.')
     } catch { setErroBusca('Erro ao buscar.') }
     setBuscandoEndereco(false)

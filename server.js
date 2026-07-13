@@ -1446,6 +1446,23 @@ app.post('/stores', async (req, res) => {
   }
 })
 
+// Geocode de endereço via Nominatim (server-side, sem CORS/adblock)
+app.post('/geocode', async (req, res) => {
+  try {
+    const { endereco } = req.body
+    if (!endereco) return res.status(400).json({ erro: 'Endereço obrigatório' })
+    const r = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(endereco)}&countrycodes=br&limit=5`, {
+      headers: { 'User-Agent': 'IsraelitaPizzasApp/1.0' }
+    })
+    const data = await r.json()
+    if (!data || !data[0]) return res.json({ result: null })
+    const melhor = data.find(d => d.type === 'house' || d.class === 'building' || d.type === 'yes') || data[0]
+    res.json({ result: { lat: parseFloat(melhor.lat), lng: parseFloat(melhor.lon), display: melhor.display_name } })
+  } catch (e) {
+    res.status(500).json({ erro: e.message })
+  }
+})
+
 // Debug endpoint
 app.get('/debug', async (req, res, next) => {
   try {
