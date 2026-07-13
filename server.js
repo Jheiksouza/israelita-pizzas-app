@@ -106,6 +106,11 @@ try {
   console.error('Erro ao criar cliente Supabase:', e)
 }
 
+// Cliente com service_role — bypassa RLS (usado apenas em endpoints de reparo)
+const supabaseAdmin = supabaseUrl && process.env.SUPABASE_SERVICE_ROLE_KEY
+  ? createClient(supabaseUrl, process.env.SUPABASE_SERVICE_ROLE_KEY)
+  : null
+
 const { getAdapter, getPlatformInfo, getConfigDefaults, getPlatformStatuses } = setupMarketplaces()
 
 // Health check (pra testar se o Express está rodando no Vercel)
@@ -1477,10 +1482,13 @@ app.get('/debug', async (req, res, next) => {
 // Endpoint pra criar a store Israelita se não existir (one-time fix)
 app.get('/repair/seed-israelita', async (req, res) => {
   try {
-    const { data: existing } = await supabase.from('stores').select('id').eq('slug', 'israelita').maybeSingle()
+    const db = supabaseAdmin || supabase
+    if (!db) return res.status(500).json({ erro: 'Sem conexão com banco' })
+
+    const { data: existing } = await db.from('stores').select('id').eq('slug', 'israelita').maybeSingle()
     if (existing) return res.json({ ok: true, message: 'Store já existe', id: existing.id })
 
-    const { data, error } = await supabase.from('stores').insert({
+    const { data, error } = await db.from('stores').insert({
       id: 1, slug: 'israelita', nome: 'Pizzaria Israelita',
       config: {
         cnpj: '', nome_fantasia: 'Israelita Pizzas', razao_social: '', telefone: '(41) 99999-9999',
@@ -1492,11 +1500,11 @@ app.get('/repair/seed-israelita', async (req, res) => {
     if (error) throw error
 
     // Atualiza store_id dos dados existentes para 1
-    await supabase.from('users').update({ store_id: 1 }).is('store_id', null)
-    await supabase.from('menu').update({ store_id: 1 }).is('store_id', null)
-    await supabase.from('orders').update({ store_id: 1 }).is('store_id', null)
-    await supabase.from('carts').update({ store_id: 1 }).is('store_id', null)
-    await supabase.from('app_config').update({ store_id: 1 }).is('store_id', null).neq('chave', 'fcm_tokens')
+    await db.from('users').update({ store_id: 1 }).is('store_id', null)
+    await db.from('menu').update({ store_id: 1 }).is('store_id', null)
+    await db.from('orders').update({ store_id: 1 }).is('store_id', null)
+    await db.from('carts').update({ store_id: 1 }).is('store_id', null)
+    await db.from('app_config').update({ store_id: 1 }).is('store_id', null).neq('chave', 'fcm_tokens')
 
     res.json({ ok: true, message: 'Store Israelita criada com sucesso', store: data?.[0] })
   } catch (e) {
