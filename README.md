@@ -32,6 +32,14 @@ O cadastro é feito pela landing page (`queropizza.com`) — o usuário preenche
 3. Consulta a tabela `stores` e escopa todas as queries por `store_id`
 4. Em desenvolvimento local, usa `DEFAULT_STORE_ID` do `.env`
 
+### Configuração de DNS
+
+Após adicionar os domínios no Vercel, aponte os nameservers do seu registro.br para o Vercel:
+- `ns1.vercel-dns.com`
+- `ns2.vercel-dns.com`
+
+Ou configure um registro CNAME de `*.queropizza.com` para `cname.vercel-dns.com`.
+
 ### Israelita
 
 A Israelita é o primeiro cliente (store_id = 1, slug = `israelita`).
@@ -147,8 +155,9 @@ SUPABASE_ANON_KEY=sb_publishable_Q2jL5Q8YXlfmEU0a3RC65g_L-EVCNXW
 
 Essas também precisam estar configuradas no **Vercel Dashboard:**
 - Settings → Environment Variables
-- Adicionar `SUPABASE_URL` e `SUPABASE_ANON_KEY`
-- Marcar "Production" e "Preview"
+- Adicionar `SUPABASE_URL`, `SUPABASE_ANON_KEY` e `DEFAULT_STORE_ID`
+- `DEFAULT_STORE_ID=1` (store padrão para desenvolvimento local / preview)
+- Marcar "Production", "Preview" e "Development"
 
 > `.env` está no `.gitignore` — nunca commitar!
 
