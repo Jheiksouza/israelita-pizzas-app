@@ -547,6 +547,7 @@ class IfoodAdapter extends MarketplaceAdapter {
     const merchantId = config.merchant_id
     const res = await this.catalogFetch(`/merchants/${merchantId}/categories/${categoryId}/items`, config)
     const data = await res.json()
+    console.error(`[ifood] getCategoryItems(${categoryId}) response:`, JSON.stringify(data).slice(0, 500))
     return data.items || data
   }
 
@@ -571,11 +572,17 @@ class IfoodAdapter extends MarketplaceAdapter {
       try {
         categoryItems = await this.getCategoryItems(catId, config)
       } catch (err) {
+        console.error(`[ifood] importMenu error for category "${catName}":`, err.message)
         results.errors.push(`Erro ao buscar itens da categoria "${catName}": ${err.message}`)
         continue
       }
 
-      if (!Array.isArray(categoryItems)) continue
+      console.error(`[ifood] importMenu category "${catName}" items:`, JSON.stringify(categoryItems).slice(0, 300))
+      if (!Array.isArray(categoryItems)) {
+        console.error(`[ifood] categoryItems not array, type:`, typeof categoryItems, Array.isArray(categoryItems))
+        results.errors.push(`Resposta inesperada para categoria "${catName}"`)
+        continue
+      }
 
       for (const fullItem of categoryItems) {
         try {
