@@ -1064,6 +1064,37 @@ app.post('/marketplace/:platform/poll', async (req, res) => {
   }
 })
 
+// Sincronizar cardápio com marketplace
+app.post('/marketplace/:platform/sync-menu', async (req, res) => {
+  if (!checkSupabase(res)) return
+  try {
+    const { platform } = req.params
+    const adapter = getAdapter(platform)
+    if (!adapter) return res.status(404).json({ error: 'Marketplace não encontrado' })
+    if (!adapter.syncMenu) return res.status(400).json({ error: 'Menu sync não suportado' })
+
+    let q = supabase.from('app_config').select('valor').eq('chave', 'marketplaces')
+    if (storeId(req)) q = q.eq('store_id', storeId(req))
+    const { data: configData } = await q.maybeSingle()
+    const allConfigs = configData?.valor || {}
+    const config = allConfigs[platform] || {}
+    if (!config.enabled) return res.status(403).json({ error: 'Integração desabilitada' })
+
+    // Busca cardápio local
+    let menuQuery = supabase.from('menu').select('*')
+    if (storeId(req)) menuQuery = menuQuery.eq('store_id', storeId(req))
+    const { data: menuItems, error } = await menuQuery
+    if (error) throw error
+    if (!menuItems || menuItems.length === 0) return res.status(400).json({ error: 'Cardápio vazio' })
+
+    const result = await adapter.syncMenu(menuItems, config)
+    res.json(result)
+  } catch (err) {
+    console.error('[Marketplace Sync Menu] Erro:', err)
+    res.status(500).json({ error: err.message || 'Erro interno' })
+  }
+})
+
 // Configuração da pizzaria (agora em stores.config)
 app.get('/admin/config/pizzaria', async (req, res) => {
   if (!checkSupabase(res)) return

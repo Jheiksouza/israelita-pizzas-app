@@ -26,6 +26,7 @@ function getPlatformInfo() {
     displayName: a.displayName,
     color: a.color,
     supportsPolling: typeof a.pollOrders === 'function',
+    supportsMenuSync: typeof a.syncMenu === 'function',
     fields: a.getConfigFields()
   }))
 }

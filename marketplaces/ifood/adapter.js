@@ -330,6 +330,175 @@ class IfoodAdapter extends MarketplaceAdapter {
     }
   }
 
+  async getCatalogs(config) {
+    const merchantId = config.merchant_id
+    const res = await this.apiFetch(`/merchant/v1.0/merchants/${merchantId}/catalogs`, config)
+    const data = await res.json()
+    return data.catalogs || data
+  }
+
+  async getCategories(catalogId, config) {
+    const merchantId = config.merchant_id
+    const res = await this.apiFetch(`/merchant/v1.0/merchants/${merchantId}/catalogs/${catalogId}/categories`, config)
+    const data = await res.json()
+    return data.categories || data
+  }
+
+  async createCategory(catalogId, name, config) {
+    const merchantId = config.merchant_id
+    const res = await this.apiFetch(`/merchant/v1.0/merchants/${merchantId}/catalogs/${catalogId}/categories`, config, {
+      method: 'POST',
+      body: JSON.stringify({ name, order: 0 })
+    })
+    const data = await res.json()
+    return data
+  }
+
+  async pushItem(itemData, config) {
+    const merchantId = config.merchant_id
+    const res = await this.apiFetch(`/merchant/v1.0/merchants/${merchantId}/items`, config, {
+      method: 'PUT',
+      body: JSON.stringify(itemData)
+    })
+    return res.json()
+  }
+
+  async updateItemStatus(itemId, status, config) {
+    const merchantId = config.merchant_id
+    const res = await this.apiFetch(`/merchant/v1.0/merchants/${merchantId}/items/status`, config, {
+      method: 'PATCH',
+      body: JSON.stringify([{ id: itemId, status }])
+    })
+    return res.json()
+  }
+
+  async syncMenu(menuItems, config) {
+    const merchantId = config.merchant_id
+    const results = { created: 0, updated: 0, errors: [] }
+
+    // 1. Get catalogs
+    let catalogs
+    try {
+      catalogs = await this.getCatalogs(config)
+    } catch (err) {
+      throw new Error(`Erro ao listar catálogos: ${err.message}`)
+    }
+    const defaultCatalog = Array.isArray(catalogs) ? catalogs.find(c => c.catalogId || c.id) : null
+    if (!defaultCatalog) throw new Error('Nenhum catálogo encontrado')
+
+    const catalogId = defaultCatalog.catalogId || defaultCatalog.id
+
+    // 2. Get existing categories
+    let existingCategories
+    try {
+      existingCategories = await this.getCategories(catalogId, config)
+    } catch { existingCategories = [] }
+
+    // 3. Build category map (name → id)
+    const categoryMap = {}
+    if (Array.isArray(existingCategories)) {
+      existingCategories.forEach(c => {
+        if (c.name) categoryMap[c.name] = c.id || c.categoryId
+      })
+    }
+
+    // 4. Ensure categories for our items exist
+    const neededCategories = [...new Set(menuItems.map(i => i.categoria).filter(Boolean))]
+    for (const catName of neededCategories) {
+      if (!categoryMap[catName]) {
+        try {
+          const created = await this.createCategory(catalogId, catName, config)
+          const catId = created.id || created.categoryId
+          if (catId) categoryMap[catName] = catId
+        } catch (err) {
+          results.errors.push(`Erro ao criar categoria "${catName}": ${err.message}`)
+        }
+      }
+    }
+
+    // 5. Push each item
+    for (const item of menuItems) {
+      try {
+        const categoryId = categoryMap[item.categoria]
+
+        if (item.tipo === 'produto') {
+          const payload = {
+            merchantId,
+            externalCode: `menu_${item.id}`,
+            name: item.nome,
+            description: item.descricao || '',
+            type: 'PRODUCT',
+            status: item.disponivel !== false ? 'AVAILABLE' : 'UNAVAILABLE',
+            price: { value: item.preco || 0, originalValue: item.preco || 0 },
+            categoryId,
+            product: {
+              name: item.nome,
+              description: item.descricao || '',
+              imageUrl: item.imagem || '',
+              ean: ''
+            }
+          }
+          await this.pushItem(payload, config)
+          results.created++
+        } else if (item.tipo === 'tamanho') {
+          // Create one item per price tier
+          const tiers = [
+            { key: 'preco_tradicional', label: 'Tradicional' },
+            { key: 'preco_especial', label: 'Especial' },
+            { key: 'preco_nobre', label: 'Nobre' }
+          ]
+          for (const tier of tiers) {
+            const price = item[tier.key]
+            if (price != null && price > 0) {
+              const payload = {
+                merchantId,
+                externalCode: `menu_${item.id}_${tier.label.toLowerCase()}`,
+                name: `${item.nome} ${tier.label}`,
+                description: item.descricao || '',
+                type: 'PRODUCT',
+                status: item.disponivel !== false ? 'AVAILABLE' : 'UNAVAILABLE',
+                price: { value: price, originalValue: price },
+                categoryId,
+                product: {
+                  name: `${item.nome} ${tier.label}`,
+                  description: item.descricao || '',
+                  imageUrl: item.imagem || '',
+                  ean: ''
+                }
+              }
+              await this.pushItem(payload, config)
+              results.created++
+            }
+          }
+        } else if (item.tipo === 'sabor') {
+          // Flavors are pushed as simple items; they can be used as options via externalCode
+          const payload = {
+            merchantId,
+            externalCode: `menu_${item.id}`,
+            name: item.nome,
+            description: item.descricao || '',
+            type: 'PRODUCT',
+            status: item.disponivel !== false ? 'AVAILABLE' : 'UNAVAILABLE',
+            price: { value: 0, originalValue: 0 },
+            categoryId,
+            product: {
+              name: item.nome,
+              description: item.descricao || '',
+              imageUrl: item.imagem || '',
+              ean: ''
+            }
+          }
+          await this.pushItem(payload, config)
+          results.created++
+        }
+      } catch (err) {
+        results.errors.push(`Item #${item.id} "${item.nome}": ${err.message}`)
+      }
+    }
+
+    return results
+  }
+
   async testConnection(config) {
     if (!config.client_id) return { success: false, message: 'Client ID não informado' }
     if (!config.client_secret) return { success: false, message: 'Client Secret não informado' }

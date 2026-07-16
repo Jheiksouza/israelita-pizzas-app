@@ -1229,6 +1229,8 @@ function AdminConfiguracoes() {
   const [testResult, setTestResult] = useState(null)
   const [msg, setMsg] = useState('')
   const [polling, setPolling] = useState(false)
+  const [syncMenuLoading, setSyncMenuLoading] = useState(false)
+  const [syncMenuResult, setSyncMenuResult] = useState(null)
 
   useEffect(() => {
     Promise.all([
@@ -1309,6 +1311,29 @@ function AdminConfiguracoes() {
     setPolling(false)
   }
 
+  const handleSyncMenu = async (platform) => {
+    setSyncMenuLoading(true)
+    setSyncMenuResult(null)
+    setMsg('')
+    try {
+      const res = await fetch(`${API}/marketplace/${platform}/sync-menu`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }
+      })
+      const data = await res.json()
+      setSyncMenuResult({ ok: res.ok, ...data })
+      if (res.ok) {
+        const total = data.created + data.updated
+        const erros = data.errors?.length || 0
+        setMsg(`Cardápio sincronizado! ${total} itens enviados${erros ? `, ${erros} erro(s)` : ''}`)
+      } else {
+        setMsg('Erro: ' + (data.error || 'Falha'))
+      }
+    } catch {
+      setMsg('Erro de conexão')
+    }
+    setSyncMenuLoading(false)
+  }
+
   const [debugLog, setDebugLog] = useState(null)
   const handleDebug = async () => {
     try {
@@ -1345,7 +1370,7 @@ function AdminConfiguracoes() {
     return (
       <div className="marketplace-detail">
         <div className="marketplace-detail-topbar">
-          <button className="btn btn-ghost" onClick={() => { setSelectedPlatform(null); setTestResult(null) }}>
+          <button className="btn btn-ghost" onClick={() => { setSelectedPlatform(null); setTestResult(null); setSyncMenuResult(null) }}>
             <ChevronLeft size={18} /> Voltar
           </button>
         </div>
@@ -1427,6 +1452,27 @@ function AdminConfiguracoes() {
               </div>
             )}
 
+            {syncMenuResult && !syncMenuResult.ok && (
+              <div className="test-result test-result-error">
+                <X size={18} />
+                {syncMenuResult.error || 'Erro ao sincronizar cardápio'}
+              </div>
+            )}
+            {syncMenuResult && syncMenuResult.ok && (
+              <div className="test-result test-result-success">
+                <CheckCircle size={18} />
+                <span>
+                  Cardápio sincronizado! {syncMenuResult.created} criados, {syncMenuResult.updated} atualizados.
+                  {syncMenuResult.errors?.length > 0 && (
+                    <span style={{ display: 'block', marginTop: 4, fontSize: 12, color: 'var(--destructive)' }}>
+                      {syncMenuResult.errors.length} erro(s): {syncMenuResult.errors.slice(0, 3).join('; ')}
+                      {syncMenuResult.errors.length > 3 && ` (+${syncMenuResult.errors.length - 3} mais)`}
+                    </span>
+                  )}
+                </span>
+              </div>
+            )}
+
             <div className="marketplace-detail-actions">
               <button className="btn btn-secondary" onClick={() => handleTest(mp.platform)} disabled={!isEnabled || testando[mp.platform]}>
                 {testando[mp.platform] ? 'Testando...' : 'Testar conexão'}
@@ -1434,6 +1480,11 @@ function AdminConfiguracoes() {
               {mp.supportsPolling && (
                 <button className="btn btn-ghost" onClick={() => handlePoll(mp.platform)} disabled={!isEnabled || polling}>
                   {polling ? 'Buscando...' : 'Buscar pedidos pendentes'}
+                </button>
+              )}
+              {mp.supportsMenuSync && (
+                <button className="btn btn-ghost" onClick={() => handleSyncMenu(mp.platform)} disabled={!isEnabled || syncMenuLoading}>
+                  {syncMenuLoading ? 'Sincronizando...' : 'Sincronizar cardápio'}
                 </button>
               )}
               <button className="btn btn-primary" onClick={() => handleSalvar(mp.platform)} disabled={salvando[mp.platform]}>
