@@ -332,21 +332,21 @@ class IfoodAdapter extends MarketplaceAdapter {
 
   async getCatalogs(config) {
     const merchantId = config.merchant_id
-    const res = await this.apiFetch(`/merchant/v1.0/merchants/${merchantId}/catalogs`, config)
+    const res = await this.apiFetch(`/catalog/v2.0/merchants/${merchantId}/catalogs`, config)
     const data = await res.json()
     return data.catalogs || data
   }
 
   async getCategories(catalogId, config) {
     const merchantId = config.merchant_id
-    const res = await this.apiFetch(`/merchant/v1.0/merchants/${merchantId}/catalogs/${catalogId}/categories`, config)
+    const res = await this.apiFetch(`/catalog/v2.0/merchants/${merchantId}/catalogs/${catalogId}/categories`, config)
     const data = await res.json()
     return data.categories || data
   }
 
   async createCategory(catalogId, name, config) {
     const merchantId = config.merchant_id
-    const res = await this.apiFetch(`/merchant/v1.0/merchants/${merchantId}/catalogs/${catalogId}/categories`, config, {
+    const res = await this.apiFetch(`/catalog/v2.0/merchants/${merchantId}/catalogs/${catalogId}/categories`, config, {
       method: 'POST',
       body: JSON.stringify({ name, order: 0 })
     })
@@ -356,7 +356,7 @@ class IfoodAdapter extends MarketplaceAdapter {
 
   async pushItem(itemData, config) {
     const merchantId = config.merchant_id
-    const res = await this.apiFetch(`/merchant/v1.0/merchants/${merchantId}/items`, config, {
+    const res = await this.apiFetch(`/catalog/v2.0/merchants/${merchantId}/items`, config, {
       method: 'PUT',
       body: JSON.stringify(itemData)
     })
@@ -365,7 +365,7 @@ class IfoodAdapter extends MarketplaceAdapter {
 
   async updateItemStatus(itemId, status, config) {
     const merchantId = config.merchant_id
-    const res = await this.apiFetch(`/merchant/v1.0/merchants/${merchantId}/items/status`, config, {
+    const res = await this.apiFetch(`/catalog/v2.0/merchants/${merchantId}/items/status`, config, {
       method: 'PATCH',
       body: JSON.stringify([{ id: itemId, status }])
     })
