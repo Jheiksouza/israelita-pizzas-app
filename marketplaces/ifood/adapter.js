@@ -375,22 +375,23 @@ class IfoodAdapter extends MarketplaceAdapter {
 
   async pushItem(itemData, config) {
     const merchantId = config.merchant_id
+    const productId = crypto.randomUUID()
     const body = {
       item: {
-        id: null,
+        id: crypto.randomUUID(),
         type: 'DEFAULT',
         categoryId: itemData.categoryId,
         status: itemData.status || 'AVAILABLE',
         price: itemData.price || { value: 0, originalValue: 0 },
         externalCode: itemData.externalCode,
         index: 0,
-        productId: null,
-        shifts: null,
-        tags: null,
-        contextModifiers: null
+        productId,
+        shifts: [],
+        tags: [],
+        contextModifiers: []
       },
       products: [{
-        id: null,
+        id: productId,
         externalCode: itemData.externalCode,
         name: itemData.name,
         description: itemData.description || '',
@@ -398,18 +399,24 @@ class IfoodAdapter extends MarketplaceAdapter {
         imagePath: itemData.product?.imageUrl || '',
         ean: itemData.product?.ean || '',
         serving: null,
-        dietaryRestrictions: null,
+        dietaryRestrictions: [],
         quantity: null,
-        optionGroups: null
+        optionGroups: []
       }],
       optionGroups: [],
       options: []
     }
-    const res = await this.catalogFetch(`/merchants/${merchantId}/items`, config, {
-      method: 'PUT',
-      body: JSON.stringify(body)
-    })
-    return res.json()
+    try {
+      const res = await this.catalogFetch(`/merchants/${merchantId}/items`, config, {
+        method: 'PUT',
+        body: JSON.stringify(body)
+      })
+      return res.json()
+    } catch (err) {
+      console.error('[ifood] pushItem error:', JSON.stringify(body, null, 2))
+      console.error('[ifood] pushItem response:', err.message)
+      throw err
+    }
   }
 
   async updateItemStatus(itemId, status, config) {
