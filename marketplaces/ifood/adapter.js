@@ -367,7 +367,7 @@ class IfoodAdapter extends MarketplaceAdapter {
     const merchantId = config.merchant_id
     const res = await this.catalogFetch(`/merchants/${merchantId}/catalogs/${catalogId}/categories`, config, {
       method: 'POST',
-      body: JSON.stringify({ name, status: 'AVAILABLE', template: 'DEFAULT', sequence: 0 })
+      body: JSON.stringify({ name, status: 'AVAILABLE', template: 'DEFAULT' })
     })
     const data = await res.json()
     return data
@@ -382,26 +382,14 @@ class IfoodAdapter extends MarketplaceAdapter {
         type: 'DEFAULT',
         categoryId: itemData.categoryId,
         status: itemData.status || 'AVAILABLE',
-        price: itemData.price || { value: 0, originalValue: 0 },
-        externalCode: itemData.externalCode,
-        index: 0,
-        productId,
-        shifts: [],
-        tags: [],
-        contextModifiers: []
+        price: { value: (itemData.price?.value || itemData.price || 0) },
+        externalCode: itemData.externalCode
       },
       products: [{
         id: productId,
         externalCode: itemData.externalCode,
         name: itemData.name,
-        description: itemData.description || '',
-        additionalInformation: '',
-        imagePath: itemData.product?.imageUrl || '',
-        ean: itemData.product?.ean || '',
-        serving: null,
-        dietaryRestrictions: [],
-        quantity: null,
-        optionGroups: []
+        description: itemData.description || ''
       }],
       optionGroups: [],
       options: []
@@ -413,8 +401,8 @@ class IfoodAdapter extends MarketplaceAdapter {
       })
       return res.json()
     } catch (err) {
-      console.error('[ifood] pushItem error:', JSON.stringify(body, null, 2))
-      console.error('[ifood] pushItem response:', err.message)
+      console.error('[ifood] pushItem body:', JSON.stringify(body, null, 2))
+      console.error('[ifood] pushItem error:', err.message)
       throw err
     }
   }
