@@ -375,9 +375,39 @@ class IfoodAdapter extends MarketplaceAdapter {
 
   async pushItem(itemData, config) {
     const merchantId = config.merchant_id
+    const body = {
+      item: {
+        id: null,
+        type: 'DEFAULT',
+        categoryId: itemData.categoryId,
+        status: itemData.status || 'AVAILABLE',
+        price: itemData.price || { value: 0, originalValue: 0 },
+        externalCode: itemData.externalCode,
+        index: 0,
+        productId: null,
+        shifts: null,
+        tags: null,
+        contextModifiers: null
+      },
+      products: [{
+        id: null,
+        externalCode: itemData.externalCode,
+        name: itemData.name,
+        description: itemData.description || '',
+        additionalInformation: '',
+        imagePath: itemData.product?.imageUrl || '',
+        ean: itemData.product?.ean || '',
+        serving: null,
+        dietaryRestrictions: null,
+        quantity: null,
+        optionGroups: null
+      }],
+      optionGroups: [],
+      options: []
+    }
     const res = await this.catalogFetch(`/merchants/${merchantId}/items`, config, {
       method: 'PUT',
-      body: JSON.stringify(itemData)
+      body: JSON.stringify(body)
     })
     return res.json()
   }
