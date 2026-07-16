@@ -570,7 +570,6 @@ class IfoodAdapter extends MarketplaceAdapter {
       if (!catId || !catName) continue
 
       // Items can be embedded directly in the category response (items array)
-      // or we need to fetch them separately
       const embeddedItems = cat.items || cat.products || []
       if (Array.isArray(embeddedItems) && embeddedItems.length > 0) {
         for (const fullItem of embeddedItems) {
@@ -597,8 +596,11 @@ class IfoodAdapter extends MarketplaceAdapter {
         // Fallback: try to fetch items via dedicated endpoint
         try {
           const res = await this.catalogFetch(`/merchants/${config.merchant_id}/categories/${catId}/items`, config)
-          const data = await res.json()
-          const fetchedItems = data.items || data
+          const raw = await res.text()
+          let data
+          try { data = JSON.parse(raw) } catch { data = { raw: raw.slice(0, 500) } }
+          console.error(`[ifood] GET categories/${catId}/items raw:`, raw.slice(0, 1000))
+          const fetchedItems = data.items || (Array.isArray(data) ? data : null)
           if (Array.isArray(fetchedItems)) {
             for (const fullItem of fetchedItems) {
               try {
@@ -620,6 +622,8 @@ class IfoodAdapter extends MarketplaceAdapter {
                 results.errors.push(`Erro ao processar item em "${catName}": ${err.message}`)
               }
             }
+          } else {
+            results.errors.push(`Categoria "${catName}" retornou: ${JSON.stringify(data).slice(0, 300)}`)
           }
         } catch (err) {
           console.error(`[ifood] importMenu items fetch error for "${catName}":`, err.message)
