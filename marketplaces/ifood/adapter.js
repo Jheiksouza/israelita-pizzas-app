@@ -367,7 +367,7 @@ class IfoodAdapter extends MarketplaceAdapter {
     const merchantId = config.merchant_id
     const res = await this.catalogFetch(`/merchants/${merchantId}/catalogs/${catalogId}/categories`, config, {
       method: 'POST',
-      body: JSON.stringify({ name, order: 0 })
+      body: JSON.stringify({ name, status: 'AVAILABLE', template: 'DEFAULT', sequence: 0 })
     })
     const data = await res.json()
     return data
