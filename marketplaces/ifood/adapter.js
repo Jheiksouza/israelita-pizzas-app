@@ -376,36 +376,11 @@ class IfoodAdapter extends MarketplaceAdapter {
 
   async pushItem(itemData, config) {
     const merchantId = config.merchant_id
-    const productId = crypto.randomUUID()
-    const body = {
-      item: {
-        id: crypto.randomUUID(),
-        type: 'DEFAULT',
-        categoryId: itemData.categoryId,
-        status: itemData.status || 'AVAILABLE',
-        price: { value: (itemData.price?.value || itemData.price || 0) },
-        externalCode: itemData.externalCode
-      },
-      products: [{
-        id: productId,
-        externalCode: itemData.externalCode,
-        name: itemData.name,
-        description: itemData.description || ''
-      }],
-      optionGroups: [],
-      options: []
-    }
-    try {
-      const res = await this.catalogFetch(`/merchants/${merchantId}/items`, config, {
-        method: 'PUT',
-        body: JSON.stringify(body)
-      })
-      return res.json()
-    } catch (err) {
-      console.error('[ifood] pushItem body:', JSON.stringify(body, null, 2))
-      console.error('[ifood] pushItem error:', err.message)
-      throw err
-    }
+    const res = await this.catalogFetch(`/merchants/${merchantId}/items`, config, {
+      method: 'PUT',
+      body: JSON.stringify(itemData)
+    })
+    return res.json()
   }
 
   async updateItemStatus(itemId, status, config) {
@@ -544,14 +519,6 @@ class IfoodAdapter extends MarketplaceAdapter {
     return results
   }
 
-  async getCategoryItems(categoryId, config) {
-    const merchantId = config.merchant_id
-    const res = await this.catalogFetch(`/merchants/${merchantId}/categories/${categoryId}/items`, config)
-    const data = await res.json()
-    console.error(`[ifood] getCategoryItems(${categoryId}) response:`, JSON.stringify(data).slice(0, 500))
-    return data.items || data
-  }
-
   async importMenu(config) {
     const catalogs = await this.getCatalogs(config)
     const defaultCatalog = Array.isArray(catalogs) ? catalogs.find(c => c.catalogId || c.id) : null
@@ -569,66 +536,34 @@ class IfoodAdapter extends MarketplaceAdapter {
       const catName = cat.name
       if (!catId || !catName) continue
 
-      // Items can be embedded directly in the category response (items array)
-      const embeddedItems = cat.items || cat.products || []
-      if (Array.isArray(embeddedItems) && embeddedItems.length > 0) {
-        for (const fullItem of embeddedItems) {
-          try {
-            const item = fullItem.item || fullItem
-            const product = fullItem.products?.[0] || {}
-            const name = item.name || product.name || fullItem.name || ''
-            if (!name) continue
-            items.push({
-              nome: name,
-              descricao: item.description || product.description || fullItem.description || '',
-              preco: item.price?.value || fullItem.price?.value || 0,
-              categoria: catName,
-              imagem: product.imagePath || fullItem.imagePath || '',
-              tipo: 'produto',
-              disponivel: (item.status || fullItem.status || 'AVAILABLE') === 'AVAILABLE',
-              externalCode: item.externalCode || fullItem.externalCode || ''
-            })
-          } catch (err) {
-            results.errors.push(`Erro ao processar item em "${catName}": ${err.message}`)
-          }
-        }
-      } else {
-        // Fallback: try to fetch items via dedicated endpoint
-        try {
-          const res = await this.catalogFetch(`/merchants/${config.merchant_id}/categories/${catId}/items`, config)
-          const raw = await res.text()
-          let data
-          try { data = JSON.parse(raw) } catch { data = { raw: raw.slice(0, 500) } }
-          console.error(`[ifood] GET categories/${catId}/items raw:`, raw.slice(0, 1000))
-          const fetchedItems = data.items || (Array.isArray(data) ? data : null)
-          if (Array.isArray(fetchedItems)) {
-            for (const fullItem of fetchedItems) {
-              try {
-                const item = fullItem.item || fullItem
-                const product = fullItem.products?.[0] || {}
-                const name = item.name || product.name || ''
-                if (!name) continue
-                items.push({
-                  nome: name,
-                  descricao: item.description || product.description || '',
-                  preco: item.price?.value || 0,
-                  categoria: catName,
-                  imagem: product.imagePath || '',
-                  tipo: 'produto',
-                  disponivel: item.status === 'AVAILABLE',
-                  externalCode: item.externalCode || ''
-                })
-              } catch (err) {
-                results.errors.push(`Erro ao processar item em "${catName}": ${err.message}`)
-              }
+      try {
+        const res = await this.catalogFetch(`/merchants/${config.merchant_id}/categories/${catId}/items`, config)
+        const data = await res.json()
+        const fetchedItems = data.items || (Array.isArray(data) ? data : [])
+        if (Array.isArray(fetchedItems)) {
+          for (const fullItem of fetchedItems) {
+            try {
+              const item = fullItem.item || fullItem
+              const product = fullItem.products?.[0] || {}
+              const name = item.name || product.name || ''
+              if (!name) continue
+              items.push({
+                nome: name,
+                descricao: item.description || product.description || '',
+                preco: item.price?.value || 0,
+                categoria: catName,
+                imagem: product.imagePath || '',
+                tipo: 'produto',
+                disponivel: item.status === 'AVAILABLE',
+                externalCode: item.externalCode || ''
+              })
+            } catch (err) {
+              results.errors.push(`Erro ao processar item em "${catName}": ${err.message}`)
             }
-          } else {
-            results.errors.push(`Categoria "${catName}" retornou: ${JSON.stringify(data).slice(0, 300)}`)
           }
-        } catch (err) {
-          console.error(`[ifood] importMenu items fetch error for "${catName}":`, err.message)
-          results.errors.push(`Erro ao buscar itens da categoria "${catName}": ${err.message}`)
         }
+      } catch (err) {
+        results.errors.push(`Erro ao buscar itens da categoria "${catName}": ${err.message}`)
       }
     }
 
