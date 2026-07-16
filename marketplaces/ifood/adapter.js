@@ -543,6 +543,66 @@ class IfoodAdapter extends MarketplaceAdapter {
     return results
   }
 
+  async getCategoryItems(categoryId, config) {
+    const merchantId = config.merchant_id
+    const res = await this.catalogFetch(`/merchants/${merchantId}/categories/${categoryId}/items`, config)
+    const data = await res.json()
+    return data.items || data
+  }
+
+  async importMenu(config) {
+    const catalogs = await this.getCatalogs(config)
+    const defaultCatalog = Array.isArray(catalogs) ? catalogs.find(c => c.catalogId || c.id) : null
+    if (!defaultCatalog) throw new Error('Nenhum catálogo encontrado')
+    const catalogId = defaultCatalog.catalogId || defaultCatalog.id
+
+    const categories = await this.getCategories(catalogId, config)
+    if (!Array.isArray(categories)) throw new Error('Nenhuma categoria encontrada')
+
+    const results = { created: 0, updated: 0, errors: [] }
+    const items = []
+
+    for (const cat of categories) {
+      const catId = cat.id || cat.categoryId
+      const catName = cat.name
+      if (!catId || !catName) continue
+
+      let categoryItems
+      try {
+        categoryItems = await this.getCategoryItems(catId, config)
+      } catch (err) {
+        results.errors.push(`Erro ao buscar itens da categoria "${catName}": ${err.message}`)
+        continue
+      }
+
+      if (!Array.isArray(categoryItems)) continue
+
+      for (const fullItem of categoryItems) {
+        try {
+          const item = fullItem.item || fullItem
+          const product = fullItem.products?.[0] || {}
+          const name = item.name || product.name || ''
+          if (!name) continue
+
+          items.push({
+            nome: name,
+            descricao: item.description || product.description || '',
+            preco: item.price?.value || 0,
+            categoria: catName,
+            imagem: product.imagePath || '',
+            tipo: 'produto',
+            disponivel: item.status === 'AVAILABLE',
+            externalCode: item.externalCode || ''
+          })
+        } catch (err) {
+          results.errors.push(`Erro ao processar item na categoria "${catName}": ${err.message}`)
+        }
+      }
+    }
+
+    return { items, results }
+  }
+
   async testConnection(config) {
     if (!config.client_id) return { success: false, message: 'Client ID não informado' }
     if (!config.client_secret) return { success: false, message: 'Client Secret não informado' }

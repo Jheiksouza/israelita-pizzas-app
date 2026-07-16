@@ -1095,6 +1095,52 @@ app.post('/marketplace/:platform/sync-menu', async (req, res) => {
   }
 })
 
+app.post('/marketplace/:platform/import-menu', async (req, res) => {
+  if (!checkSupabase(res)) return
+  try {
+    const { platform } = req.params
+    const adapter = getAdapter(platform)
+    if (!adapter) return res.status(404).json({ error: 'Marketplace não encontrado' })
+    if (!adapter.importMenu) return res.status(400).json({ error: 'Import não suportado' })
+
+    let q = supabase.from('app_config').select('valor').eq('chave', 'marketplaces')
+    if (storeId(req)) q = q.eq('store_id', storeId(req))
+    const { data: configData } = await q.maybeSingle()
+    const allConfigs = configData?.valor || {}
+    const config = allConfigs[platform] || {}
+    if (!config.enabled) return res.status(403).json({ error: 'Integração desabilitada' })
+
+    const result = await adapter.importMenu(config)
+
+    if (result.items && result.items.length > 0) {
+      for (const item of result.items) {
+        const { externalCode, ...data } = item
+        const { data: existing } = await supabase.from('menu')
+          .select('id')
+          .eq('nome', item.nome)
+          .eq('categoria', item.categoria)
+          .maybeSingle()
+
+        if (existing) {
+          await supabase.from('menu')
+            .update({ ...data, store_id: storeId(req) })
+            .eq('id', existing.id)
+          result.results.updated++
+        } else {
+          await supabase.from('menu')
+            .insert({ ...data, store_id: storeId(req) })
+          result.results.created++
+        }
+      }
+    }
+
+    res.json(result.results)
+  } catch (err) {
+    console.error('[Marketplace Import Menu] Erro:', err)
+    res.status(500).json({ error: err.message || 'Erro interno' })
+  }
+})
+
 // Configuração da pizzaria (agora em stores.config)
 app.get('/admin/config/pizzaria', async (req, res) => {
   if (!checkSupabase(res)) return

@@ -1231,6 +1231,8 @@ function AdminConfiguracoes() {
   const [polling, setPolling] = useState(false)
   const [syncMenuLoading, setSyncMenuLoading] = useState(false)
   const [syncMenuResult, setSyncMenuResult] = useState(null)
+  const [importMenuLoading, setImportMenuLoading] = useState(false)
+  const [importMenuResult, setImportMenuResult] = useState(null)
 
   useEffect(() => {
     Promise.all([
@@ -1332,6 +1334,29 @@ function AdminConfiguracoes() {
       setMsg('Erro de conexão')
     }
     setSyncMenuLoading(false)
+  }
+
+  const handleImportMenu = async (platform) => {
+    setImportMenuLoading(true)
+    setImportMenuResult(null)
+    setMsg('')
+    try {
+      const res = await fetch(`${API}/marketplace/${platform}/import-menu`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }
+      })
+      const data = await res.json()
+      setImportMenuResult({ ok: res.ok, ...data })
+      if (res.ok) {
+        const total = data.created + data.updated
+        const erros = data.errors?.length || 0
+        setMsg(`Cardápio importado do iFood! ${total} itens${erros ? `, ${erros} erro(s)` : ''}`)
+      } else {
+        setMsg('Erro: ' + (data.error || 'Falha'))
+      }
+    } catch {
+      setMsg('Erro de conexão')
+    }
+    setImportMenuLoading(false)
   }
 
   const [debugLog, setDebugLog] = useState(null)
@@ -1473,6 +1498,27 @@ function AdminConfiguracoes() {
               </div>
             )}
 
+            {importMenuResult && !importMenuResult.ok && (
+              <div className="test-result test-result-error">
+                <X size={18} />
+                {importMenuResult.error || 'Erro ao importar cardápio'}
+              </div>
+            )}
+            {importMenuResult && importMenuResult.ok && (
+              <div className="test-result test-result-success">
+                <CheckCircle size={18} />
+                <span>
+                  Cardápio importado do iFood! {importMenuResult.created} criados, {importMenuResult.updated} atualizados.
+                  {importMenuResult.errors?.length > 0 && (
+                    <span style={{ display: 'block', marginTop: 4, fontSize: 12, color: 'var(--destructive)' }}>
+                      {importMenuResult.errors.length} erro(s): {importMenuResult.errors.slice(0, 3).join('; ')}
+                      {importMenuResult.errors.length > 3 && ` (+${importMenuResult.errors.length - 3} mais)`}
+                    </span>
+                  )}
+                </span>
+              </div>
+            )}
+
             <div className="marketplace-detail-actions">
               <button className="btn btn-secondary" onClick={() => handleTest(mp.platform)} disabled={!isEnabled || testando[mp.platform]}>
                 {testando[mp.platform] ? 'Testando...' : 'Testar conexão'}
@@ -1484,7 +1530,12 @@ function AdminConfiguracoes() {
               )}
               {mp.supportsMenuSync && (
                 <button className="btn btn-ghost" onClick={() => handleSyncMenu(mp.platform)} disabled={!isEnabled || syncMenuLoading}>
-                  {syncMenuLoading ? 'Sincronizando...' : 'Sincronizar cardápio'}
+                  {syncMenuLoading ? 'Sincronizando...' : 'Enviar para iFood'}
+                </button>
+              )}
+              {mp.supportsMenuSync && (
+                <button className="btn btn-ghost" onClick={() => handleImportMenu(mp.platform)} disabled={!isEnabled || importMenuLoading}>
+                  {importMenuLoading ? 'Importando...' : 'Importar do iFood'}
                 </button>
               )}
               <button className="btn btn-primary" onClick={() => handleSalvar(mp.platform)} disabled={salvando[mp.platform]}>
