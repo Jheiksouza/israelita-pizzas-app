@@ -47,7 +47,9 @@ export default function TesteIfood() {
     try {
       const r = await fetch(`${API}/orders`)
       const data = await r.json()
-      setPedidos(Array.isArray(data) ? data : [])
+      const arr = Array.isArray(data) ? data : []
+      arr.sort((a, b) => new Date(b.data || 0) - new Date(a.data || 0))
+      setPedidos(arr)
     } catch (e) {
       setResposta('Erro ao carregar pedidos: ' + e.message)
     } finally {
@@ -122,6 +124,8 @@ export default function TesteIfood() {
 
       {resposta && <pre style={styles.msg}>{resposta}</pre>}
 
+      <div style={{ display: 'flex', gap: 20, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+        <div style={{ flex: '1 1 560px', minWidth: 0 }}>
       <table style={styles.table}>
         <thead>
           <tr>
@@ -177,13 +181,17 @@ export default function TesteIfood() {
           })}
         </tbody>
       </table>
+        </div>
 
-      <h2 style={{ fontSize: 16, marginTop: 28 }}>Últimos webhooks recebidos</h2>
-      {log.length === 0 ? (
-        <p style={{ fontSize: 13, color: '#888' }}>Nenhum webhook registrado ainda.</p>
-      ) : (
-        <pre style={styles.msg}>{JSON.stringify(log, null, 2)}</pre>
-      )}
+        <div style={{ flex: '0 0 320px', minWidth: 260 }}>
+          <h2 style={{ fontSize: 14, margin: 0, marginBottom: 6 }}>Último webhook recebido</h2>
+          {log.length === 0 ? (
+            <p style={{ fontSize: 13, color: '#888' }}>Nenhum webhook registrado ainda.</p>
+          ) : (
+            <pre style={styles.msg}>{JSON.stringify(log[0], null, 2)}</pre>
+          )}
+        </div>
+      </div>
     </div>
   )
 }
