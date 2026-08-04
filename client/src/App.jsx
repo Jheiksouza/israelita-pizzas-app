@@ -5,6 +5,7 @@ import L from 'leaflet'
 import { registerFCMToken } from './firebase'
 import { isLandingPage } from './config'
 import LandingPage from './LandingPage'
+import TesteIfood from './TesteIfood'
 
 const API = '/api'
 
@@ -58,6 +59,10 @@ function App() {
       } catch {}
     }
   }, [])
+
+  if (window.location.pathname.startsWith('/testeifood')) {
+    return <TesteIfood />
+  }
 
   if (isLandingPage()) {
     return <LandingPage />
