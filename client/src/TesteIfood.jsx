@@ -46,6 +46,7 @@ const s = {
   sectionTitle: { margin: 0, marginBottom: 10, fontSize: 14, fontWeight: 700 },
   input: { padding: '6px 8px', border: '1px solid #ccc', borderRadius: 5, fontSize: 13, boxSizing: 'border-box' },
   label: { display: 'flex', flexDirection: 'column', gap: 3, fontSize: 12, color: '#555' },
+  hintText: { fontSize: 11, color: '#777', fontStyle: 'italic', lineHeight: 1.3 },
   row: { display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 10 },
   itemBox: { border: '1px dashed #ccc', borderRadius: 6, padding: 10, marginBottom: 10 },
   panelTitle: { fontSize: 14, margin: 0, marginBottom: 6, fontWeight: 700 },
@@ -81,6 +82,57 @@ const campo = (label, valor, onChange, props = {}) => (
     />
   </label>
 )
+
+const ORDERTYPE_OPCOES = [
+  { value: 'DELIVERY', desc: 'Entrega: a loja entrega na casa do cliente.' },
+  { value: 'TAKEOUT', desc: 'Retirada: o cliente vai retirar na loja.' },
+  { value: 'INDOOR', desc: 'Consumo no local (balcão/mesa da loja).' }
+]
+
+const CATEGORY_OPCOES = [
+  { value: 'FOOD', desc: 'Pedido de comida normal (entrega ou retirada).' },
+  { value: 'FOOD_SELF_SERVICE', desc: 'Autoatendimento na loja (kiosque/balcão).' },
+  { value: 'ANOTAI', desc: 'Pedido anotai (cardápio digital do restaurante).' }
+]
+
+const TIMING_OPCOES = [
+  { value: 'IMMEDIATE', desc: 'Preparar e entregar o mais breve possível.' },
+  { value: 'SCHEDULED', desc: 'Preparar no horário agendado (pedido programado).' }
+]
+
+const CHANNEL_OPCOES = [
+  { value: 'IFOOD', desc: 'Pedido feito pelo app do iFood.' },
+  { value: 'PHONE', desc: 'Pedido feito por telefone.' },
+  { value: 'MERCHANT', desc: 'Pedido feito na própria loja (balcão).' }
+]
+
+const PAGAMENTO_OPCOES = [
+  { value: 'CASH', desc: 'Dinheiro — pago na entrega/retirada.' },
+  { value: 'CARD', desc: 'Cartão cadastrado no app (pagamento online).' },
+  { value: 'ONLINE', desc: 'Pagamento online no app (cartão ou Pix).' },
+  { value: 'CARD_ON_DELIVERY', desc: 'Cartão na entrega (maquininha).' },
+  { value: 'CARD_ON_PICKUP', desc: 'Cartão na retirada (maquininha na loja).' },
+  { value: 'PIX', desc: 'Pix (online ou na entrega).' },
+  { value: 'MEAL_TICKET', desc: 'Vale refeição/alimentação.' },
+  { value: 'VOUCHER', desc: 'Voucher/convênio.' },
+  { value: 'GIFT', desc: 'Vale presente.' },
+  { value: 'OTHERS', desc: 'Outros.' }
+]
+
+const SelectField = ({ label, valor, onChange, opcoes }) => {
+  const atual = opcoes.find(o => o.value === valor)
+  return (
+    <label style={s.label}>
+      {label}
+      <select style={s.input} value={valor} onChange={e => onChange(e.target.value)}>
+        {opcoes.map(o => (
+          <option key={o.value} value={o.value}>{o.value}</option>
+        ))}
+      </select>
+      <span style={s.hintText}>{atual ? atual.desc : '—'}</span>
+    </label>
+  )
+}
 
 export default function TesteIfood() {
   const [pedidos, setPedidos] = useState([])
@@ -352,10 +404,10 @@ export default function TesteIfood() {
         <div style={s.row}>
           {campo('ID iFood (orderId)', form.oid, setF('oid'))}
           {campo('Display ID', form.displayId, setF('displayId'))}
-          {campo('Order Type', form.orderType, setF('orderType'))}
-          {campo('Category', form.category, setF('category'))}
-          {campo('Order Timing', form.orderTiming, setF('orderTiming'))}
-          {campo('Sales Channel', form.salesChannel, setF('salesChannel'))}
+          <SelectField label="Order Type" valor={form.orderType} onChange={setF('orderType')} opcoes={ORDERTYPE_OPCOES} />
+          <SelectField label="Category" valor={form.category} onChange={setF('category')} opcoes={CATEGORY_OPCOES} />
+          <SelectField label="Order Timing" valor={form.orderTiming} onChange={setF('orderTiming')} opcoes={TIMING_OPCOES} />
+          <SelectField label="Sales Channel" valor={form.salesChannel} onChange={setF('salesChannel')} opcoes={CHANNEL_OPCOES} />
           <label style={{ ...s.label, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
             <input type="checkbox" checked={!!form.isTest} onChange={e => setF('isTest')(e.target.checked)} />
             Pedido de teste (isTest)
@@ -386,7 +438,7 @@ export default function TesteIfood() {
 
         <h3 style={{ fontSize: 13, margin: '6px 0' }}>Entrega</h3>
         <div style={s.row}>
-          {campo('Modo (mode/deliveredBy)', form.entrega.modo, setF('entrega.modo'))}
+          <SelectField label="Modo (mode/deliveredBy)" valor={form.entrega.modo} onChange={setF('entrega.modo')} opcoes={ORDERTYPE_OPCOES} />
           {campo('Observações', form.entrega.obs, setF('entrega.obs'))}
           {campo('Código de coleta', form.entrega.pickupCode, setF('entrega.pickupCode'))}
           {campo('Data/hora entrega', form.entrega.data, setF('entrega.data'), { type: 'datetime-local' })}
@@ -396,8 +448,8 @@ export default function TesteIfood() {
 
         <h3 style={{ fontSize: 13, margin: '6px 0' }}>Pagamento</h3>
         <div style={s.row}>
-          {campo('Método', form.pagamento.method, setF('pagamento.method'))}
-          {campo('Tipo', form.pagamento.type, setF('pagamento.type'))}
+          <SelectField label="Método" valor={form.pagamento.method} onChange={setF('pagamento.method')} opcoes={PAGAMENTO_OPCOES} />
+          <SelectField label="Tipo" valor={form.pagamento.type} onChange={setF('pagamento.type')} opcoes={PAGAMENTO_OPCOES} />
           {campo('Bandeira', form.pagamento.brand, setF('pagamento.brand'))}
           {campo('Valor', form.pagamento.value, setF('pagamento.value'))}
           {campo('Troco para', form.pagamento.changeFor, setF('pagamento.changeFor'))}

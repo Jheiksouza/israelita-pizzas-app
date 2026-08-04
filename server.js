@@ -673,15 +673,19 @@ app.patch('/orders/:id', async (req, res) => {
         const config = allConfigs[origem] || {}
         if (config.enabled) {
           const extId = order.cliente?.marketplace_order_id
+          const c = order.cliente || {}
+          const modo = (c.orderType || c.deliveryMode || c.metodo_entrega || '').toUpperCase()
+          const retirada = ['TAKEOUT', 'PICKUP', 'SELF_SERVICE', 'INDOOR'].includes(modo) || (c.category || '').toUpperCase() === 'FOOD_SELF_SERVICE'
           const statusMap = {
             'aceito': ['confirmed', 'preparation_started'],
-            'liberado': ['dispatched'],
+            'liberado': retirada ? ['ready_to_pickup'] : ['dispatched'],
           }
           const mappedStatuses = statusMap[order.status]
           const pathMap = {
             confirmed: `/order/v1.0/orders/${extId}/confirm`,
             preparation_started: `/order/v1.0/orders/${extId}/startPreparation`,
             dispatched: `/order/v1.0/orders/${extId}/dispatch`,
+            ready_to_pickup: `/order/v1.0/orders/${extId}/readyToPickup`,
           }
           if (mappedStatuses && extId) {
             mappedStatuses.forEach(s => {
