@@ -107,6 +107,8 @@ const CHANNEL_OPCOES = [
 ]
 
 const PAGAMENTO_OPCOES = [
+  { value: 'CREDIT', desc: 'Cartão de crédito — pagamento online no app.' },
+  { value: 'DEBIT', desc: 'Cartão de débito — pagamento online no app.' },
   { value: 'CASH', desc: 'Dinheiro — pago na entrega/retirada.' },
   { value: 'CARD', desc: 'Cartão cadastrado no app (pagamento online).' },
   { value: 'ONLINE', desc: 'Pagamento online no app (cartão ou Pix).' },

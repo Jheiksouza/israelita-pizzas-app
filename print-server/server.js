@@ -5,6 +5,21 @@ const path = require('path')
 const os = require('os')
 const iconv = require('iconv-lite')
 
+const PAGAMENTO_LABELS = {
+  CASH: 'Dinheiro',
+  CREDIT: 'Cartao de credito',
+  DEBIT: 'Cartao de debito',
+  CARD: 'Cartao',
+  ONLINE: 'Pagamento online',
+  CARD_ON_DELIVERY: 'Cartao na entrega',
+  CARD_ON_PICKUP: 'Cartao na retirada',
+  PIX: 'Pix',
+  MEAL_TICKET: 'Vale refeicao',
+  VOUCHER: 'Voucher',
+  GIFT: 'Vale presente',
+  OTHERS: 'Outros',
+}
+
 const PORT = 13001
 let printerName = 'POS-80'
 const API_URL = process.env.API_URL || 'http://localhost:3001'
@@ -187,8 +202,9 @@ function gerarBytes(pedido) {
   if (c.pagamento && c.pagamento.length > 0) {
     txt(SEP + '\n')
     for (const p of c.pagamento) {
-      let linha = `${p.metodo} R$${(p.valor || 0).toFixed(2)}`
-      if (p.bandeira) linha += ` (${p.bandeira})`
+      let linha = `${PAGAMENTO_LABELS[p.metodo] || p.metodo} R$${(p.valor || 0).toFixed(2)}`
+      if (p.cardBrand) linha += ` (${p.cardBrand})`
+      else if (p.bandeira) linha += ` (${p.bandeira})`
       if (p.prepago) linha += ' [PAGO]'
       if (p.troco) linha += ` Troco: R$${p.troco.toFixed(2)}`
       txt(linha + '\n')

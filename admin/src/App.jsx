@@ -27,6 +27,21 @@ function isRetirada(pedido) {
   return MODOS_RETIRADA.includes(modo) || categoria === 'FOOD_SELF_SERVICE'
 }
 
+const PAGAMENTO_LABELS = {
+  CASH: 'Dinheiro',
+  CREDIT: 'Cartão de crédito',
+  DEBIT: 'Cartão de débito',
+  CARD: 'Cartão',
+  ONLINE: 'Pagamento online',
+  CARD_ON_DELIVERY: 'Cartão na entrega',
+  CARD_ON_PICKUP: 'Cartão na retirada',
+  PIX: 'Pix',
+  MEAL_TICKET: 'Vale refeição',
+  VOUCHER: 'Voucher',
+  GIFT: 'Vale presente',
+  OTHERS: 'Outros',
+}
+
 const statusLabelFor = (pedido) => {
   if (!pedido?.status) return ''
   if (pedido.status === 'liberado') return isRetirada(pedido) ? 'Pronto p/ retirar' : 'Saiu p/ entrega'
@@ -646,7 +661,7 @@ function AdminOrders() {
                               <CreditCard size={14} />
                               <span className="detalhe-label">Pagamento</span>
                               <span>
-                                {p.metodo === 'ONLINE' ? 'Online' : p.metodo}{p.bandeira ? ` - ${p.bandeira}` : ''}
+                                {PAGAMENTO_LABELS[p.metodo] || p.metodo}{p.bandeira ? ` - ${p.bandeira}` : ''}{p.cardBrand ? ` - ${p.cardBrand}` : ''}
                                 <span className="detalhe-valor">R$ {p.valor?.toFixed(2)}</span>
                                 {p.prepago && <CheckCircle size={12} className="detalhe-pago" />}
                               </span>
