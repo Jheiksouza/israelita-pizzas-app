@@ -30,7 +30,7 @@ const IFOOD_STATUS_LABELS = {
   requestCancellation: 'CANCELLED (solicitado)'
 }
 
-const styles = {
+const s = {
   page: { fontFamily: 'system-ui, sans-serif', maxWidth: 960, margin: '0 auto', padding: 20, color: '#111' },
   h1: { fontSize: 20 },
   hint: { background: '#fff3cd', border: '1px solid #ffc107', padding: '10px 12px', borderRadius: 6, fontSize: 13, lineHeight: 1.5 },
@@ -42,15 +42,20 @@ const styles = {
   badge: { display: 'inline-block', padding: '2px 8px', borderRadius: 20, color: '#fff', fontSize: 12, fontWeight: 600 },
   mpid: { fontFamily: 'monospace', fontSize: 11, color: '#777', wordBreak: 'break-all' },
   msg: { fontSize: 13, fontFamily: 'monospace', whiteSpace: 'pre-wrap', background: '#111', color: '#0f0', padding: 10, borderRadius: 6, maxHeight: 300, overflow: 'auto' },
-  panel: { flex: '0 0 340px', minWidth: 280, fontSize: 13 },
+  section: { background: '#fff', border: '1px solid #e2e2e2', borderRadius: 8, padding: 14, marginBottom: 14 },
+  sectionTitle: { margin: 0, marginBottom: 10, fontSize: 14, fontWeight: 700 },
+  input: { padding: '6px 8px', border: '1px solid #ccc', borderRadius: 5, fontSize: 13, boxSizing: 'border-box' },
+  label: { display: 'flex', flexDirection: 'column', gap: 3, fontSize: 12, color: '#555' },
+  row: { display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 10 },
+  itemBox: { border: '1px dashed #ccc', borderRadius: 6, padding: 10, marginBottom: 10 },
   panelTitle: { fontSize: 14, margin: 0, marginBottom: 6, fontWeight: 700 },
-  entry: { background: '#fff', border: '1px solid #e5e5e5', borderRadius: 6, padding: '8px 10px', marginBottom: 6 }
+  entry: { background: '#fff', border: '1px solid #e5e5e5', borderRadius: 6, padding: '8px 10px', marginBottom: 6 },
+  panel: { flex: '1 1 380px', minWidth: 280, fontSize: 13 }
 }
 
 function fmtHora(iso) {
   if (!iso) return ''
-  const d = new Date(iso)
-  return d.toLocaleTimeString('pt-BR', { hour12: false })
+  return new Date(iso).toLocaleTimeString('pt-BR', { hour12: false })
 }
 
 function shortId(id) {
@@ -58,12 +63,52 @@ function shortId(id) {
   return id.length > 12 ? id.slice(0, 12) + '…' : id
 }
 
+const campo = (label, valor, onChange, props = {}) => (
+  <label style={s.label}>
+    {label}
+    <input
+      style={s.input}
+      value={valor}
+      onChange={e => onChange(e.target.value)}
+      {...props}
+    />
+  </label>
+)
+
 export default function TesteIfood() {
   const [pedidos, setPedidos] = useState([])
   const [log, setLog] = useState([])
   const [syncLog, setSyncLog] = useState([])
   const [loading, setLoading] = useState(true)
   const [resposta, setResposta] = useState('')
+
+  const [form, setForm] = useState(() => ({
+    oid: `pedido_teste_${Date.now()}`,
+    displayId: 'Teste-001',
+    orderType: 'DELIVERY',
+    category: 'FOOD',
+    orderTiming: 'IMMEDIATE',
+    salesChannel: 'IFOOD',
+    isTest: true,
+    deliveryFee: '0',
+    benefits: '0',
+    cliente: { nome: 'Cliente Teste', telefone: '(11) 99999-9999', cpf: '12345678901', documentType: 'CPF' },
+    endereco: { streetName: 'Rua Teste', streetNumber: '123', neighborhood: 'Centro', city: 'São Paulo', state: 'SP', complement: 'Apto 1', reference: 'Próximo ao mercado', postalCode: '01000-000', lat: '', lng: '' },
+    entrega: { modo: 'DELIVERY', obs: '', pickupCode: '', data: '' },
+    pagamento: { method: 'CASH', type: 'CASH', brand: '', value: '', prepaid: false, changeFor: '0', cardBrand: '', authorizationCode: '' },
+    itens: [{ nome: 'Pizza Calabresa', qtd: 1, unitPrice: '50', externalCode: 'menu_1', observacoes: '', adicionais: [], opcoes: [] }]
+  }))
+
+  const setF = (path) => (valor) => {
+    const keys = path.split('.')
+    setForm(prev => {
+      const next = JSON.parse(JSON.stringify(prev))
+      let ref = next
+      for (let i = 0; i < keys.length - 1; i++) ref = ref[keys[i]]
+      ref[keys[keys.length - 1]] = valor
+      return next
+    })
+  }
 
   const carregar = useCallback(async () => {
     try {
@@ -119,11 +164,7 @@ export default function TesteIfood() {
       fullCode: code,
       orderId: mpid,
       createdAt: new Date().toISOString(),
-      metadata: {
-        orderId: mpid,
-        status: code,
-        reason: 'Simulação manual pela página /testeifood'
-      }
+      metadata: { orderId: mpid, status: code, reason: 'Simulação manual pela página /testeifood' }
     }
     setResposta(`Enviando ${code} para o pedido #${pedido.id} (${mpid})...\n`)
     try {
@@ -144,74 +185,323 @@ export default function TesteIfood() {
     }
   }
 
-  const ifoodReconheceu = (entry) => {
-    if (entry.status !== 'ok') return null
-    if (entry.type === 'requestCancellation') return 'iFood reconheceu: pedido cancelado ✓'
-    if (entry.ifoodStatus) return `iFood reconheceu: ${entry.ifoodStatus.toUpperCase()} ✓`
-    return null
+  const totalCalculado = form.itens.reduce((acc, it) => {
+    const base = (parseFloat(it.qtd) || 0) * (parseFloat(it.unitPrice) || 0)
+    const ad = (it.adicionais || []).reduce((a, x) => a + (parseFloat(x.qtd) || 0) * (parseFloat(x.unitPrice) || 0), 0)
+    const op = (it.opcoes || []).reduce((a, x) => a + (parseFloat(x.qtd) || 0) * (parseFloat(x.unitPrice) || 0), 0)
+    return acc + base + ad + op
+  }, 0)
+
+  const criarPedido = async () => {
+    const itens = form.itens.map(it => ({
+      name: it.nome,
+      quantity: parseInt(it.qtd) || 1,
+      unitPrice: parseFloat(it.unitPrice) || 0,
+      totalPrice: (parseInt(it.qtd) || 1) * (parseFloat(it.unitPrice) || 0),
+      externalCode: it.externalCode || '',
+      observations: it.observacoes || '',
+      type: 'PRODUCT',
+      subItems: (it.adicionais || []).filter(a => a.nome).map(a => ({
+        name: a.nome,
+        quantity: parseInt(a.qtd) || 1,
+        unitPrice: parseFloat(a.unitPrice) || 0,
+        totalPrice: (parseInt(a.qtd) || 1) * (parseFloat(a.unitPrice) || 0),
+        externalCode: a.externalCode || ''
+      })),
+      options: (it.opcoes || []).filter(o => o.nome).map(o => ({
+        name: o.nome,
+        groupName: o.grupo || '',
+        quantity: parseInt(o.qtd) || 1,
+        unitPrice: parseFloat(o.unitPrice) || 0,
+        price: parseFloat(o.unitPrice) || 0,
+        totalPrice: (parseInt(o.qtd) || 1) * (parseFloat(o.unitPrice) || 0),
+        externalCode: ''
+      }))
+    }))
+
+    const totalOrder = totalCalculado + (parseFloat(form.deliveryFee) || 0) - (parseFloat(form.benefits) || 0)
+    const hasPayment = form.pagamento.method || form.pagamento.brand
+
+    const body = {
+      id: form.oid,
+      code: 'PLACED',
+      fullCode: 'PLACED',
+      createdAt: new Date().toISOString(),
+      metadata: { id: form.oid, status: 'PLACED', orderType: form.orderType, category: form.category, isTest: form.isTest },
+      displayId: form.displayId,
+      orderType: form.orderType,
+      category: form.category,
+      orderTiming: form.orderTiming,
+      salesChannel: form.salesChannel,
+      isTest: form.isTest,
+      createdAt: new Date().toISOString(),
+      total: {
+        orderAmount: totalOrder,
+        subTotal: totalCalculado,
+        deliveryFee: parseFloat(form.deliveryFee) || 0,
+        benefits: parseFloat(form.benefits) || 0
+      },
+      customer: {
+        name: form.cliente.nome,
+        phone: form.cliente.telefone,
+        cpf: form.cliente.cpf,
+        documentNumber: form.cliente.cpf,
+        documentType: form.cliente.documentType
+      },
+      delivery: {
+        mode: form.entrega.modo,
+        deliveredBy: form.entrega.modo,
+        observations: form.entrega.obs,
+        pickupCode: form.entrega.pickupCode,
+        deliveryDateTime: form.entrega.data,
+        deliveryAddress: {
+          streetName: form.endereco.streetName,
+          streetNumber: form.endereco.streetNumber,
+          neighborhood: form.endereco.neighborhood,
+          city: form.endereco.city,
+          state: form.endereco.state,
+          complement: form.endereco.complement,
+          reference: form.endereco.reference,
+          postalCode: form.endereco.postalCode,
+          coordinates: { latitude: parseFloat(form.endereco.lat) || null, longitude: parseFloat(form.endereco.lng) || null }
+        }
+      },
+      payments: hasPayment ? { methods: [{
+        method: form.pagamento.method,
+        type: form.pagamento.type,
+        brand: form.pagamento.brand,
+        value: parseFloat(form.pagamento.value) || totalOrder,
+        prepaid: !!form.pagamento.prepaid,
+        changeFor: parseFloat(form.pagamento.changeFor) || 0,
+        card: { brand: form.pagamento.cardBrand },
+        transaction: { authorizationCode: form.pagamento.authorizationCode }
+      }] } : null,
+      items: itens
+    }
+
+    setResposta(`Enviando pedido de teste (${form.oid}) para o webhook...\n`)
+    try {
+      const r = await fetch(`${API}/marketplace/ifood/webhook`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      })
+      const text = await r.text()
+      setResposta(`Pedido enviado → HTTP ${r.status}\n${text}\n\nTotal enviado: R$ ${totalOrder.toFixed(2)}\nRecarregando lista...`)
+      setTimeout(async () => {
+        await carregar()
+        await carregarLog()
+      }, 800)
+    } catch (e) {
+      setResposta(`Erro ao enviar: ${e.message}`)
+    }
+  }
+
+  const setItem = (idx, campoNome, valor) => {
+    setForm(prev => {
+      const next = JSON.parse(JSON.stringify(prev))
+      next.itens[idx][campoNome] = valor
+      return next
+    })
+  }
+
+  const addItem = () => {
+    setForm(prev => ({ ...prev, itens: [...prev.itens, { nome: '', qtd: 1, unitPrice: '', externalCode: '', observacoes: '', adicionais: [], opcoes: [] }] }))
+  }
+
+  const remItem = (idx) => {
+    setForm(prev => ({ ...prev, itens: prev.itens.filter((_, i) => i !== idx) }))
+  }
+
+  const setAdicional = (iIdx, aIdx, campoNome, valor) => {
+    setForm(prev => {
+      const next = JSON.parse(JSON.stringify(prev))
+      next.itens[iIdx].adicionais[aIdx][campoNome] = valor
+      return next
+    })
+  }
+
+  const setOpcao = (iIdx, oIdx, campoNome, valor) => {
+    setForm(prev => {
+      const next = JSON.parse(JSON.stringify(prev))
+      next.itens[iIdx].opcoes[oIdx][campoNome] = valor
+      return next
+    })
   }
 
   return (
-    <div style={styles.page}>
-      <h1 style={styles.h1}>🍕 Teste iFood — Pedidos</h1>
-      <div style={styles.hint}>
-        <b>Como testar:</b> crie um pedido de teste no portal do iFood → ele aparece abaixo. Clique em{" "}
-        <b>"Cancelar (simular)"</b> para simular o iFood cancelando, ou mude o status no admin e veja aqui o que foi{" "}
-        <b>enviado para o iFood</b> (painel da direita). A página atualiza sozinha a cada 5s.
+    <div style={s.page}>
+      <h1 style={s.h1}>🍕 Teste iFood — Pedidos</h1>
+      <div style={s.hint}>
+        <b>Como testar:</b> use o formulário abaixo para criar um pedido no padrão iFood (ele aparece na plataforma
+        como pedido do iFood). Depois mude o status no admin e veja no painel <b>📤 Enviado para o iFood</b> o que foi
+        sincronizado. A página atualiza sozinha a cada 5s.
       </div>
 
-      <div style={styles.bar}>
-        <button style={{ ...styles.button, background: '#409EFF', color: '#fff' }} onClick={() => { carregar(); carregarLog(); carregarSyncLog() }}>
-          🔄 Atualizar
-        </button>
-        {loading && <span style={{ fontSize: 13, color: '#888' }}>Carregando...</span>}
+      {/* ===== FORMULÁRIO DE CRIAÇÃO ===== */}
+      <div style={s.section}>
+        <h2 style={s.sectionTitle}>➕ Criar pedido no padrão iFood</h2>
+
+        <div style={s.row}>
+          {campo('ID iFood (orderId)', form.oid, setF('oid'))}
+          {campo('Display ID', form.displayId, setF('displayId'))}
+          {campo('Order Type', form.orderType, setF('orderType'))}
+          {campo('Category', form.category, setF('category'))}
+          {campo('Order Timing', form.orderTiming, setF('orderTiming'))}
+          {campo('Sales Channel', form.salesChannel, setF('salesChannel'))}
+          <label style={{ ...s.label, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <input type="checkbox" checked={!!form.isTest} onChange={e => setF('isTest')(e.target.checked)} />
+            Pedido de teste (isTest)
+          </label>
+        </div>
+
+        <h3 style={{ fontSize: 13, margin: '6px 0' }}>Cliente</h3>
+        <div style={s.row}>
+          {campo('Nome', form.cliente.nome, setF('cliente.nome'))}
+          {campo('Telefone', form.cliente.telefone, setF('cliente.telefone'))}
+          {campo('CPF/Documento', form.cliente.cpf, setF('cliente.cpf'))}
+          {campo('Tipo Documento', form.cliente.documentType, setF('cliente.documentType'))}
+        </div>
+
+        <h3 style={{ fontSize: 13, margin: '6px 0' }}>Endereço de entrega</h3>
+        <div style={s.row}>
+          {campo('Rua', form.endereco.streetName, setF('endereco.streetName'))}
+          {campo('Número', form.endereco.streetNumber, setF('endereco.streetNumber'))}
+          {campo('Bairro', form.endereco.neighborhood, setF('endereco.neighborhood'))}
+          {campo('Cidade', form.endereco.city, setF('endereco.city'))}
+          {campo('UF', form.endereco.state, setF('endereco.state'), { style: { ...s.input, width: 60 } })}
+          {campo('Complemento', form.endereco.complement, setF('endereco.complement'))}
+          {campo('Referência', form.endereco.reference, setF('endereco.reference'))}
+          {campo('CEP', form.endereco.postalCode, setF('endereco.postalCode'))}
+          {campo('Lat', form.endereco.lat, setF('endereco.lat'))}
+          {campo('Lng', form.endereco.lng, setF('endereco.lng'))}
+        </div>
+
+        <h3 style={{ fontSize: 13, margin: '6px 0' }}>Entrega</h3>
+        <div style={s.row}>
+          {campo('Modo (mode/deliveredBy)', form.entrega.modo, setF('entrega.modo'))}
+          {campo('Observações', form.entrega.obs, setF('entrega.obs'))}
+          {campo('Código de coleta', form.entrega.pickupCode, setF('entrega.pickupCode'))}
+          {campo('Data/hora entrega', form.entrega.data, setF('entrega.data'), { type: 'datetime-local' })}
+          {campo('Taxa de entrega', form.deliveryFee, setF('deliveryFee'))}
+          {campo('Desconto (benefits)', form.benefits, setF('benefits'))}
+        </div>
+
+        <h3 style={{ fontSize: 13, margin: '6px 0' }}>Pagamento</h3>
+        <div style={s.row}>
+          {campo('Método', form.pagamento.method, setF('pagamento.method'))}
+          {campo('Tipo', form.pagamento.type, setF('pagamento.type'))}
+          {campo('Bandeira', form.pagamento.brand, setF('pagamento.brand'))}
+          {campo('Valor', form.pagamento.value, setF('pagamento.value'))}
+          {campo('Troco para', form.pagamento.changeFor, setF('pagamento.changeFor'))}
+          {campo('Card Brand', form.pagamento.cardBrand, setF('pagamento.cardBrand'))}
+          {campo('Auth Code', form.pagamento.authorizationCode, setF('pagamento.authorizationCode'))}
+          <label style={{ ...s.label, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <input type="checkbox" checked={!!form.pagamento.prepaid} onChange={e => setF('pagamento.prepaid')(e.target.checked)} />
+            Pré-pago
+          </label>
+        </div>
+
+        <h3 style={{ fontSize: 13, margin: '6px 0' }}>Itens</h3>
+        {form.itens.map((it, i) => (
+          <div key={i} style={s.itemBox}>
+            <div style={s.row}>
+              {campo('Nome', it.nome, v => setItem(i, 'nome', v))}
+              {campo('Qtd', it.qtd, v => setItem(i, 'qtd', v), { style: { ...s.input, width: 60 } })}
+              {campo('Preço unitário', it.unitPrice, v => setItem(i, 'unitPrice', v), { style: { ...s.input, width: 90 } })}
+              {campo('External Code', it.externalCode, v => setItem(i, 'externalCode', v))}
+              {campo('Observações', it.observacoes, v => setItem(i, 'observacoes', v))}
+            </div>
+            <div style={{ fontSize: 12, color: '#555', marginBottom: 6 }}>
+              Subtotal: R$ {((parseInt(it.qtd) || 0) * (parseFloat(it.unitPrice) || 0)).toFixed(2)}
+            </div>
+            <div>
+              <strong style={{ fontSize: 12 }}>Adicionais (subItems)</strong>
+              {(it.adicionais || []).map((a, ai) => (
+                <div key={ai} style={{ display: 'flex', gap: 6, alignItems: 'flex-end', margin: '6px 0' }}>
+                  {campo('Nome', a.nome, v => setAdicional(i, ai, 'nome', v))}
+                  {campo('Qtd', a.qtd, v => setAdicional(i, ai, 'qtd', v), { style: { ...s.input, width: 55 } })}
+                  {campo('Preço', a.unitPrice, v => setAdicional(i, ai, 'unitPrice', v), { style: { ...s.input, width: 80 } })}
+                  <button style={s.button} onClick={() => setForm(prev => { const n = JSON.parse(JSON.stringify(prev)); n.itens[i].adicionais = n.itens[i].adicionais.filter((_, x) => x !== ai); return n })}>✕</button>
+                </div>
+              ))}
+              <button style={{ ...s.button, background: '#eee', fontSize: 12 }} onClick={() => setForm(prev => { const n = JSON.parse(JSON.stringify(prev)); n.itens[i].adicionais = [...(n.itens[i].adicionais || []), { nome: '', qtd: 1, unitPrice: '' }]; return n })}>+ Adicional</button>
+            </div>
+            <div style={{ marginTop: 8 }}>
+              <strong style={{ fontSize: 12 }}>Opções (options)</strong>
+              {(it.opcoes || []).map((o, oi) => (
+                <div key={oi} style={{ display: 'flex', gap: 6, alignItems: 'flex-end', margin: '6px 0' }}>
+                  {campo('Nome', o.nome, v => setOpcao(i, oi, 'nome', v))}
+                  {campo('Grupo', o.grupo, v => setOpcao(i, oi, 'grupo', v))}
+                  {campo('Qtd', o.qtd, v => setOpcao(i, oi, 'qtd', v), { style: { ...s.input, width: 55 } })}
+                  {campo('Preço', o.unitPrice, v => setOpcao(i, oi, 'unitPrice', v), { style: { ...s.input, width: 80 } })}
+                  <button style={s.button} onClick={() => setForm(prev => { const n = JSON.parse(JSON.stringify(prev)); n.itens[i].opcoes = n.itens[i].opcoes.filter((_, x) => x !== oi); return n })}>✕</button>
+                </div>
+              ))}
+              <button style={{ ...s.button, background: '#eee', fontSize: 12 }} onClick={() => setForm(prev => { const n = JSON.parse(JSON.stringify(prev)); n.itens[i].opcoes = [...(n.itens[i].opcoes || []), { nome: '', grupo: '', qtd: 1, unitPrice: '' }]; return n })}>+ Opção</button>
+            </div>
+            <div style={{ marginTop: 8 }}>
+              <button style={{ ...s.button, background: '#F56C6C', color: '#fff', fontSize: 12 }} onClick={() => remItem(i)}>🗑 Remover item</button>
+            </div>
+          </div>
+        ))}
+        <button style={{ ...s.button, background: '#eee' }} onClick={addItem}>+ Adicionar item</button>
+
+        <div style={{ marginTop: 12, padding: '10px 12px', background: '#f0f9eb', border: '1px solid #b7eb8f', borderRadius: 6, fontSize: 14, fontWeight: 700 }}>
+          Total do pedido: R$ {(totalCalculado + (parseFloat(form.deliveryFee) || 0) - (parseFloat(form.benefits) || 0)).toFixed(2)}
+        </div>
+
+        <div style={{ marginTop: 12 }}>
+          <button style={{ ...s.button, background: '#409EFF', color: '#fff', padding: '10px 18px', fontSize: 15 }} onClick={criarPedido}>
+            🚀 Criar pedido de teste
+          </button>
+        </div>
       </div>
 
-      {resposta && <pre style={styles.msg}>{resposta}</pre>}
+      {resposta && <pre style={s.msg}>{resposta}</pre>}
 
-      <div style={{ display: 'flex', gap: 20, alignItems: 'flex-start', flexWrap: 'wrap' }}>
-        <div style={{ flex: '1 1 560px', minWidth: 0 }}>
-      <table style={styles.table}>
+      {/* ===== PEDIDOS ===== */}
+      <table style={s.table}>
         <thead>
           <tr>
-            <th style={styles.th}>#</th>
-            <th style={styles.th}>Status</th>
-            <th style={styles.th}>Cliente</th>
-            <th style={styles.th}>Origem</th>
-            <th style={styles.th}>Total</th>
-            <th style={styles.th}>ID iFood</th>
-            <th style={styles.th}>Ações</th>
+            <th style={s.th}>#</th>
+            <th style={s.th}>Status</th>
+            <th style={s.th}>Cliente</th>
+            <th style={s.th}>Origem</th>
+            <th style={s.th}>Total</th>
+            <th style={s.th}>ID iFood</th>
+            <th style={s.th}>Ações</th>
           </tr>
         </thead>
         <tbody>
           {pedidos.length === 0 && (
-            <tr><td colSpan="7" style={{ ...styles.td, textAlign: 'center', padding: 20, color: '#888' }}>Nenhum pedido encontrado</td></tr>
+            <tr><td colSpan="7" style={{ ...s.td, textAlign: 'center', padding: 20, color: '#888' }}>Nenhum pedido encontrado</td></tr>
           )}
           {pedidos.map(p => {
             const mpid = p.cliente?.marketplace_order_id
             return (
               <tr key={p.id}>
-                <td style={styles.td}>#{p.id}</td>
-                <td style={styles.td}>
-                  <span style={{ ...styles.badge, background: STATUS_COLORS[p.status] || '#999' }}>
+                <td style={s.td}>#{p.id}</td>
+                <td style={s.td}>
+                  <span style={{ ...s.badge, background: STATUS_COLORS[p.status] || '#999' }}>
                     {STATUS_LABELS[p.status] || p.status}
                   </span>
                 </td>
-                <td style={styles.td}>{p.cliente?.nome || '-'}</td>
-                <td style={styles.td}>{p.cliente?.origem || 'site'}</td>
-                <td style={styles.td}>R$ {Number(p.total || 0).toFixed(2)}</td>
-                <td style={styles.td}>{mpid ? <span style={styles.mpid}>{mpid}</span> : '-'}</td>
-                <td style={styles.td}>
+                <td style={s.td}>{p.cliente?.nome || '-'}</td>
+                <td style={s.td}>{p.cliente?.origem || 'site'}</td>
+                <td style={s.td}>R$ {Number(p.total || 0).toFixed(2)}</td>
+                <td style={s.td}>{mpid ? <span style={s.mpid}>{mpid}</span> : '-'}</td>
+                <td style={s.td}>
                   {mpid ? (
                     <>
                       <button
-                        style={{ ...styles.button, background: '#F56C6C', color: '#fff', marginRight: 6 }}
+                        style={{ ...s.button, background: '#F56C6C', color: '#fff', marginRight: 6 }}
                         onClick={() => simularEvento(p, 'CANCELLED')}
                       >
                         ❌ Cancelar (simular)
                       </button>
                       <button
-                        style={{ ...styles.button, background: '#67C23A', color: '#fff' }}
+                        style={{ ...s.button, background: '#67C23A', color: '#fff' }}
                         onClick={() => simularEvento(p, 'CONCLUDED')}
                       >
                         ✅ Entregar (simular)
@@ -226,14 +516,15 @@ export default function TesteIfood() {
           })}
         </tbody>
       </table>
-        </div>
 
-        <div style={styles.panel}>
-          <h2 style={styles.panelTitle}>📤 Enviado para o iFood (sincronização)</h2>
+      {/* ===== PAINÉIS (abaixo da tabela, posição fixa) ===== */}
+      <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap', alignItems: 'flex-start', marginTop: 16 }}>
+        <div style={s.panel}>
+          <h2 style={s.panelTitle}>📤 Enviado para o iFood (sincronização)</h2>
           {syncLog.length === 0 ? (
             <p style={{ fontSize: 13, color: '#888' }}>Nada enviado ainda. Mude um status de um pedido iFood no admin.</p>
           ) : syncLog.slice(0, 12).map((e, i) => (
-            <div key={i} style={styles.entry}>
+            <div key={i} style={s.entry}>
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
                 <strong style={{ fontSize: 12 }}>{fmtHora(e.timestamp)}</strong>
                 <span style={{ fontSize: 12 }}>
@@ -259,17 +550,21 @@ export default function TesteIfood() {
                 POST {e.endpoint}
               </div>
               {e.error && <div style={{ fontSize: 11, color: '#F56C6C', marginTop: 3 }}>{e.error}</div>}
-              {ifoodReconheceu(e) && <div style={{ fontSize: 12, color: '#67C23A', marginTop: 3, fontWeight: 700 }}>{ifoodReconheceu(e)}</div>}
+              {e.status === 'ok' && (
+                <div style={{ fontSize: 12, color: '#67C23A', marginTop: 3, fontWeight: 700 }}>
+                  {e.type === 'requestCancellation' ? 'iFood reconheceu: pedido cancelado ✓' : `iFood reconheceu: ${e.ifoodStatus.toUpperCase()} ✓`}
+                </div>
+              )}
             </div>
           ))}
         </div>
 
-        <div style={styles.panel}>
-          <h2 style={styles.panelTitle}>📥 Último webhook recebido</h2>
+        <div style={s.panel}>
+          <h2 style={s.panelTitle}>📥 Último webhook recebido</h2>
           {log.length === 0 ? (
             <p style={{ fontSize: 13, color: '#888' }}>Nenhum webhook registrado ainda.</p>
           ) : (
-            <pre style={styles.msg}>{JSON.stringify(log[0], null, 2)}</pre>
+            <pre style={s.msg}>{JSON.stringify(log[0], null, 2)}</pre>
           )}
         </div>
       </div>
