@@ -636,6 +636,20 @@ body {
   font-family: var(--font-body);
 }
 
+.pedido-retirada-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 2px 7px;
+  border-radius: 4px;
+  color: #fff;
+  background: #F59E0B;
+  font-family: var(--font-body);
+}
+
 .pedido-card-body {
   padding: 16px 24px;
   display: flex;

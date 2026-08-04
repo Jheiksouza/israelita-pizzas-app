@@ -63,6 +63,13 @@ function shortId(id) {
   return id.length > 12 ? id.slice(0, 12) + '…' : id
 }
 
+function isRetirada(p) {
+  const c = p?.cliente || {}
+  const modo = (c.orderType || c.deliveryMode || c.metodo_entrega || '').toUpperCase()
+  const categoria = (c.category || '').toUpperCase()
+  return ['TAKEOUT', 'PICKUP', 'SELF_SERVICE', 'INDOOR'].includes(modo) || categoria === 'FOOD_SELF_SERVICE'
+}
+
 const campo = (label, valor, onChange, props = {}) => (
   <label style={s.label}>
     {label}
@@ -488,7 +495,9 @@ export default function TesteIfood() {
                   </span>
                 </td>
                 <td style={s.td}>{p.cliente?.nome || '-'}</td>
-                <td style={s.td}>{p.cliente?.origem || 'site'}</td>
+                <td style={s.td}>{p.cliente?.origem || 'site'}
+                  {isRetirada(p) && <span style={{ display: 'block', fontSize: 11, color: '#B45309', fontWeight: 700 }}>🛍️ Retirada</span>}
+                </td>
                 <td style={s.td}>R$ {Number(p.total || 0).toFixed(2)}</td>
                 <td style={s.td}>{mpid ? <span style={s.mpid}>{mpid}</span> : '-'}</td>
                 <td style={s.td}>

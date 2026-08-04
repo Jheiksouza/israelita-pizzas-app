@@ -18,6 +18,15 @@ const pedidoSteps = [
   { key: 'entregue', label: 'Entregue' },
 ]
 
+const MODOS_RETIRADA = ['TAKEOUT', 'PICKUP', 'SELF_SERVICE', 'INDOOR']
+
+function isRetirada(pedido) {
+  const c = pedido?.cliente || {}
+  const modo = (c.orderType || c.deliveryMode || c.metodo_entrega || '').toUpperCase()
+  const categoria = (c.category || '').toUpperCase()
+  return MODOS_RETIRADA.includes(modo) || categoria === 'FOOD_SELF_SERVICE'
+}
+
 const allNavItems = [
   { key: 'pedidos', label: 'Pedidos', icon: List, roles: ['admin', 'atendente'], section: 'Geral' },
   { key: 'cardapio', label: 'Cardápio', icon: Pizza, roles: ['admin'], section: 'Geral' },
@@ -568,6 +577,7 @@ function AdminOrders() {
                     <div className="pedido-card-header" onClick={() => setExpandido(expandido === pedido.id ? null : pedido.id)} style={{ cursor: 'pointer' }}>
                       <span className="pedido-id">
                         Pedido #{pedido.id}
+                        {isRetirada(pedido) && <span className="pedido-retirada-badge">🛍️ Retirada</span>}
                         {mpInfo && <span className="pedido-origem-badge" style={{ background: mpInfo.color }}>{mpInfo.displayName}</span>}
                       </span>
                       <span className={badgeClass[pedido.status]}>{statusLabel[pedido.status]}</span>
@@ -585,8 +595,8 @@ function AdminOrders() {
                       <div className="pedido-info-row">
                         <div className="pedido-info-icon"><MapPin size={18} /></div>
                         <div className="pedido-info-content">
-                          <div className="pedido-info-label">Endereço</div>
-                          <div className="pedido-info-value">{pedido.cliente?.endereco || 'Não informado'}</div>
+                          <div className="pedido-info-label">{isRetirada(pedido) ? 'Retirada' : 'Endereço'}</div>
+                          <div className="pedido-info-value">{isRetirada(pedido) ? 'Cliente vai retirar na pizzaria' : (pedido.cliente?.endereco || 'Não informado')}</div>
                         </div>
                       </div>
                       {pedido.itens?.length > 0 && (
@@ -641,10 +651,10 @@ function AdminOrders() {
                             <div className="detalhe-row">
                               <Truck size={14} />
                               <span className="detalhe-label">Entrega</span>
-                              <span>{pedido.cliente.metodo_entrega === 'MERCHANT' ? 'Entrega própria' : 'iFood'}</span>
+                              <span>{isRetirada(pedido) ? 'Retirada na pizzaria' : pedido.cliente.metodo_entrega === 'MERCHANT' ? 'Entrega própria' : 'iFood'}</span>
                             </div>
                           )}
-                          {pedido.cliente?.teste && (
+                          {(pedido.cliente?.teste || pedido.cliente?.isTest) && (
                             <div className="detalhe-row">
                               <AlertTriangle size={14} />
                               <span className="detalhe-label">Teste</span>

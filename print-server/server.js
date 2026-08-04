@@ -119,6 +119,10 @@ function gerarBytes(pedido) {
   const telefoneConfig = config.telefone || ''
   const cnpj = config.cnpj || ''
 
+  const MODOS_RETIRADA = ['TAKEOUT', 'PICKUP', 'SELF_SERVICE', 'INDOOR']
+  const modoEntrega = (c.orderType || c.deliveryMode || c.metodo_entrega || '').toUpperCase()
+  const retirada = MODOS_RETIRADA.includes(modoEntrega) || (c.category || '').toUpperCase() === 'FOOD_SELF_SERVICE'
+
   esc(0x1B, 0x40)
   esc(0x1B, 0x74, 0x10)
   esc(0x1B, 0x32)
@@ -141,14 +145,27 @@ function gerarBytes(pedido) {
 
   if (pedido.data) txt(`${formatData(pedido.data)}\n`)
 
+  if (retirada) {
+    txt(SEP + '\n')
+    esc(0x1B, 0x61, 0x01)
+    esc(0x1B, 0x21, 0x38)
+    txt('RETIRADA NA PIZZARIA\n')
+    esc(0x1B, 0x21, 0x00)
+    esc(0x1B, 0x61, 0x00)
+  if (c.codigo_coleta && !retirada) txt(`Coleta: ${c.codigo_coleta}\n`)
+  }
+
   txt(SEP + '\n')
   txt(`Cliente: ${c.nome || ''}\n`)
   if (c.telefone) txt(`Tel: ${c.telefone}\n`)
   if (c.cpf) txt(`CPF: ${c.cpf}\n`)
   if (c.origem) txt(`Origem: ${c.origem}\n`)
   if (c.marketplace_order_id) txt(`ID externo: ${c.marketplace_order_id}\n`)
-  if (c.metodo_entrega) txt(`Entrega: ${c.metodo_entrega === 'MERCHANT' ? 'Propria' : c.metodo_entrega}\n`)
-  if (c.endereco) txt(`End: ${c.endereco}\n`)
+  if (c.metodo_entrega && !retirada) {
+    const entrega = c.metodo_entrega === 'MERCHANT' ? 'Propria' : c.metodo_entrega === 'DELIVERY' ? 'iFood' : c.metodo_entrega
+    txt(`Entrega: ${entrega}\n`)
+  }
+  if (c.endereco && !retirada) txt(`End: ${c.endereco}\n`)
   txt(SEP + '\n')
   esc(0x1B, 0x45, 0x01)
   txt('ITENS\n')
