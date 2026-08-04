@@ -678,21 +678,30 @@ app.patch('/orders/:id', async (req, res) => {
             'liberado': ['dispatched'],
           }
           const mappedStatuses = statusMap[order.status]
+          const pathMap = {
+            confirmed: `/order/v1.0/orders/${extId}/confirm`,
+            preparation_started: `/order/v1.0/orders/${extId}/startPreparation`,
+            dispatched: `/order/v1.0/orders/${extId}/dispatch`,
+          }
           if (mappedStatuses && extId) {
             mappedStatuses.forEach(s => {
-              adapter.updateOrderStatus(extId, s, config).catch(err =>
-                console.error(`[${origem}] Erro ao atualizar status ${order.status} -> ${s}:`, err.message)
-              )
+              addSyncLog(origem, { type: 'updateOrderStatus', orderId: extId, localStatus: order.status, ifoodStatus: s, endpoint: pathMap[s], status: 'enviando' })
+              adapter.updateOrderStatus(extId, s, config)
+                .then(() => addSyncLog(origem, { type: 'updateOrderStatus', orderId: extId, localStatus: order.status, ifoodStatus: s, endpoint: pathMap[s], status: 'ok' }))
+                .catch(err => addSyncLog(origem, { type: 'updateOrderStatus', orderId: extId, localStatus: order.status, ifoodStatus: s, endpoint: pathMap[s], status: 'erro', error: err.message }))
             })
           }
           // Cancelamento: se cancelado, solicita cancelamento no iFood
           if (order.status === 'cancelado' && extId) {
+            addSyncLog(origem, { type: 'requestCancellation', orderId: extId, localStatus: order.status, action: 'requestCancellation', endpoint: `/order/v1.0/orders/${extId}/requestCancellation`, status: 'enviando' })
             adapter.getCancellationReasons(extId, config).then(reasons => {
               const reason = (reasons?.reasons || []).find(r => r.code === '503') || { code: '503' }
-              adapter.requestCancellation(extId, reason.code, config).catch(err =>
-                console.error(`[${origem}] Erro ao cancelar pedido ${extId}:`, err.message)
-              )
+              addSyncLog(origem, { type: 'requestCancellation', orderId: extId, localStatus: order.status, reason: reason.code, endpoint: `/order/v1.0/orders/${extId}/requestCancellation`, status: 'enviando' })
+              adapter.requestCancellation(extId, reason.code, config)
+                .then(() => addSyncLog(origem, { type: 'requestCancellation', orderId: extId, localStatus: order.status, reason: reason.code, endpoint: `/order/v1.0/orders/${extId}/requestCancellation`, status: 'ok' }))
+                .catch(err => addSyncLog(origem, { type: 'requestCancellation', orderId: extId, localStatus: order.status, reason: reason.code, endpoint: `/order/v1.0/orders/${extId}/requestCancellation`, status: 'erro', error: err.message }))
             }).catch(err => {
+              addSyncLog(origem, { type: 'requestCancellation', orderId: extId, localStatus: order.status, status: 'erro', error: err.message })
               console.error(`[${origem}] Erro ao obter motivos de cancelamento:`, err.message)
             })
           }
@@ -821,6 +830,13 @@ function addWebhookLog(platform, event) {
   if (webhookLog.length > 50) webhookLog.pop()
 }
 
+// Log em memória do que foi ENVIADO para o marketplace (sincronização de status)
+const syncLog = []
+function addSyncLog(platform, entry) {
+  syncLog.unshift({ platform, ...entry, timestamp: new Date().toISOString() })
+  if (syncLog.length > 50) syncLog.pop()
+}
+
 // GET para teste de conectividade do webhook (iFood faz presença)
 app.get('/marketplace/:platform/webhook', (req, res) => {
   const { platform } = req.params
@@ -833,6 +849,11 @@ app.get('/marketplace/:platform/webhook', (req, res) => {
 // Debug: ver os últimos webhooks recebidos
 app.get('/marketplace/debug/log', (req, res) => {
   res.json(webhookLog)
+})
+
+// Debug: ver o que foi enviado para os marketplaces
+app.get('/marketplace/debug/sync-log', (req, res) => {
+  res.json(syncLog)
 })
 
 app.post('/marketplace/:platform/webhook', async (req, res) => {

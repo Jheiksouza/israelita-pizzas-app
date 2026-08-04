@@ -22,8 +22,16 @@ const STATUS_COLORS = {
   cancelado: '#F56C6C'
 }
 
+const IFOOD_STATUS_LABELS = {
+  confirmed: 'CONFIRMED',
+  preparation_started: 'PREPARATION_STARTED',
+  dispatched: 'DISPATCHED',
+  ready_to_pickup: 'READY_TO_PICKUP',
+  requestCancellation: 'CANCELLED (solicitado)'
+}
+
 const styles = {
-  page: { fontFamily: 'system-ui, sans-serif', maxWidth: 900, margin: '0 auto', padding: 20, color: '#111' },
+  page: { fontFamily: 'system-ui, sans-serif', maxWidth: 960, margin: '0 auto', padding: 20, color: '#111' },
   h1: { fontSize: 20 },
   hint: { background: '#fff3cd', border: '1px solid #ffc107', padding: '10px 12px', borderRadius: 6, fontSize: 13, lineHeight: 1.5 },
   bar: { display: 'flex', gap: 8, alignItems: 'center', margin: '12px 0' },
@@ -33,17 +41,31 @@ const styles = {
   td: { padding: '8px 10px', borderBottom: '1px solid #eee', verticalAlign: 'top' },
   badge: { display: 'inline-block', padding: '2px 8px', borderRadius: 20, color: '#fff', fontSize: 12, fontWeight: 600 },
   mpid: { fontFamily: 'monospace', fontSize: 11, color: '#777', wordBreak: 'break-all' },
-  msg: { fontSize: 13, fontFamily: 'monospace', whiteSpace: 'pre-wrap', background: '#111', color: '#0f0', padding: 10, borderRadius: 6, maxHeight: 300, overflow: 'auto' }
+  msg: { fontSize: 13, fontFamily: 'monospace', whiteSpace: 'pre-wrap', background: '#111', color: '#0f0', padding: 10, borderRadius: 6, maxHeight: 300, overflow: 'auto' },
+  panel: { flex: '0 0 340px', minWidth: 280, fontSize: 13 },
+  panelTitle: { fontSize: 14, margin: 0, marginBottom: 6, fontWeight: 700 },
+  entry: { background: '#fff', border: '1px solid #e5e5e5', borderRadius: 6, padding: '8px 10px', marginBottom: 6 }
+}
+
+function fmtHora(iso) {
+  if (!iso) return ''
+  const d = new Date(iso)
+  return d.toLocaleTimeString('pt-BR', { hour12: false })
+}
+
+function shortId(id) {
+  if (!id) return '-'
+  return id.length > 12 ? id.slice(0, 12) + '…' : id
 }
 
 export default function TesteIfood() {
   const [pedidos, setPedidos] = useState([])
   const [log, setLog] = useState([])
+  const [syncLog, setSyncLog] = useState([])
   const [loading, setLoading] = useState(true)
   const [resposta, setResposta] = useState('')
 
   const carregar = useCallback(async () => {
-    setLoading(true)
     try {
       const r = await fetch(`${API}/orders`)
       const data = await r.json()
@@ -65,10 +87,25 @@ export default function TesteIfood() {
     } catch (_) {}
   }, [])
 
+  const carregarSyncLog = useCallback(async () => {
+    try {
+      const r = await fetch(`${API}/marketplace/debug/sync-log`)
+      const data = await r.json()
+      setSyncLog(Array.isArray(data) ? data : [])
+    } catch (_) {}
+  }, [])
+
   useEffect(() => {
     carregar()
     carregarLog()
-  }, [carregar, carregarLog])
+    carregarSyncLog()
+    const id = setInterval(() => {
+      carregar()
+      carregarLog()
+      carregarSyncLog()
+    }, 5000)
+    return () => clearInterval(id)
+  }, [carregar, carregarLog, carregarSyncLog])
 
   const simularEvento = async (pedido, code) => {
     const mpid = pedido.cliente?.marketplace_order_id
@@ -100,23 +137,31 @@ export default function TesteIfood() {
       setTimeout(async () => {
         await carregar()
         await carregarLog()
+        await carregarSyncLog()
       }, 800)
     } catch (e) {
       setResposta(`Erro ao enviar: ${e.message}`)
     }
   }
 
+  const ifoodReconheceu = (entry) => {
+    if (entry.status !== 'ok') return null
+    if (entry.type === 'requestCancellation') return 'iFood reconheceu: pedido cancelado ✓'
+    if (entry.ifoodStatus) return `iFood reconheceu: ${entry.ifoodStatus.toUpperCase()} ✓`
+    return null
+  }
+
   return (
     <div style={styles.page}>
       <h1 style={styles.h1}>🍕 Teste iFood — Pedidos</h1>
       <div style={styles.hint}>
-        <b>Como testar:</b> crie um pedido de teste no portal do iFood → ele aparece abaixo → clique em{" "}
-        <b>"Cancelar (simular)"</b>. Isso envia para o webhook a mesma mensagem que o iFood enviaria quando um
-        cliente cancela. Depois abra o admin e veja o pedido na aba <b>Cancelados</b> — sem você fazer nada.
+        <b>Como testar:</b> crie um pedido de teste no portal do iFood → ele aparece abaixo. Clique em{" "}
+        <b>"Cancelar (simular)"</b> para simular o iFood cancelando, ou mude o status no admin e veja aqui o que foi{" "}
+        <b>enviado para o iFood</b> (painel da direita). A página atualiza sozinha a cada 5s.
       </div>
 
       <div style={styles.bar}>
-        <button style={{ ...styles.button, background: '#409EFF', color: '#fff' }} onClick={() => { carregar(); carregarLog() }}>
+        <button style={{ ...styles.button, background: '#409EFF', color: '#fff' }} onClick={() => { carregar(); carregarLog(); carregarSyncLog() }}>
           🔄 Atualizar
         </button>
         {loading && <span style={{ fontSize: 13, color: '#888' }}>Carregando...</span>}
@@ -183,8 +228,44 @@ export default function TesteIfood() {
       </table>
         </div>
 
-        <div style={{ flex: '0 0 320px', minWidth: 260 }}>
-          <h2 style={{ fontSize: 14, margin: 0, marginBottom: 6 }}>Último webhook recebido</h2>
+        <div style={styles.panel}>
+          <h2 style={styles.panelTitle}>📤 Enviado para o iFood (sincronização)</h2>
+          {syncLog.length === 0 ? (
+            <p style={{ fontSize: 13, color: '#888' }}>Nada enviado ainda. Mude um status de um pedido iFood no admin.</p>
+          ) : syncLog.slice(0, 12).map((e, i) => (
+            <div key={i} style={styles.entry}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+                <strong style={{ fontSize: 12 }}>{fmtHora(e.timestamp)}</strong>
+                <span style={{ fontSize: 12 }}>
+                  {e.status === 'ok' && <span style={{ color: '#67C23A', fontWeight: 700 }}>✓ ok</span>}
+                  {e.status === 'enviando' && <span style={{ color: '#E6A23C', fontWeight: 700 }}>⚠ enviando</span>}
+                  {e.status === 'erro' && <span style={{ color: '#F56C6C', fontWeight: 700 }}>✗ erro</span>}
+                </span>
+              </div>
+              <div style={{ fontSize: 12, marginTop: 4 }}>
+                {e.type === 'requestCancellation' ? (
+                  <>
+                    Pedido <b>{shortId(e.orderId)}</b>: local <b>cancelado</b> → iFood <b>{IFOOD_STATUS_LABELS.requestCancellation}</b>
+                    {e.reason ? ` (reason ${e.reason})` : ''}
+                  </>
+                ) : (
+                  <>
+                    Pedido <b>{shortId(e.orderId)}</b>: local <b>{STATUS_LABELS[e.localStatus] || e.localStatus}</b> → iFood{" "}
+                    <b>{IFOOD_STATUS_LABELS[e.ifoodStatus] || e.ifoodStatus}</b>
+                  </>
+                )}
+              </div>
+              <div style={{ fontSize: 11, color: '#888', fontFamily: 'monospace', marginTop: 3, wordBreak: 'break-all' }}>
+                POST {e.endpoint}
+              </div>
+              {e.error && <div style={{ fontSize: 11, color: '#F56C6C', marginTop: 3 }}>{e.error}</div>}
+              {ifoodReconheceu(e) && <div style={{ fontSize: 12, color: '#67C23A', marginTop: 3, fontWeight: 700 }}>{ifoodReconheceu(e)}</div>}
+            </div>
+          ))}
+        </div>
+
+        <div style={styles.panel}>
+          <h2 style={styles.panelTitle}>📥 Último webhook recebido</h2>
           {log.length === 0 ? (
             <p style={{ fontSize: 13, color: '#888' }}>Nenhum webhook registrado ainda.</p>
           ) : (
