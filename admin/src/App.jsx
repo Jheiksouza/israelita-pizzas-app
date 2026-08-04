@@ -27,6 +27,18 @@ function isRetirada(pedido) {
   return MODOS_RETIRADA.includes(modo) || categoria === 'FOOD_SELF_SERVICE'
 }
 
+const statusLabelFor = (pedido) => {
+  if (!pedido?.status) return ''
+  if (pedido.status === 'liberado') return isRetirada(pedido) ? 'Pronto p/ retirar' : 'Saiu p/ entrega'
+  if (pedido.status === 'entregue') return isRetirada(pedido) ? 'Concluído' : 'Entregue'
+  return pedido.status === 'em_rota' ? 'Em rota'
+    : pedido.status === 'entregador_proximo' ? 'Chegando!'
+    : pedido.status === 'pendente' ? 'Pendente'
+    : pedido.status === 'aceito' ? 'Em preparo'
+    : pedido.status === 'cancelado' ? 'Cancelado'
+    : pedido.status
+}
+
 const allNavItems = [
   { key: 'pedidos', label: 'Pedidos', icon: List, roles: ['admin', 'atendente'], section: 'Geral' },
   { key: 'cardapio', label: 'Cardápio', icon: Pizza, roles: ['admin'], section: 'Geral' },
@@ -549,10 +561,17 @@ function AdminOrders() {
         <div className="filter-group">
           {FILTROS.map(s => {
             const count = s === 'todos' ? ordenados.length : ordenados.filter(p => p.status === s).length
+            const retiradasCount = s !== 'todos' ? ordenados.filter(p => p.status === s && isRetirada(p)).length : 0
+            const subLabel = s === 'liberado' ? 'pronto p/ retirar' : s === 'entregue' ? 'concluído' : null
             return (
               <button key={s} className={`filter-btn ${filtro === s ? 'active' : ''}`} onClick={() => setFiltro(s)}>
-                {s === 'todos' ? 'Todos' : statusLabel[s]}
-                <span className={`filter-count ${count === 0 ? 'zero' : ''}`}>{count}</span>
+                <span className="filter-btn-main">
+                  {s === 'todos' ? 'Todos' : statusLabel[s]}
+                  <span className={`filter-count ${count === 0 ? 'zero' : ''}`}>{count}</span>
+                </span>
+                {subLabel && retiradasCount > 0 && (
+                  <span className="filter-sub">{subLabel}: {retiradasCount}</span>
+                )}
               </button>
             )
           })}
@@ -580,7 +599,7 @@ function AdminOrders() {
                         {isRetirada(pedido) && <span className="pedido-retirada-badge">🛍️ Retirada</span>}
                         {mpInfo && <span className="pedido-origem-badge" style={{ background: mpInfo.color }}>{mpInfo.displayName}</span>}
                       </span>
-                      <span className={badgeClass[pedido.status]}>{statusLabel[pedido.status]}</span>
+                      <span className={badgeClass[pedido.status]}>{statusLabelFor(pedido)}</span>
                     </div>
                     <div className="pedido-card-body">
                       <div className="pedido-info-row">
@@ -689,13 +708,13 @@ function AdminOrders() {
                       )}
                       {pedido.status === 'liberado' && (
                         <>
-                          <button className="btn btn-approve btn-sm" onClick={() => atualizarStatus(pedido.id, 'entregue')}><CheckCircle size={16} /> Entregue</button>
+                          <button className="btn btn-approve btn-sm" onClick={() => atualizarStatus(pedido.id, 'entregue')}><CheckCircle size={16} /> {isRetirada(pedido) ? 'Concluir' : 'Entregue'}</button>
                           <button className="btn btn-destructive btn-sm" onClick={() => atualizarStatus(pedido.id, 'cancelado')}><X size={16} /> Cancelar</button>
                         </>
                       )}
                       {pedido.status === 'entregador_proximo' && (
                         <>
-                          <button className="btn btn-approve btn-sm" onClick={() => atualizarStatus(pedido.id, 'entregue')}><CheckCircle size={16} /> Entregue</button>
+                          <button className="btn btn-approve btn-sm" onClick={() => atualizarStatus(pedido.id, 'entregue')}><CheckCircle size={16} /> {isRetirada(pedido) ? 'Concluir' : 'Entregue'}</button>
                           <button className="btn btn-destructive btn-sm" onClick={() => atualizarStatus(pedido.id, 'cancelado')}><X size={16} /> Cancelar</button>
                         </>
                       )}

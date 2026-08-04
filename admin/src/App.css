@@ -423,8 +423,9 @@ body {
 
 .filter-btn {
   display: inline-flex;
+  flex-direction: column;
   align-items: center;
-  gap: 4px;
+  gap: 3px;
   padding: 5px 12px;
   border-radius: 9999px;
   border: none;
@@ -437,6 +438,23 @@ body {
   transition: var(--transition);
   white-space: nowrap;
   line-height: 1;
+}
+
+.filter-btn-main {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.filter-sub {
+  display: inline-flex;
+  font-size: 0.62rem;
+  font-weight: 600;
+  color: #B45309;
+  background: color-mix(in oklch, #F59E0B 15%, transparent);
+  padding: 1px 6px;
+  border-radius: 9999px;
+  line-height: 1.2;
 }
 
 .filter-btn:hover { color: var(--foreground); }
