@@ -695,35 +695,39 @@ function AdminOrders() {
                         </div>
                       )}
 
-                      {pedido.totalDetalhe && (
-                        <div className="pedido-info-row">
-                          <div className="pedido-info-icon"><Receipt size={18} /></div>
-                          <div className="pedido-info-content">
-                            <div className="pedido-info-label">Resumo do total</div>
-                            <div className="pedido-total-detalhe">
-                              <div className="total-linha"><span>Subtotal</span><span>{fmtMoney(pedido.totalDetalhe.subTotal)}</span></div>
-                              {pedido.totalDetalhe.deliveryFee > 0 && (
-                                <div className="total-linha"><span>Frete</span><span>{fmtMoney(pedido.totalDetalhe.deliveryFee)}</span></div>
-                              )}
-                              {pedido.totalDetalhe.additionalFees > 0 && (
-                                <div className="total-linha"><span>Taxas adicionais</span><span>{fmtMoney(pedido.totalDetalhe.additionalFees)}</span></div>
-                              )}
-                              {pedido.totalDetalhe.benefits > 0 && (
-                                <>
-                                  <div className="total-linha total-desconto"><span>Desconto</span><span>− {fmtMoney(pedido.totalDetalhe.benefits)}</span></div>
-                                  {pedido.totalDetalhe.benefitsList?.map((b, bi) => (
-                                    <div key={bi} className="total-linha total-beneficio">
-                                      <span>{b.alvo === 'DELIVERY_FEE' ? 'Desconto no frete' : b.alvo === 'ITEM' ? `Desconto item ${b.targetId || ''}` : b.nome || b.descricao || 'Cupom'} ({b.alvo})</span>
-                                      <span>− {fmtMoney(b.valor)}</span>
-                                    </div>
-                                  ))}
-                                </>
-                              )}
-                              <div className="total-linha total-geral"><span>Total</span><span>{fmtMoney(pedido.totalDetalhe.orderAmount ?? pedido.total)}</span></div>
+                      {(() => {
+                        const td = pedido.totalDetalhe || pedido.cliente?.totalDetalhe
+                        if (!td) return null
+                        return (
+                          <div className="pedido-info-row">
+                            <div className="pedido-info-icon"><Receipt size={18} /></div>
+                            <div className="pedido-info-content">
+                              <div className="pedido-info-label">Resumo do total</div>
+                              <div className="pedido-total-detalhe">
+                                <div className="total-linha"><span>Subtotal</span><span>{fmtMoney(td.subTotal)}</span></div>
+                                {td.deliveryFee > 0 && (
+                                  <div className="total-linha"><span>Frete</span><span>{fmtMoney(td.deliveryFee)}</span></div>
+                                )}
+                                {td.additionalFees > 0 && (
+                                  <div className="total-linha"><span>Taxas adicionais</span><span>{fmtMoney(td.additionalFees)}</span></div>
+                                )}
+                                {td.benefits > 0 && (
+                                  <>
+                                    <div className="total-linha total-desconto"><span>Desconto</span><span>− {fmtMoney(td.benefits)}</span></div>
+                                    {td.benefitsList?.map((b, bi) => (
+                                      <div key={bi} className="total-linha total-beneficio">
+                                        <span>{b.alvo === 'DELIVERY_FEE' ? 'Desconto no frete' : b.alvo === 'ITEM' ? `Desconto item ${b.targetId || ''}` : b.nome || b.descricao || 'Cupom'} ({b.alvo})</span>
+                                        <span>− {fmtMoney(b.valor)}</span>
+                                      </div>
+                                    ))}
+                                  </>
+                                )}
+                                <div className="total-linha total-geral"><span>Total</span><span>{fmtMoney(td.orderAmount ?? pedido.total)}</span></div>
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      )}
+                        )
+                      })()}
 
                       {expandido === pedido.id && (
                         <div className="pedido-detalhes">

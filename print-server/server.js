@@ -245,7 +245,7 @@ function gerarBytes(pedido) {
     }
   }
   txt(SEP + '\n')
-  const td = pedido.totalDetalhe
+  const td = pedido.totalDetalhe || c.totalDetalhe
   if (td && (td.subTotal != null || td.deliveryFee || td.additionalFees || td.benefits)) {
     txt(formataLinha({ texto: 'Subtotal', sub: false, valor: td.subTotal || 0 }) + '\n')
     if (td.deliveryFee > 0) txt(formataLinha({ texto: 'Frete', sub: false, valor: td.deliveryFee }) + '\n')
