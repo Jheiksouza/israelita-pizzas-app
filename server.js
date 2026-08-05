@@ -973,6 +973,7 @@ app.post('/marketplace/:platform/webhook', async (req, res) => {
               cliente: orderData.cliente,
               itens: orderData.itens,
               total: orderData.total,
+              totalDetalhe: orderData.totalDetalhe || null,
               user_id: null,
               entrega_lat: orderData.entrega_lat,
               entrega_lng: orderData.entrega_lng
@@ -1070,6 +1071,7 @@ app.post('/marketplace/:platform/poll', async (req, res) => {
             cliente: { ...internal.cliente, marketplace_order_id: event.orderId },
             itens: internal.itens,
             total: internal.total,
+            totalDetalhe: internal.totalDetalhe || null,
             user_id: null,
             entrega_lat: internal.entrega_lat,
             entrega_lng: internal.entrega_lng

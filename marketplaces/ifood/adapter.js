@@ -284,6 +284,34 @@ class IfoodAdapter extends MarketplaceAdapter {
 
     const pagamento = formatPayments(orderData.payments)
 
+    const totalDetalhe = {
+      subTotal: parseFloat(totalObj.subTotal || 0),
+      deliveryFee: parseFloat(totalObj.deliveryFee || 0),
+      additionalFees: parseFloat(totalObj.additionalFees || 0),
+      benefits: parseFloat(totalObj.benefits || 0),
+      orderAmount: isNaN(total) ? 0 : total,
+      benefitsList: Array.isArray(orderData.benefits)
+        ? orderData.benefits.map(b => ({
+            valor: parseFloat(b.value || 0),
+            alvo: b.target || '',
+            targetId: b.targetId || '',
+            nome: b.campaign?.name || '',
+            descricao: b.campaign?.description || '',
+            patrocinio: (b.sponsorshipValues || []).map(sv => ({
+              nome: sv.name || '',
+              valor: parseFloat(sv.value || 0)
+            }))
+          }))
+        : [],
+      additionalFeesList: Array.isArray(orderData.additionalFees)
+        ? orderData.additionalFees.map(f => ({
+            tipo: f.type || '',
+            descricao: f.description || '',
+            valor: parseFloat(f.value || 0)
+          }))
+        : []
+    }
+
     const lat = addressData.coordinates?.latitude ?? addressData.latitude
     const lng = addressData.coordinates?.longitude ?? addressData.longitude
 
@@ -316,6 +344,7 @@ class IfoodAdapter extends MarketplaceAdapter {
       },
       itens: flattenItems(itemsData),
       total: isNaN(total) ? 0 : total,
+      totalDetalhe,
       entrega_lat: lat != null ? parseFloat(lat) : null,
       entrega_lng: lng != null ? parseFloat(lng) : null
     }

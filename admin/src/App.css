@@ -726,13 +726,57 @@ body {
 }
 
 .pedido-item-linha {
-  display: block;
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.pedido-item-valor {
+  white-space: nowrap;
+  font-weight: 600;
 }
 
 .pedido-item-sub {
-  padding-left: 12px;
   font-size: 0.76rem;
   color: var(--muted-foreground);
+}
+
+.pedido-item-sub .pedido-item-valor {
+  font-weight: 400;
+}
+
+.pedido-total-detalhe {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  font-size: 0.8rem;
+  margin-top: 4px;
+}
+
+.total-linha {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 2px 0;
+  border-bottom: 1px dashed color-mix(in oklch, var(--muted) 60%, transparent);
+}
+
+.total-desconto span:last-child,
+.total-beneficio span:last-child {
+  color: #2f9e44;
+}
+
+.total-beneficio {
+  font-size: 0.74rem;
+  padding-left: 12px;
+  opacity: 0.85;
+}
+
+.total-geral {
+  font-weight: 700;
+  font-size: 0.9rem;
+  border-bottom: none;
 }
 
 .pedido-obs {

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react'
 import { MapContainer, TileLayer, Marker, Polyline, useMapEvents, useMap } from 'react-leaflet'
 import L from 'leaflet'
-import { Pizza, MapPin, Store, Lock, Clock, Timer, Check, X, Truck, CheckCircle, Bike, Search, Plus, Pencil, DollarSign, List, Sun, Moon, LogOut, Settings, ChevronRight, ChevronLeft, Wifi, WifiOff, AlertCircle, CreditCard, FileText, Package, Phone, Hash, AlertTriangle } from 'lucide-react'
+import { Pizza, MapPin, Store, Lock, Clock, Timer, Check, X, Truck, CheckCircle, Bike, Search, Plus, Pencil, DollarSign, List, Sun, Moon, LogOut, Settings, ChevronRight, ChevronLeft, Wifi, WifiOff, AlertCircle, CreditCard, FileText, Package, Phone, Hash, AlertTriangle, Receipt } from 'lucide-react'
 import { printOrder } from './escpos.js'
 
 const API = '/api'
@@ -55,10 +55,10 @@ const fmtCPF = (c) => {
 // categoria (Tamanho/Massa/Borda/Sabores/Complementos = groupName do iFood).
 // A borda aparece logo abaixo da pizza e os complementos vêm depois.
 function itemLinhas(item) {
-  const linhas = [{ texto: `${item.qtd}x ${item.nome}`, sub: false }]
+  const linhas = [{ texto: `${item.qtd}x ${item.nome}`, sub: false, valor: (item.preco || 0) * (item.qtd || 1) }]
   ;(item.adicionais || []).forEach(a => {
     const nome = a.qtd > 1 ? `${a.qtd}x ${a.nome}` : a.nome
-    linhas.push({ texto: `➥ ${nome}`, sub: true })
+    linhas.push({ texto: `➥ ${nome}`, sub: true, valor: a.total || (a.preco || 0) * (a.qtd || 1) })
   })
   const mapa = new Map()
   ;(item.opcoes || []).forEach(o => {
@@ -72,8 +72,10 @@ function itemLinhas(item) {
     return bb - ba
   })
   grupos.forEach(g => {
-    const nomes = mapa.get(g).map(o => (o.qtd > 1 ? `${o.qtd}x ${o.nome}` : o.nome)).join(', ')
-    linhas.push({ texto: `${g}: ${nomes}`, sub: true })
+    mapa.get(g).forEach(o => {
+      const nome = o.qtd > 1 ? `${o.qtd}x ${o.nome}` : o.nome
+      linhas.push({ texto: `${g}: ${nome}`, sub: true, valor: o.total || (o.preco || 0) * (o.qtd || 1) })
+    })
   })
   return linhas
 }
@@ -681,10 +683,43 @@ function AdminOrders() {
                               {pedido.itens.map(item => (
                                 <span key={item.id} className="pedido-item">
                                   {itemLinhas(item).map((l, li) => (
-                                    <span key={li} className={l.sub ? 'pedido-item-linha pedido-item-sub' : 'pedido-item-linha'}>{l.texto}</span>
+                                    <span key={li} className={`pedido-item-linha${l.sub ? ' pedido-item-sub' : ''}`}>
+                                      <span className="pedido-item-nome">{l.texto}</span>
+                                      {l.valor > 0 && <span className="pedido-item-valor">{fmtMoney(l.valor)}</span>}
+                                    </span>
                                   ))}
                                 </span>
                               ))}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {pedido.totalDetalhe && (
+                        <div className="pedido-info-row">
+                          <div className="pedido-info-icon"><Receipt size={18} /></div>
+                          <div className="pedido-info-content">
+                            <div className="pedido-info-label">Resumo do total</div>
+                            <div className="pedido-total-detalhe">
+                              <div className="total-linha"><span>Subtotal</span><span>{fmtMoney(pedido.totalDetalhe.subTotal)}</span></div>
+                              {pedido.totalDetalhe.deliveryFee > 0 && (
+                                <div className="total-linha"><span>Frete</span><span>{fmtMoney(pedido.totalDetalhe.deliveryFee)}</span></div>
+                              )}
+                              {pedido.totalDetalhe.additionalFees > 0 && (
+                                <div className="total-linha"><span>Taxas adicionais</span><span>{fmtMoney(pedido.totalDetalhe.additionalFees)}</span></div>
+                              )}
+                              {pedido.totalDetalhe.benefits > 0 && (
+                                <>
+                                  <div className="total-linha total-desconto"><span>Desconto</span><span>− {fmtMoney(pedido.totalDetalhe.benefits)}</span></div>
+                                  {pedido.totalDetalhe.benefitsList?.map((b, bi) => (
+                                    <div key={bi} className="total-linha total-beneficio">
+                                      <span>{b.alvo === 'DELIVERY_FEE' ? 'Desconto no frete' : b.alvo === 'ITEM' ? `Desconto item ${b.targetId || ''}` : b.nome || b.descricao || 'Cupom'} ({b.alvo})</span>
+                                      <span>− {fmtMoney(b.valor)}</span>
+                                    </div>
+                                  ))}
+                                </>
+                              )}
+                              <div className="total-linha total-geral"><span>Total</span><span>{fmtMoney(pedido.totalDetalhe.orderAmount ?? pedido.total)}</span></div>
                             </div>
                           </div>
                         </div>

@@ -208,7 +208,7 @@ function formInicial() {
       opcoes: [
         { nome: 'Grande', grupo: 'Tamanho', qtd: 1, unitPrice: '0' },
         { nome: 'Tradicional', grupo: 'Massa', qtd: 1, unitPrice: '0' },
-        { nome: 'Catupiry', grupo: 'Borda', qtd: 1, unitPrice: '0' },
+        { nome: 'Catupiry', grupo: 'Borda', qtd: 1, unitPrice: '12' },
         { nome: 'Calabresa', grupo: 'Sabores', qtd: 1, unitPrice: '0' }
       ]
     }]

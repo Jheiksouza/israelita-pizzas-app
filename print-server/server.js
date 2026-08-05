@@ -34,10 +34,10 @@ function fmtCPF(c) {
 // Monta as linhas de um item para impressao, agrupando opcoes por categoria
 // (Tamanho/Massa/Borda/Sabores/Complementos = groupName). Borda logo abaixo da pizza.
 function itemLinhas(item) {
-  const linhas = [{ texto: `${item.qtd}x ${sanitizarNome(item.nome)}`, sub: false }]
+  const linhas = [{ texto: `${item.qtd}x ${sanitizarNome(item.nome)}`, sub: false, valor: (item.preco || 0) * (item.qtd || 1) }]
   ;(item.adicionais || []).forEach(a => {
     const nome = a.qtd > 1 ? `${a.qtd}x ${sanitizarNome(a.nome)}` : sanitizarNome(a.nome)
-    linhas.push({ texto: `  > ${nome}`, sub: true })
+    linhas.push({ texto: `  > ${nome}`, sub: true, valor: a.total || (a.preco || 0) * (a.qtd || 1) })
   })
   const mapa = new Map()
   ;(item.opcoes || []).forEach(o => {
@@ -51,10 +51,23 @@ function itemLinhas(item) {
     return bb - ba
   })
   grupos.forEach(g => {
-    const nomes = mapa.get(g).map(o => (o.qtd > 1 ? `${o.qtd}x ${sanitizarNome(o.nome)}` : sanitizarNome(o.nome))).join(', ')
-    linhas.push({ texto: `  ${g}: ${nomes}`, sub: true })
+    mapa.get(g).forEach(o => {
+      const nome = o.qtd > 1 ? `${o.qtd}x ${sanitizarNome(o.nome)}` : sanitizarNome(o.nome)
+      linhas.push({ texto: `  ${g}: ${nome}`, sub: true, valor: o.total || (o.preco || 0) * (o.qtd || 1) })
+    })
   })
   return linhas
+}
+
+// Alinha o valor a direita da linha (largura padrao 32 colunas)
+function formataLinha(l) {
+  let valor = ''
+  if (l.valor > 0) valor = fmtMoney(l.valor)
+  else if (l.valor < 0) valor = '-' + fmtMoney(Math.abs(l.valor))
+  if (!valor) return l.texto
+  const largura = 32
+  const texto = l.texto.length > largura - valor.length ? l.texto.slice(0, largura - valor.length - 1) : l.texto
+  return texto + ' '.repeat(Math.max(1, largura - texto.length - valor.length)) + valor
 }
 
 const PORT = 13001
@@ -226,15 +239,19 @@ function gerarBytes(pedido) {
   if (pedido.itens) {
     for (const item of pedido.itens) {
       const linhas = itemLinhas(item)
-      linhas.forEach((l, i) => {
-        let linha = l.texto
-        const preco = item.preco || item.valor_unitario || 0
-        if (!l.sub && preco) linha += `  ${fmtMoney(preco * item.qtd)}`
-        txt(linha + '\n')
+      linhas.forEach(l => {
+        txt(formataLinha(l) + '\n')
       })
     }
   }
   txt(SEP + '\n')
+  const td = pedido.totalDetalhe
+  if (td && (td.subTotal != null || td.deliveryFee || td.additionalFees || td.benefits)) {
+    txt(formataLinha({ texto: 'Subtotal', sub: false, valor: td.subTotal || 0 }) + '\n')
+    if (td.deliveryFee > 0) txt(formataLinha({ texto: 'Frete', sub: false, valor: td.deliveryFee }) + '\n')
+    if (td.additionalFees > 0) txt(formataLinha({ texto: 'Taxas adicionais', sub: false, valor: td.additionalFees }) + '\n')
+    if (td.benefits > 0) txt(formataLinha({ texto: 'Desconto', sub: false, valor: -td.benefits }) + '\n')
+  }
   esc(0x1B, 0x45, 0x01)
   txt(`TOTAL: ${fmtMoney(pedido.total)}\n`)
   esc(0x1B, 0x45, 0x00)
