@@ -208,10 +208,11 @@ class IfoodAdapter extends MarketplaceAdapter {
         bandeira: m.brand || '',
         valor: m.value || 0,
         prepago: m.prepaid || false,
-        troco: m.changeFor || 0,
+        troco: m.cash?.changeFor || m.changeFor || 0,
         tipo: m.type || '',
         cardBrand: m.card?.brand || m.brand || '',
-        authorizationCode: m.transaction?.authorizationCode || ''
+        authorizationCode: m.transaction?.authorizationCode || '',
+        parcelas: m.card?.installments || 0
       }))
     }
 

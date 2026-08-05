@@ -913,9 +913,12 @@ app.post('/marketplace/:platform/webhook', async (req, res) => {
 
         if (event.code === 'CONFIRMED' || event.code === 'PLACED') {
           try {
-            let orderPayload = rawPayload
+            // Payload direto de teste: se o body já traz o pedido completo inline (items),
+            // usa ele sem buscar na API (pedidos reais do iFood nunca trazem items no evento)
+            const isInlineOrder = !!(rawPayload && rawPayload.items && Array.isArray(rawPayload.items))
+            let orderPayload = isInlineOrder ? rawPayload : null
 
-            if (event.orderId) {
+            if (!orderPayload && event.orderId) {
               addWebhookLog(platform, { type: 'FETCH_ORDER', orderId: event.orderId })
               // Retry logic: PLACED pode chegar antes dos detalhes estarem disponíveis
               let orderData = null
@@ -939,6 +942,8 @@ app.post('/marketplace/:platform/webhook', async (req, res) => {
                 addWebhookLog(platform, { type: 'FETCH_ORDER_DATA', orderId: event.orderId, preview: JSON.stringify(orderData).substring(0, 1000) })
               }
             }
+
+            if (!orderPayload) orderPayload = rawPayload
 
             console.log(`[${platform}] 🔄 Convertendo orderPayload:`, JSON.stringify(orderPayload, null, 2))
             const orderData = await adapter.toInternalOrder(orderPayload, config)

@@ -106,15 +106,30 @@ const CHANNEL_OPCOES = [
   { value: 'MERCHANT', desc: 'Pedido feito na própria loja (balcão).' }
 ]
 
-const PAGAMENTO_OPCOES = [
-  { value: 'CREDIT', desc: 'Cartão de crédito — pagamento online no app.' },
-  { value: 'DEBIT', desc: 'Cartão de débito — pagamento online no app.' },
-  { value: 'CASH', desc: 'Dinheiro — pago na entrega/retirada.' },
-  { value: 'CARD', desc: 'Cartão cadastrado no app (pagamento online).' },
-  { value: 'ONLINE', desc: 'Pagamento online no app (cartão ou Pix).' },
+const DELIVEREDBY_OPCOES = [
+  { value: 'IFOOD', desc: 'Entrega feita pelo iFood.' },
+  { value: 'MERCHANT', desc: 'Entrega feita pela própria loja.' },
+  { value: 'VENDOR', desc: 'Entrega feita por parceiro/fornecedor.' }
+]
+
+const METODO_OPCOES = [
+  { value: 'CREDIT', desc: 'Cartão de crédito.' },
+  { value: 'DEBIT', desc: 'Cartão de débito.' },
+  { value: 'CASH', desc: 'Dinheiro.' },
+  { value: 'PIX', desc: 'Pix.' },
+  { value: 'MEAL_TICKET', desc: 'Vale refeição/alimentação.' },
+  { value: 'VOUCHER', desc: 'Voucher/convênio.' },
+  { value: 'GIFT', desc: 'Vale presente.' },
+  { value: 'CARD', desc: 'Cartão cadastrado (method genérico).' },
+  { value: 'OTHERS', desc: 'Outros.' }
+]
+
+const TIPO_OPCOES = [
+  { value: 'ONLINE', desc: 'Pagamento online no app.' },
   { value: 'CARD_ON_DELIVERY', desc: 'Cartão na entrega (maquininha).' },
   { value: 'CARD_ON_PICKUP', desc: 'Cartão na retirada (maquininha na loja).' },
-  { value: 'PIX', desc: 'Pix (online ou na entrega).' },
+  { value: 'CASH', desc: 'Dinheiro na entrega/retirada.' },
+  { value: 'PIX', desc: 'Pix.' },
   { value: 'MEAL_TICKET', desc: 'Vale refeição/alimentação.' },
   { value: 'VOUCHER', desc: 'Voucher/convênio.' },
   { value: 'GIFT', desc: 'Vale presente.' },
@@ -153,10 +168,11 @@ export default function TesteIfood() {
     isTest: true,
     deliveryFee: '0',
     benefits: '0',
-    cliente: { nome: 'Cliente Teste', telefone: '(11) 99999-9999', cpf: '12345678901', documentType: 'CPF' },
+    merchant: { id: 'loja_teste_001', name: 'Israelita Pizzas' },
+    cliente: { nome: 'Cliente Teste', telefone: '11999999999', phoneLocalizer: '+55', cpf: '12345678901', documentType: 'CPF' },
     endereco: { streetName: 'Rua Teste', streetNumber: '123', neighborhood: 'Centro', city: 'São Paulo', state: 'SP', complement: 'Apto 1', reference: 'Próximo ao mercado', postalCode: '01000-000', lat: '', lng: '' },
-    entrega: { modo: 'DELIVERY', obs: '', pickupCode: '', data: '' },
-    pagamentos: [{ method: 'CASH', type: 'CASH', brand: '', value: '', prepaid: false, changeFor: '0', cardBrand: '', authorizationCode: '' }],
+    entrega: { mode: 'DELIVERY', deliveredBy: 'IFOOD', obs: '', pickupCode: '', table: '', data: '' },
+    pagamentos: [{ method: 'CREDIT', type: 'ONLINE', brand: '', value: '', prepaid: true, changeFor: '0', cardBrand: 'VISA', authorizationCode: '123456', installments: '1' }],
     itens: [{ nome: 'Pizza Calabresa', qtd: 1, unitPrice: '50', externalCode: 'menu_1', observacoes: '', adicionais: [], opcoes: [] }]
   }))
 
@@ -213,21 +229,23 @@ export default function TesteIfood() {
     return () => clearInterval(id)
   }, [carregar, carregarLog, carregarSyncLog])
 
-  const simularEvento = async (pedido, code) => {
+  const simularEvento = async (pedido, fullCode) => {
     const mpid = pedido.cliente?.marketplace_order_id
     if (!mpid) {
       setResposta(`Pedido #${pedido.id} não tem marketplace_order_id (não é pedido iFood)`)
       return
     }
+    const codigos = { CANCELLED: 'CAN', CONCLUDED: 'CON' }
+    const code = codigos[fullCode] || fullCode
     const body = {
-      id: `evt_sim_${code}_${Date.now()}`,
+      id: `evt_sim_${fullCode}_${Date.now()}`,
       code,
-      fullCode: code,
+      fullCode,
       orderId: mpid,
       createdAt: new Date().toISOString(),
-      metadata: { orderId: mpid, status: code, reason: 'Simulação manual pela página /testeifood' }
+      metadata: { orderId: mpid, status: fullCode, reason: 'Simulação manual pela página /testeifood' }
     }
-    setResposta(`Enviando ${code} para o pedido #${pedido.id} (${mpid})...\n`)
+    setResposta(`Enviando ${fullCode} para o pedido #${pedido.id} (${mpid})...\n`)
     try {
       const r = await fetch(`${API}/marketplace/ifood/webhook`, {
         method: 'POST',
@@ -235,7 +253,7 @@ export default function TesteIfood() {
         body: JSON.stringify(body)
       })
       const text = await r.text()
-      setResposta(`Enviado ${code} para #${pedido.id} → HTTP ${r.status}\n${text}\n\nRecarregando lista...`)
+      setResposta(`Enviado ${fullCode} para #${pedido.id} → HTTP ${r.status}\n${text}\n\nRecarregando lista...`)
       setTimeout(async () => {
         await carregar()
         await carregarLog()
@@ -274,12 +292,14 @@ export default function TesteIfood() {
         externalCode: a.externalCode || ''
       })),
       options: (it.opcoes || []).filter(o => o.nome).map(o => ({
+        id: `op_${it.nome || 'item'}_${o.nome}`,
         name: o.nome,
         groupName: o.grupo || '',
         quantity: parseInt(o.qtd) || 1,
         unitPrice: parseFloat(o.unitPrice) || 0,
         price: parseFloat(o.unitPrice) || 0,
         totalPrice: (parseInt(o.qtd) || 1) * (parseFloat(o.unitPrice) || 0),
+        addition: 0,
         externalCode: ''
       }))
     }))
@@ -290,51 +310,65 @@ export default function TesteIfood() {
       let valor = parseFloat(p.value)
       if (!(valor > 0)) valor = Math.max(0, totalOrder - assigned)
       assigned += valor
-      return {
+      const m = {
         method: p.method,
         type: p.type,
-        brand: p.brand,
         value: valor,
         prepaid: !!p.prepaid,
-        changeFor: parseFloat(p.changeFor) || 0,
-        card: { brand: p.cardBrand },
-        transaction: { authorizationCode: p.authorizationCode }
+        currency: 'BRL'
       }
+      if (p.brand) m.brand = p.brand
+      const changeFor = parseFloat(p.changeFor) || 0
+      if (changeFor > 0) m.cash = { changeFor }
+      const cardBrand = p.cardBrand || p.brand
+      const parcelas = parseInt(p.installments) || 0
+      if (cardBrand || parcelas > 1) m.card = { ...(cardBrand ? { brand: cardBrand } : {}), ...(parcelas > 1 ? { installments: parcelas } : {}) }
+      if (p.authorizationCode) m.transaction = { authorizationCode: p.authorizationCode }
+      return m
     })
     const hasPayment = methods.length > 0
+    const prepagoTotal = methods.reduce((a, m) => a + (m.prepaid ? m.value : 0), 0)
+
+    const nowIso = new Date().toISOString()
+    const deliveryDateTime = form.entrega.data ? new Date(form.entrega.data).toISOString() : nowIso
 
     const body = {
       id: form.oid,
-      code: 'PLACED',
+      code: 'PLC',
       fullCode: 'PLACED',
-      createdAt: new Date().toISOString(),
-      metadata: { id: form.oid, status: 'PLACED', orderType: form.orderType, category: form.category, isTest: form.isTest },
+      orderId: form.oid,
+      createdAt: nowIso,
+      metadata: { orderId: form.oid, status: 'PLACED', orderType: form.orderType, category: form.category, isTest: form.isTest },
       displayId: form.displayId,
       orderType: form.orderType,
       category: form.category,
       orderTiming: form.orderTiming,
       salesChannel: form.salesChannel,
       isTest: form.isTest,
-      createdAt: new Date().toISOString(),
+      merchant: { id: form.merchant.id, name: form.merchant.name },
+      customer: {
+        name: form.cliente.nome,
+        cpf: form.cliente.cpf,
+        documentNumber: form.cliente.cpf,
+        documentType: form.cliente.documentType,
+        phone: { number: form.cliente.telefone, localizer: form.cliente.phoneLocalizer }
+      },
+      items: itens,
       total: {
         orderAmount: totalOrder,
         subTotal: totalCalculado,
         deliveryFee: parseFloat(form.deliveryFee) || 0,
-        benefits: parseFloat(form.benefits) || 0
+        benefits: parseFloat(form.benefits) || 0,
+        additionalFees: 0
       },
-      customer: {
-        name: form.cliente.nome,
-        phone: form.cliente.telefone,
-        cpf: form.cliente.cpf,
-        documentNumber: form.cliente.cpf,
-        documentType: form.cliente.documentType
-      },
+      additionalFees: [],
+      payments: hasPayment ? { methods, prepaid: prepagoTotal, pending: Math.max(0, totalOrder - prepagoTotal) } : null,
       delivery: {
-        mode: form.entrega.modo,
-        deliveredBy: form.entrega.modo,
+        mode: form.entrega.mode,
+        deliveredBy: form.entrega.deliveredBy,
         observations: form.entrega.obs,
         pickupCode: form.entrega.pickupCode,
-        deliveryDateTime: form.entrega.data,
+        deliveryDateTime,
         deliveryAddress: {
           streetName: form.endereco.streetName,
           streetNumber: form.endereco.streetNumber,
@@ -347,8 +381,12 @@ export default function TesteIfood() {
           coordinates: { latitude: parseFloat(form.endereco.lat) || null, longitude: parseFloat(form.endereco.lng) || null }
         }
       },
-      payments: hasPayment ? { methods } : null,
-      items: itens
+      ...(form.orderType === 'TAKEOUT'
+        ? { takeout: { mode: form.entrega.mode, pickupCode: form.entrega.pickupCode, takeoutDateTime: deliveryDateTime } }
+        : {}),
+      ...(form.orderType === 'INDOOR'
+        ? { indoor: { mode: form.entrega.mode, table: form.entrega.table, deliveryDateTime } }
+        : {})
     }
 
     setResposta(`Enviando pedido de teste (${form.oid}) para o webhook...\n`)
@@ -410,7 +448,7 @@ export default function TesteIfood() {
   }
 
   const addPagamento = () => {
-    setForm(prev => ({ ...prev, pagamentos: [...prev.pagamentos, { method: 'CASH', type: 'CASH', brand: '', value: '', prepaid: false, changeFor: '0', cardBrand: '', authorizationCode: '' }] }))
+    setForm(prev => ({ ...prev, pagamentos: [...prev.pagamentos, { method: 'CREDIT', type: 'ONLINE', brand: '', value: '', prepaid: true, changeFor: '0', cardBrand: '', authorizationCode: '', installments: '1' }] }))
   }
 
   const remPagamento = (idx) => {
@@ -443,10 +481,17 @@ export default function TesteIfood() {
           </label>
         </div>
 
+        <h3 style={{ fontSize: 13, margin: '6px 0' }}>Loja (merchant)</h3>
+        <div style={s.row}>
+          {campo('Merchant ID', form.merchant.id, setF('merchant.id'))}
+          {campo('Merchant Name', form.merchant.name, setF('merchant.name'))}
+        </div>
+
         <h3 style={{ fontSize: 13, margin: '6px 0' }}>Cliente</h3>
         <div style={s.row}>
           {campo('Nome', form.cliente.nome, setF('cliente.nome'))}
-          {campo('Telefone', form.cliente.telefone, setF('cliente.telefone'))}
+          {campo('Telefone (number)', form.cliente.telefone, setF('cliente.telefone'))}
+          {campo('DDI (localizer)', form.cliente.phoneLocalizer, setF('cliente.phoneLocalizer'), { style: { ...s.input, width: 70 } })}
           {campo('CPF/Documento', form.cliente.cpf, setF('cliente.cpf'))}
           {campo('Tipo Documento', form.cliente.documentType, setF('cliente.documentType'))}
         </div>
@@ -465,11 +510,13 @@ export default function TesteIfood() {
           {campo('Lng', form.endereco.lng, setF('endereco.lng'))}
         </div>
 
-        <h3 style={{ fontSize: 13, margin: '6px 0' }}>Entrega</h3>
+        <h3 style={{ fontSize: 13, margin: '6px 0' }}>Entrega (delivery)</h3>
         <div style={s.row}>
-          <SelectField label="Modo (mode/deliveredBy)" valor={form.entrega.modo} onChange={setF('entrega.modo')} opcoes={ORDERTYPE_OPCOES} />
+          <SelectField label="Modo (delivery.mode)" valor={form.entrega.mode} onChange={setF('entrega.mode')} opcoes={ORDERTYPE_OPCOES} />
+          <SelectField label="Entregue por (deliveredBy)" valor={form.entrega.deliveredBy} onChange={setF('entrega.deliveredBy')} opcoes={DELIVEREDBY_OPCOES} />
           {campo('Observações', form.entrega.obs, setF('entrega.obs'))}
           {campo('Código de coleta', form.entrega.pickupCode, setF('entrega.pickupCode'))}
+          {form.orderType === 'INDOOR' && campo('Mesa (indoor.table)', form.entrega.table, setF('entrega.table'))}
           {campo('Data/hora entrega', form.entrega.data, setF('entrega.data'), { type: 'datetime-local' })}
           {campo('Taxa de entrega', form.deliveryFee, setF('deliveryFee'))}
           {campo('Desconto (benefits)', form.benefits, setF('benefits'))}
@@ -524,13 +571,14 @@ export default function TesteIfood() {
         {form.pagamentos.map((pg, i) => (
           <div key={i} style={s.itemBox}>
             <div style={s.row}>
-              <SelectField label="Método" valor={pg.method} onChange={v => setPagamento(i, 'method', v)} opcoes={PAGAMENTO_OPCOES} />
-              <SelectField label="Tipo" valor={pg.type} onChange={v => setPagamento(i, 'type', v)} opcoes={PAGAMENTO_OPCOES} />
-              {campo('Bandeira', pg.brand, v => setPagamento(i, 'brand', v))}
+              <SelectField label="Método (method)" valor={pg.method} onChange={v => setPagamento(i, 'method', v)} opcoes={METODO_OPCOES} />
+              <SelectField label="Tipo (type)" valor={pg.type} onChange={v => setPagamento(i, 'type', v)} opcoes={TIPO_OPCOES} />
+              {campo('Bandeira (brand)', pg.brand, v => setPagamento(i, 'brand', v))}
+              {campo('Card Brand (card.brand)', pg.cardBrand, v => setPagamento(i, 'cardBrand', v))}
+              {campo('Parcelas (installments)', pg.installments, v => setPagamento(i, 'installments', v), { style: { ...s.input, width: 70 } })}
               {campo('Valor', pg.value, v => setPagamento(i, 'value', v), { style: { ...s.input, width: 110 } })}
-              {campo('Troco para', pg.changeFor, v => setPagamento(i, 'changeFor', v), { style: { ...s.input, width: 90 } })}
-              {campo('Card Brand', pg.cardBrand, v => setPagamento(i, 'cardBrand', v))}
-              {campo('Auth Code', pg.authorizationCode, v => setPagamento(i, 'authorizationCode', v))}
+              {campo('Troco para (cash.changeFor)', pg.changeFor, v => setPagamento(i, 'changeFor', v), { style: { ...s.input, width: 90 } })}
+              {campo('Auth Code (transaction)', pg.authorizationCode, v => setPagamento(i, 'authorizationCode', v))}
               <label style={{ ...s.label, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                 <input type="checkbox" checked={!!pg.prepaid} onChange={e => setPagamento(i, 'prepaid')(e.target.checked)} />
                 Pré-pago
@@ -540,7 +588,7 @@ export default function TesteIfood() {
               )}
             </div>
             <div style={s.hintText}>
-              Deixe <b>Valor</b> em branco para usar automaticamente o valor restante do pedido.
+              Estrutura enviada: <b>cash.changeFor</b> (troco), <b>card.brand</b> + <b>card.installments</b>, <b>transaction.authorizationCode</b>, <b>currency: BRL</b>. Deixe <b>Valor</b> em branco para usar automaticamente o valor restante do pedido.
             </div>
           </div>
         ))}
