@@ -708,17 +708,55 @@ body {
 
 .pedido-itens {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
   gap: 6px;
+  width: 100%;
 }
 
 .pedido-item {
   background: color-mix(in oklch, var(--muted) 60%, transparent);
-  padding: 4px 10px;
-  border-radius: 9999px;
+  padding: 6px 10px;
+  border-radius: 8px;
   color: var(--muted-foreground);
   font-size: 0.8rem;
-  line-height: 1.4;
+  line-height: 1.5;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.pedido-item-linha {
+  display: block;
+}
+
+.pedido-item-sub {
+  padding-left: 12px;
+  font-size: 0.76rem;
+  color: var(--muted-foreground);
+}
+
+.pedido-obs {
+  font-size: 0.78rem;
+  color: var(--warning, #b45309);
+  font-style: italic;
+  margin-top: 2px;
+}
+
+.pedido-agendado {
+  color: var(--warning, #b45309);
+  font-weight: 600;
+}
+
+.detalhe-status-pago {
+  color: var(--success, #2f9e44);
+  font-weight: 600;
+  font-size: 0.85em;
+}
+
+.detalhe-status-cobrar {
+  color: var(--destructive, #e5484d);
+  font-weight: 600;
+  font-size: 0.85em;
 }
 
 .pedido-meta {

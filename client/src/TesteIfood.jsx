@@ -151,6 +151,20 @@ const CARDBRAND_OPCOES = [
   { value: 'CABAL', desc: 'Cabal.' }
 ]
 
+const GRUPO_OPCOES = [
+  { value: 'Tamanho', desc: 'Categoria Tamanho (tamanhos oficiais do iFood).' },
+  { value: 'Massa', desc: 'Categoria Massa (tipo de massa/borda? não: massa).' },
+  { value: 'Borda', desc: 'Categoria Borda (chega em options; deve aparecer logo abaixo da pizza).' },
+  { value: 'Sabores', desc: 'Categoria Sabores (sabor escolhido na pizza).' },
+  { value: 'Complementos', desc: 'Categoria Complementos.' },
+  { value: 'Molhos', desc: 'Categoria Molhos.' },
+  { value: 'Saches', desc: 'Categoria Saches (ex.: Molho de Alho).' }
+]
+
+function fmt(n) {
+  return 'R$ ' + (Number(n) || 0).toFixed(2).replace('.', ',')
+}
+
 const SelectField = ({ label, valor, onChange, opcoes }) => {
   const atual = opcoes.find(o => o.value === valor)
   return (
@@ -188,7 +202,20 @@ export default function TesteIfood() {
     endereco: { streetName: 'Rua Teste', streetNumber: '123', neighborhood: 'Centro', city: 'São Paulo', state: 'SP', complement: 'Apto 1', reference: 'Próximo ao mercado', postalCode: '01000-000', lat: '', lng: '' },
     entrega: { mode: 'DELIVERY', deliveredBy: 'IFOOD', obs: '', pickupCode: '', table: '', data: '' },
     pagamentos: [{ method: 'CREDIT', type: 'ONLINE', value: '', prepaid: true, changeFor: '0', cardBrand: 'VISA', authorizationCode: '123456', installments: '1' }],
-    itens: [{ nome: 'Pizza Calabresa', qtd: 1, unitPrice: '50', externalCode: 'menu_1', observacoes: '', adicionais: [], opcoes: [] }]
+    itens: [{
+      nome: 'Pizza Calabresa',
+      qtd: 1,
+      unitPrice: '50',
+      externalCode: 'menu_1',
+      observacoes: '',
+      adicionais: [],
+      opcoes: [
+        { nome: 'Grande', grupo: 'Tamanho', qtd: 1, unitPrice: '0' },
+        { nome: 'Tradicional', grupo: 'Massa', qtd: 1, unitPrice: '0' },
+        { nome: 'Catupiry', grupo: 'Borda', qtd: 1, unitPrice: '0' },
+        { nome: 'Calabresa', grupo: 'Sabores', qtd: 1, unitPrice: '0' }
+      ]
+    }]
   }))
 
   const setF = (path) => (valor) => {
@@ -410,7 +437,7 @@ export default function TesteIfood() {
         body: JSON.stringify(body)
       })
       const text = await r.text()
-      setResposta(`Pedido enviado → HTTP ${r.status}\n${text}\n\nTotal enviado: R$ ${totalOrder.toFixed(2)}\nRecarregando lista...`)
+      setResposta(`Pedido enviado → HTTP ${r.status}\n${text}\n\nTotal enviado: ${fmt(totalOrder)}\nRecarregando lista...`)
       setTimeout(async () => {
         await carregar()
         await carregarLog()
@@ -546,7 +573,7 @@ export default function TesteIfood() {
               {campo('Observações', it.observacoes, v => setItem(i, 'observacoes', v))}
             </div>
             <div style={{ fontSize: 12, color: '#555', marginBottom: 6 }}>
-              Subtotal: R$ {((parseInt(it.qtd) || 0) * (parseFloat(it.unitPrice) || 0)).toFixed(2)}
+              Subtotal: {fmt((parseInt(it.qtd) || 0) * (parseFloat(it.unitPrice) || 0))}
             </div>
             <div>
               <strong style={{ fontSize: 12 }}>Adicionais (subItems)</strong>
@@ -565,7 +592,7 @@ export default function TesteIfood() {
               {(it.opcoes || []).map((o, oi) => (
                 <div key={oi} style={{ display: 'flex', gap: 6, alignItems: 'flex-end', margin: '6px 0' }}>
                   {campo('Nome', o.nome, v => setOpcao(i, oi, 'nome', v))}
-                  {campo('Grupo', o.grupo, v => setOpcao(i, oi, 'grupo', v))}
+                  <SelectField label="Categoria (groupName)" valor={o.grupo} onChange={v => setOpcao(i, oi, 'grupo', v)} opcoes={GRUPO_OPCOES} />
                   {campo('Qtd', o.qtd, v => setOpcao(i, oi, 'qtd', v), { style: { ...s.input, width: 55 } })}
                   {campo('Preço', o.unitPrice, v => setOpcao(i, oi, 'unitPrice', v), { style: { ...s.input, width: 80 } })}
                   <button style={s.button} onClick={() => setForm(prev => { const n = JSON.parse(JSON.stringify(prev)); n.itens[i].opcoes = n.itens[i].opcoes.filter((_, x) => x !== oi); return n })}>✕</button>
@@ -607,10 +634,10 @@ export default function TesteIfood() {
         <button style={{ ...s.button, background: '#eee' }} onClick={addPagamento}>+ Adicionar forma de pagamento</button>
 
         <div style={{ marginTop: 12, padding: '10px 12px', background: '#f0f9eb', border: '1px solid #b7eb8f', borderRadius: 6, fontSize: 14, fontWeight: 700 }}>
-          Total do pedido: R$ {totalOrder.toFixed(2)}
-          <span style={{ fontWeight: 400, marginLeft: 14, color: '#555' }}>Pago: R$ {totalPago.toFixed(2)}</span>
+          Total do pedido: {fmt(totalOrder)}
+          <span style={{ fontWeight: 400, marginLeft: 14, color: '#555' }}>Pago: {fmt(totalPago)}</span>
           <span style={{ fontWeight: 700, marginLeft: 14, color: restante > 0.009 ? '#E6A23C' : restante < -0.009 ? '#F56C6C' : '#67C23A' }}>
-            {restante > 0.009 ? `Faltam: R$ ${restante.toFixed(2)}` : restante < -0.009 ? `Excede: R$ ${Math.abs(restante).toFixed(2)}` : '✓ Coberto'}
+            {restante > 0.009 ? `Faltam: ${fmt(restante)}` : restante < -0.009 ? `Excede: ${fmt(Math.abs(restante))}` : '✓ Coberto'}
           </span>
         </div>
 
@@ -654,7 +681,7 @@ export default function TesteIfood() {
                 <td style={s.td}>{p.cliente?.origem || 'site'}
                   {isRetirada(p) && <span style={{ display: 'block', fontSize: 11, color: '#B45309', fontWeight: 700 }}>🛍️ Retirada</span>}
                 </td>
-                <td style={s.td}>R$ {Number(p.total || 0).toFixed(2)}</td>
+                <td style={s.td}>{fmt(p.total)}</td>
                 <td style={s.td}>{mpid ? <span style={s.mpid}>{mpid}</span> : '-'}</td>
                 <td style={s.td}>
                   {mpid ? (

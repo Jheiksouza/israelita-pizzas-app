@@ -20,6 +20,43 @@ const PAGAMENTO_LABELS = {
   OTHERS: 'Outros',
 }
 
+function fmtMoney(n) {
+  return 'R$' + (Number(n) || 0).toFixed(2).replace('.', ',')
+}
+
+function fmtCPF(c) {
+  if (!c) return ''
+  const d = String(c).replace(/\D/g, '')
+  if (d.length === 11) return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6, 9)}-${d.slice(9)}`
+  return String(c)
+}
+
+// Monta as linhas de um item para impressao, agrupando opcoes por categoria
+// (Tamanho/Massa/Borda/Sabores/Complementos = groupName). Borda logo abaixo da pizza.
+function itemLinhas(item) {
+  const linhas = [{ texto: `${item.qtd}x ${sanitizarNome(item.nome)}`, sub: false }]
+  ;(item.adicionais || []).forEach(a => {
+    const nome = a.qtd > 1 ? `${a.qtd}x ${sanitizarNome(a.nome)}` : sanitizarNome(a.nome)
+    linhas.push({ texto: `  > ${nome}`, sub: true })
+  })
+  const mapa = new Map()
+  ;(item.opcoes || []).forEach(o => {
+    const g = o.grupo || 'Opcoes'
+    if (!mapa.has(g)) mapa.set(g, [])
+    mapa.get(g).push(o)
+  })
+  const grupos = [...mapa.keys()].sort((a, b) => {
+    const ba = a.toUpperCase() === 'BORDA' ? 1 : 0
+    const bb = b.toUpperCase() === 'BORDA' ? 1 : 0
+    return bb - ba
+  })
+  grupos.forEach(g => {
+    const nomes = mapa.get(g).map(o => (o.qtd > 1 ? `${o.qtd}x ${sanitizarNome(o.nome)}` : sanitizarNome(o.nome))).join(', ')
+    linhas.push({ texto: `  ${g}: ${nomes}`, sub: true })
+  })
+  return linhas
+}
+
 const PORT = 13001
 let printerName = 'POS-80'
 const API_URL = process.env.API_URL || 'http://localhost:3001'
@@ -173,7 +210,6 @@ function gerarBytes(pedido) {
   txt(SEP + '\n')
   txt(`Cliente: ${c.nome || ''}\n`)
   if (c.telefone) txt(`Tel: ${c.telefone}\n`)
-  if (c.cpf) txt(`CPF: ${c.cpf}\n`)
   if (c.origem) txt(`Origem: ${c.origem}\n`)
   if (c.marketplace_order_id) txt(`ID externo: ${c.marketplace_order_id}\n`)
   if (c.metodo_entrega && !retirada) {
@@ -181,45 +217,41 @@ function gerarBytes(pedido) {
     txt(`Entrega: ${entrega}\n`)
   }
   if (c.endereco && !retirada) txt(`End: ${c.endereco}\n`)
+  if (c.observacoes) txt(`Obs: ${sanitizarNome(c.observacoes)}\n`)
+  if (c.codigo_coleta && retirada) txt(`Coleta: ${c.codigo_coleta}\n`)
   txt(SEP + '\n')
   esc(0x1B, 0x45, 0x01)
   txt('ITENS\n')
   esc(0x1B, 0x45, 0x00)
   if (pedido.itens) {
     for (const item of pedido.itens) {
-      let l = `${item.qtd}x ${sanitizarNome(item.nome)}`
-      if (item.tamanho) l += ` (${item.tamanho})`
-      if (item.sabores && item.sabores.length) l += ` [${item.sabores.join(', ')}]`
-      const preco = item.preco || item.valor_unitario || 0
-      if (preco) l += `  R$${(preco * item.qtd).toFixed(2)}`
-      txt(l + '\n')
+      const linhas = itemLinhas(item)
+      linhas.forEach((l, i) => {
+        let linha = l.texto
+        const preco = item.preco || item.valor_unitario || 0
+        if (!l.sub && preco) linha += `  ${fmtMoney(preco * item.qtd)}`
+        txt(linha + '\n')
+      })
     }
   }
   txt(SEP + '\n')
   esc(0x1B, 0x45, 0x01)
-  txt(`TOTAL: R$${(pedido.total || 0).toFixed(2)}\n`)
+  txt(`TOTAL: ${fmtMoney(pedido.total)}\n`)
   esc(0x1B, 0x45, 0x00)
   if (c.pagamento && c.pagamento.length > 0) {
     txt(SEP + '\n')
     for (const p of c.pagamento) {
-      let linha = `${PAGAMENTO_LABELS[p.metodo] || p.metodo} R$${(p.valor || 0).toFixed(2)}`
+      let linha = `${PAGAMENTO_LABELS[p.metodo] || p.metodo} ${fmtMoney(p.valor)}`
       if (p.cardBrand) linha += ` (${p.cardBrand})`
       else if (p.bandeira) linha += ` (${p.bandeira})`
-      if (p.prepago) linha += ' [PAGO]'
-      if (p.troco) linha += ` Troco: R$${p.troco.toFixed(2)}`
+      linha += p.prepago ? ' [PAGO]' : ' [COBRAR]'
+      const trocoDado = p.troco || 0
+      const troco = trocoDado - (p.valor || 0)
+      if (!p.prepago && trocoDado > 0) linha += ` Troco: ${fmtMoney(troco > 0 ? troco : trocoDado)}`
       txt(linha + '\n')
     }
   }
-  if (c.observacoes) {
-    txt(SEP + '\n')
-    esc(0x1B, 0x45, 0x01)
-    esc(0x1B, 0x2D, 0x01)
-    txt('OBSERVACOES:\n')
-    esc(0x1B, 0x2D, 0x00)
-    esc(0x1B, 0x45, 0x00)
-    txt(c.observacoes + '\n')
-  }
-  if (c.codigo_coleta) txt(`Coleta: ${c.codigo_coleta}\n`)
+  if (c.cpf) txt(`CPF na nota: ${fmtCPF(c.cpf)}\n`)
   txt('\n\n')
   esc(0x1B, 0x64, 0x05)
   esc(0x1D, 0x56, 0x01)

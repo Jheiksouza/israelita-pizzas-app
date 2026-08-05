@@ -194,9 +194,9 @@ class IfoodAdapter extends MarketplaceAdapter {
         ? `${addr.streetName}, ${addr.streetNumber || 's/n'}`
         : addr.formattedAddress || 'Endereço iFood'
       if (addr.neighborhood) end += ` - ${addr.neighborhood}`
-      if (addr.complement) end += ` (${addr.complement})`
+      if (addr.complement) end += ` ***${addr.complement}***`
       if (addr.city || addr.state) end += `, ${addr.city || ''}${addr.state ? `/${addr.state}` : ''}`
-      if (addr.reference) end += ` [${addr.reference}]`
+      if (addr.reference) end += ` ***${addr.reference}***`
       if (addr.postalCode) end += ` — CEP: ${addr.postalCode}`
       return end
     }
@@ -219,14 +219,46 @@ class IfoodAdapter extends MarketplaceAdapter {
     const itemPrefix = displayId
 
     const flattenItems = (items) => {
-      const result = []
-      items.forEach((item, idx) => {
+      return items.map((item, idx) => {
         const qtd = item.quantity || 1
         const nome = item.name || item.product || 'Item iFood'
         const preco = parseFloat(item.unitPrice || item.price || 0)
         const total = parseFloat(item.totalPrice || (item.quantity || 1) * (item.unitPrice || item.price || 0) || 0)
 
-        result.push({
+        const adicionais = (item.subItems || []).map((sub, subIdx) => ({
+          id: `ifood_${itemPrefix}_${idx}_sub_${subIdx}`,
+          qtd: sub.quantity || 1,
+          nome: sub.name || sub.product || 'Adicional',
+          preco: parseFloat(sub.unitPrice || sub.price || 0),
+          total: parseFloat(sub.totalPrice || (sub.quantity || 1) * (sub.unitPrice || sub.price || 0) || 0),
+          externalCode: sub.externalCode || ''
+        }))
+
+        const opcoes = (item.options || []).flatMap((opt, optIdx) => {
+          const base = {
+            id: `ifood_${itemPrefix}_${idx}_opt_${optIdx}`,
+            qtd: opt.quantity || 1,
+            nome: opt.name || 'Opção',
+            grupo: opt.groupName || '',
+            preco: parseFloat(opt.price || opt.unitPrice || 0),
+            total: parseFloat(opt.totalPrice || optPreco(opt) * (opt.quantity || 1) || 0),
+            externalCode: opt.externalCode || '',
+            type: opt.type || ''
+          }
+          const customs = (opt.customizations || []).map((cust, custIdx) => ({
+            id: `ifood_${itemPrefix}_${idx}_opt_${optIdx}_cust_${custIdx}`,
+            qtd: cust.quantity || 1,
+            nome: cust.name || 'Customização',
+            grupo: opt.groupName || cust.groupName || '',
+            preco: parseFloat(cust.price || cust.unitPrice || 0),
+            total: parseFloat(cust.totalPrice || optPreco(cust) * (cust.quantity || 1) || 0),
+            externalCode: cust.externalCode || '',
+            type: cust.type || ''
+          }))
+          return [base, ...customs]
+        })
+
+        return {
           id: `ifood_${itemPrefix}_${idx}`,
           qtd,
           nome,
@@ -235,57 +267,15 @@ class IfoodAdapter extends MarketplaceAdapter {
           externalCode: item.externalCode || '',
           observacoes: item.observations || '',
           type: item.type || '',
-          imageUrl: item.imageUrl || ''
-        })
-
-        if (item.subItems && item.subItems.length > 0) {
-          item.subItems.forEach((sub, subIdx) => {
-            result.push({
-              id: `ifood_${itemPrefix}_${idx}_sub_${subIdx}`,
-              qtd: sub.quantity || 1,
-              nome: `  ➥ ${sub.name || sub.product || 'Adicional'}`,
-              preco: parseFloat(sub.unitPrice || sub.price || 0),
-              total: parseFloat(sub.totalPrice || (sub.quantity || 1) * (sub.unitPrice || sub.price || 0) || 0),
-              externalCode: sub.externalCode || ''
-            })
-          })
-        }
-
-        if (item.options && item.options.length > 0) {
-          item.options.forEach((opt, optIdx) => {
-            const optNome = `  ➥ ${opt.name || 'Opção'}${opt.groupName ? ` [${opt.groupName}]` : ''}`
-            const optPreco = parseFloat(opt.price || opt.unitPrice || 0)
-
-            result.push({
-              id: `ifood_${itemPrefix}_${idx}_opt_${optIdx}`,
-              qtd: opt.quantity || 1,
-              nome: optNome,
-              preco: optPreco,
-              total: parseFloat(opt.totalPrice || optPreco * (opt.quantity || 1) || 0),
-              externalCode: opt.externalCode || '',
-              groupName: opt.groupName || '',
-              type: opt.type || ''
-            })
-
-            if (opt.customizations && opt.customizations.length > 0) {
-              opt.customizations.forEach((cust, custIdx) => {
-                const custPreco = parseFloat(cust.price || cust.unitPrice || 0)
-                result.push({
-                  id: `ifood_${itemPrefix}_${idx}_opt_${optIdx}_cust_${custIdx}`,
-                  qtd: cust.quantity || 1,
-                  nome: `    ▪ ${cust.name || 'Customização'}${cust.groupName ? ` [${cust.groupName}]` : ''}`,
-                  preco: custPreco,
-                  total: parseFloat(cust.totalPrice || custPreco * (cust.quantity || 1) || 0),
-                  externalCode: cust.externalCode || '',
-                  groupName: cust.groupName || '',
-                  type: cust.type || ''
-                })
-              })
-            }
-          })
+          imageUrl: item.imageUrl || '',
+          adicionais,
+          opcoes
         }
       })
-      return result
+    }
+
+    function optPreco(opt) {
+      return parseFloat(opt.price || opt.unitPrice || 0)
     }
 
     const totalObj = orderData.total || {}

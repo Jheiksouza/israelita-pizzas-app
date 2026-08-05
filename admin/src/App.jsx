@@ -42,6 +42,42 @@ const PAGAMENTO_LABELS = {
   OTHERS: 'Outros',
 }
 
+const fmtMoney = (n) => 'R$ ' + (Number(n) || 0).toFixed(2).replace('.', ',')
+
+const fmtCPF = (c) => {
+  if (!c) return ''
+  const d = String(c).replace(/\D/g, '')
+  if (d.length === 11) return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6, 9)}-${d.slice(9)}`
+  return String(c)
+}
+
+// Quebra um item do pedido em linhas de exibição, agrupando as opções pela
+// categoria (Tamanho/Massa/Borda/Sabores/Complementos = groupName do iFood).
+// A borda aparece logo abaixo da pizza e os complementos vêm depois.
+function itemLinhas(item) {
+  const linhas = [{ texto: `${item.qtd}x ${item.nome}`, sub: false }]
+  ;(item.adicionais || []).forEach(a => {
+    const nome = a.qtd > 1 ? `${a.qtd}x ${a.nome}` : a.nome
+    linhas.push({ texto: `➥ ${nome}`, sub: true })
+  })
+  const mapa = new Map()
+  ;(item.opcoes || []).forEach(o => {
+    const g = o.grupo || 'Opções'
+    if (!mapa.has(g)) mapa.set(g, [])
+    mapa.get(g).push(o)
+  })
+  const grupos = [...mapa.keys()].sort((a, b) => {
+    const ba = a.toUpperCase() === 'BORDA' ? 1 : 0
+    const bb = b.toUpperCase() === 'BORDA' ? 1 : 0
+    return bb - ba
+  })
+  grupos.forEach(g => {
+    const nomes = mapa.get(g).map(o => (o.qtd > 1 ? `${o.qtd}x ${o.nome}` : o.nome)).join(', ')
+    linhas.push({ texto: `${g}: ${nomes}`, sub: true })
+  })
+  return linhas
+}
+
 const statusLabelFor = (pedido) => {
   if (!pedido?.status) return ''
   if (pedido.status === 'liberado') return isRetirada(pedido) ? 'Pronto p/ retirar' : 'Saiu p/ entrega'
@@ -631,6 +667,9 @@ function AdminOrders() {
                         <div className="pedido-info-content">
                           <div className="pedido-info-label">{isRetirada(pedido) ? 'Retirada' : 'Endereço'}</div>
                           <div className="pedido-info-value">{isRetirada(pedido) ? 'Cliente vai retirar na pizzaria' : (pedido.cliente?.endereco || 'Não informado')}</div>
+                          {pedido.cliente?.observacoes && (
+                            <div className="pedido-info-value pedido-obs">Obs: {pedido.cliente.observacoes}</div>
+                          )}
                         </div>
                       </div>
                       {pedido.itens?.length > 0 && (
@@ -640,7 +679,11 @@ function AdminOrders() {
                             <div className="pedido-info-label">Itens</div>
                             <div className="pedido-itens">
                               {pedido.itens.map(item => (
-                                <span key={item.id} className="pedido-item">{item.qtd}x {item.nome}</span>
+                                <span key={item.id} className="pedido-item">
+                                  {itemLinhas(item).map((l, li) => (
+                                    <span key={li} className={l.sub ? 'pedido-item-linha pedido-item-sub' : 'pedido-item-linha'}>{l.texto}</span>
+                                  ))}
+                                </span>
                               ))}
                             </div>
                           </div>
@@ -652,8 +695,8 @@ function AdminOrders() {
                           {pedido.cliente?.cpf && (
                             <div className="detalhe-row">
                               <FileText size={14} />
-                              <span className="detalhe-label">CPF</span>
-                              <span>{pedido.cliente.cpf}</span>
+                              <span className="detalhe-label">CPF na nota</span>
+                              <span>{fmtCPF(pedido.cliente.cpf)}</span>
                             </div>
                           )}
                           {pedido.cliente?.pagamento?.length > 0 && pedido.cliente.pagamento.map((p, i) => (
@@ -662,18 +705,13 @@ function AdminOrders() {
                               <span className="detalhe-label">Pagamento</span>
                               <span className="detalhe-pagamento">
                                 {PAGAMENTO_LABELS[p.metodo] || p.metodo}{p.bandeira ? ` - ${p.bandeira}` : ''}{p.cardBrand ? ` - ${p.cardBrand}` : ''}
-                                <span className="detalhe-valor">R$ {p.valor?.toFixed(2)}</span>
-                                {p.prepago && <CheckCircle size={12} className="detalhe-pago" />}
+                                <span className="detalhe-valor">{fmtMoney(p.valor)}</span>
+                                {p.prepago
+                                  ? <span className="detalhe-status-pago">(Pago)</span>
+                                  : <span className="detalhe-status-cobrar">(Cobrar)</span>}
                               </span>
                             </div>
                           ))}
-                          {pedido.cliente?.observacoes && (
-                            <div className="detalhe-row">
-                              <FileText size={14} />
-                              <span className="detalhe-label">Obs</span>
-                              <span>{pedido.cliente.observacoes}</span>
-                            </div>
-                          )}
                           {pedido.cliente?.codigo_coleta && (
                             <div className="detalhe-row">
                               <Hash size={14} />
@@ -699,8 +737,12 @@ function AdminOrders() {
                       )}
 
                       <div className="pedido-meta">
-                        <span className="pedido-meta-item"><Clock size={14} /> {new Date(pedido.data).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
-                        <span className="pedido-meta-item pedido-valor">R$ {pedido.total?.toFixed(2)}</span>
+                        {pedido.cliente?.orderTiming === 'SCHEDULED' && pedido.cliente?.deliveryDateTime ? (
+                          <span className="pedido-meta-item pedido-agendado"><Clock size={14} /> Agendado: {new Date(pedido.cliente.deliveryDateTime).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
+                        ) : (
+                          <span className="pedido-meta-item"><Clock size={14} /> {new Date(pedido.data).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
+                        )}
+                        <span className="pedido-meta-item pedido-valor">{fmtMoney(pedido.total)}</span>
                         {pedido.data && (
                           <span className={`pedido-timer ${pedido.status === 'pendente' && tempoRestante(pedido.data) === 'Cancelado' ? 'timer-expirado' : ''}`}>
                             <Timer size={14} /> {pedido.status === 'pendente' ? tempoRestante(pedido.data) : tempoDecorrido(pedido.data)}
