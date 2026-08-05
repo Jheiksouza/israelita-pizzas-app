@@ -156,7 +156,7 @@ export default function TesteIfood() {
     cliente: { nome: 'Cliente Teste', telefone: '(11) 99999-9999', cpf: '12345678901', documentType: 'CPF' },
     endereco: { streetName: 'Rua Teste', streetNumber: '123', neighborhood: 'Centro', city: 'São Paulo', state: 'SP', complement: 'Apto 1', reference: 'Próximo ao mercado', postalCode: '01000-000', lat: '', lng: '' },
     entrega: { modo: 'DELIVERY', obs: '', pickupCode: '', data: '' },
-    pagamento: { method: 'CASH', type: 'CASH', brand: '', value: '', prepaid: false, changeFor: '0', cardBrand: '', authorizationCode: '' },
+    pagamentos: [{ method: 'CASH', type: 'CASH', brand: '', value: '', prepaid: false, changeFor: '0', cardBrand: '', authorizationCode: '' }],
     itens: [{ nome: 'Pizza Calabresa', qtd: 1, unitPrice: '50', externalCode: 'menu_1', observacoes: '', adicionais: [], opcoes: [] }]
   }))
 
@@ -253,6 +253,10 @@ export default function TesteIfood() {
     return acc + base + ad + op
   }, 0)
 
+  const totalOrder = totalCalculado + (parseFloat(form.deliveryFee) || 0) - (parseFloat(form.benefits) || 0)
+  const totalPago = form.pagamentos.reduce((acc, p) => acc + (parseFloat(p.value) || 0), 0)
+  const restante = totalOrder - totalPago
+
   const criarPedido = async () => {
     const itens = form.itens.map(it => ({
       name: it.nome,
@@ -280,8 +284,24 @@ export default function TesteIfood() {
       }))
     }))
 
-    const totalOrder = totalCalculado + (parseFloat(form.deliveryFee) || 0) - (parseFloat(form.benefits) || 0)
-    const hasPayment = form.pagamento.method || form.pagamento.brand
+    const pagamentosValidos = form.pagamentos.filter(p => p.method)
+    let assigned = 0
+    const methods = pagamentosValidos.map(p => {
+      let valor = parseFloat(p.value)
+      if (!(valor > 0)) valor = Math.max(0, totalOrder - assigned)
+      assigned += valor
+      return {
+        method: p.method,
+        type: p.type,
+        brand: p.brand,
+        value: valor,
+        prepaid: !!p.prepaid,
+        changeFor: parseFloat(p.changeFor) || 0,
+        card: { brand: p.cardBrand },
+        transaction: { authorizationCode: p.authorizationCode }
+      }
+    })
+    const hasPayment = methods.length > 0
 
     const body = {
       id: form.oid,
@@ -327,16 +347,7 @@ export default function TesteIfood() {
           coordinates: { latitude: parseFloat(form.endereco.lat) || null, longitude: parseFloat(form.endereco.lng) || null }
         }
       },
-      payments: hasPayment ? { methods: [{
-        method: form.pagamento.method,
-        type: form.pagamento.type,
-        brand: form.pagamento.brand,
-        value: parseFloat(form.pagamento.value) || totalOrder,
-        prepaid: !!form.pagamento.prepaid,
-        changeFor: parseFloat(form.pagamento.changeFor) || 0,
-        card: { brand: form.pagamento.cardBrand },
-        transaction: { authorizationCode: form.pagamento.authorizationCode }
-      }] } : null,
+      payments: hasPayment ? { methods } : null,
       items: itens
     }
 
@@ -388,6 +399,22 @@ export default function TesteIfood() {
       next.itens[iIdx].opcoes[oIdx][campoNome] = valor
       return next
     })
+  }
+
+  const setPagamento = (idx, campoNome, valor) => {
+    setForm(prev => {
+      const next = JSON.parse(JSON.stringify(prev))
+      next.pagamentos[idx][campoNome] = valor
+      return next
+    })
+  }
+
+  const addPagamento = () => {
+    setForm(prev => ({ ...prev, pagamentos: [...prev.pagamentos, { method: 'CASH', type: 'CASH', brand: '', value: '', prepaid: false, changeFor: '0', cardBrand: '', authorizationCode: '' }] }))
+  }
+
+  const remPagamento = (idx) => {
+    setForm(prev => ({ ...prev, pagamentos: prev.pagamentos.filter((_, i) => i !== idx) }))
   }
 
   return (
@@ -448,21 +475,6 @@ export default function TesteIfood() {
           {campo('Desconto (benefits)', form.benefits, setF('benefits'))}
         </div>
 
-        <h3 style={{ fontSize: 13, margin: '6px 0' }}>Pagamento</h3>
-        <div style={s.row}>
-          <SelectField label="Método" valor={form.pagamento.method} onChange={setF('pagamento.method')} opcoes={PAGAMENTO_OPCOES} />
-          <SelectField label="Tipo" valor={form.pagamento.type} onChange={setF('pagamento.type')} opcoes={PAGAMENTO_OPCOES} />
-          {campo('Bandeira', form.pagamento.brand, setF('pagamento.brand'))}
-          {campo('Valor', form.pagamento.value, setF('pagamento.value'))}
-          {campo('Troco para', form.pagamento.changeFor, setF('pagamento.changeFor'))}
-          {campo('Card Brand', form.pagamento.cardBrand, setF('pagamento.cardBrand'))}
-          {campo('Auth Code', form.pagamento.authorizationCode, setF('pagamento.authorizationCode'))}
-          <label style={{ ...s.label, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            <input type="checkbox" checked={!!form.pagamento.prepaid} onChange={e => setF('pagamento.prepaid')(e.target.checked)} />
-            Pré-pago
-          </label>
-        </div>
-
         <h3 style={{ fontSize: 13, margin: '6px 0' }}>Itens</h3>
         {form.itens.map((it, i) => (
           <div key={i} style={s.itemBox}>
@@ -508,8 +520,38 @@ export default function TesteIfood() {
         ))}
         <button style={{ ...s.button, background: '#eee' }} onClick={addItem}>+ Adicionar item</button>
 
+        <h3 style={{ fontSize: 13, margin: '14px 0 6px' }}>Pagamento</h3>
+        {form.pagamentos.map((pg, i) => (
+          <div key={i} style={s.itemBox}>
+            <div style={s.row}>
+              <SelectField label="Método" valor={pg.method} onChange={v => setPagamento(i, 'method', v)} opcoes={PAGAMENTO_OPCOES} />
+              <SelectField label="Tipo" valor={pg.type} onChange={v => setPagamento(i, 'type', v)} opcoes={PAGAMENTO_OPCOES} />
+              {campo('Bandeira', pg.brand, v => setPagamento(i, 'brand', v))}
+              {campo('Valor', pg.value, v => setPagamento(i, 'value', v), { style: { ...s.input, width: 110 } })}
+              {campo('Troco para', pg.changeFor, v => setPagamento(i, 'changeFor', v), { style: { ...s.input, width: 90 } })}
+              {campo('Card Brand', pg.cardBrand, v => setPagamento(i, 'cardBrand', v))}
+              {campo('Auth Code', pg.authorizationCode, v => setPagamento(i, 'authorizationCode', v))}
+              <label style={{ ...s.label, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <input type="checkbox" checked={!!pg.prepaid} onChange={e => setPagamento(i, 'prepaid')(e.target.checked)} />
+                Pré-pago
+              </label>
+              {form.pagamentos.length > 1 && (
+                <button style={{ ...s.button, background: '#F56C6C', color: '#fff', fontSize: 12, alignSelf: 'flex-end' }} onClick={() => remPagamento(i)}>✕ Remover</button>
+              )}
+            </div>
+            <div style={s.hintText}>
+              Deixe <b>Valor</b> em branco para usar automaticamente o valor restante do pedido.
+            </div>
+          </div>
+        ))}
+        <button style={{ ...s.button, background: '#eee' }} onClick={addPagamento}>+ Adicionar forma de pagamento</button>
+
         <div style={{ marginTop: 12, padding: '10px 12px', background: '#f0f9eb', border: '1px solid #b7eb8f', borderRadius: 6, fontSize: 14, fontWeight: 700 }}>
-          Total do pedido: R$ {(totalCalculado + (parseFloat(form.deliveryFee) || 0) - (parseFloat(form.benefits) || 0)).toFixed(2)}
+          Total do pedido: R$ {totalOrder.toFixed(2)}
+          <span style={{ fontWeight: 400, marginLeft: 14, color: '#555' }}>Pago: R$ {totalPago.toFixed(2)}</span>
+          <span style={{ fontWeight: 700, marginLeft: 14, color: restante > 0.009 ? '#E6A23C' : restante < -0.009 ? '#F56C6C' : '#67C23A' }}>
+            {restante > 0.009 ? `Faltam: R$ ${restante.toFixed(2)}` : restante < -0.009 ? `Excede: R$ ${Math.abs(restante).toFixed(2)}` : '✓ Coberto'}
+          </span>
         </div>
 
         <div style={{ marginTop: 12 }}>
