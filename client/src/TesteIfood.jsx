@@ -172,7 +172,7 @@ export default function TesteIfood() {
     cliente: { nome: 'Cliente Teste', telefone: '11999999999', phoneLocalizer: '+55', cpf: '12345678901', documentType: 'CPF' },
     endereco: { streetName: 'Rua Teste', streetNumber: '123', neighborhood: 'Centro', city: 'São Paulo', state: 'SP', complement: 'Apto 1', reference: 'Próximo ao mercado', postalCode: '01000-000', lat: '', lng: '' },
     entrega: { mode: 'DELIVERY', deliveredBy: 'IFOOD', obs: '', pickupCode: '', table: '', data: '' },
-    pagamentos: [{ method: 'CREDIT', type: 'ONLINE', brand: '', value: '', prepaid: true, changeFor: '0', cardBrand: 'VISA', authorizationCode: '123456', installments: '1' }],
+    pagamentos: [{ method: 'CREDIT', type: 'ONLINE', value: '', prepaid: true, changeFor: '0', cardBrand: 'VISA', authorizationCode: '123456', installments: '1' }],
     itens: [{ nome: 'Pizza Calabresa', qtd: 1, unitPrice: '50', externalCode: 'menu_1', observacoes: '', adicionais: [], opcoes: [] }]
   }))
 
@@ -317,12 +317,10 @@ export default function TesteIfood() {
         prepaid: !!p.prepaid,
         currency: 'BRL'
       }
-      if (p.brand) m.brand = p.brand
       const changeFor = parseFloat(p.changeFor) || 0
       if (changeFor > 0) m.cash = { changeFor }
-      const cardBrand = p.cardBrand || p.brand
       const parcelas = parseInt(p.installments) || 0
-      if (cardBrand || parcelas > 1) m.card = { ...(cardBrand ? { brand: cardBrand } : {}), ...(parcelas > 1 ? { installments: parcelas } : {}) }
+      if (p.cardBrand || parcelas > 1) m.card = { ...(p.cardBrand ? { brand: p.cardBrand } : {}), ...(parcelas > 1 ? { installments: parcelas } : {}) }
       if (p.authorizationCode) m.transaction = { authorizationCode: p.authorizationCode }
       return m
     })
@@ -448,7 +446,7 @@ export default function TesteIfood() {
   }
 
   const addPagamento = () => {
-    setForm(prev => ({ ...prev, pagamentos: [...prev.pagamentos, { method: 'CREDIT', type: 'ONLINE', brand: '', value: '', prepaid: true, changeFor: '0', cardBrand: '', authorizationCode: '', installments: '1' }] }))
+    setForm(prev => ({ ...prev, pagamentos: [...prev.pagamentos, { method: 'CREDIT', type: 'ONLINE', value: '', prepaid: true, changeFor: '0', cardBrand: '', authorizationCode: '', installments: '1' }] }))
   }
 
   const remPagamento = (idx) => {
@@ -573,7 +571,6 @@ export default function TesteIfood() {
             <div style={s.row}>
               <SelectField label="Método (method)" valor={pg.method} onChange={v => setPagamento(i, 'method', v)} opcoes={METODO_OPCOES} />
               <SelectField label="Tipo (type)" valor={pg.type} onChange={v => setPagamento(i, 'type', v)} opcoes={TIPO_OPCOES} />
-              {campo('Bandeira (brand)', pg.brand, v => setPagamento(i, 'brand', v))}
               {campo('Card Brand (card.brand)', pg.cardBrand, v => setPagamento(i, 'cardBrand', v))}
               {campo('Parcelas (installments)', pg.installments, v => setPagamento(i, 'installments', v), { style: { ...s.input, width: 70 } })}
               {campo('Valor', pg.value, v => setPagamento(i, 'value', v), { style: { ...s.input, width: 110 } })}
