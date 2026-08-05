@@ -136,6 +136,21 @@ const TIPO_OPCOES = [
   { value: 'OTHERS', desc: 'Outros.' }
 ]
 
+const CARDBRAND_OPCOES = [
+  { value: 'VISA', desc: 'Visa.' },
+  { value: 'MASTER', desc: 'Mastercard.' },
+  { value: 'ELO', desc: 'Elo.' },
+  { value: 'AMEX', desc: 'American Express.' },
+  { value: 'HIPERCARD', desc: 'Hipercard.' },
+  { value: 'HIPER', desc: 'Hiper.' },
+  { value: 'DINERS', desc: 'Diners Club.' },
+  { value: 'DISCOVER', desc: 'Discover.' },
+  { value: 'VR', desc: 'VR (vale refeição).' },
+  { value: 'ALELO', desc: 'Alelo (vale refeição).' },
+  { value: 'SODEXO', desc: 'Sodexo (vale refeição).' },
+  { value: 'CABAL', desc: 'Cabal.' }
+]
+
 const SelectField = ({ label, valor, onChange, opcoes }) => {
   const atual = opcoes.find(o => o.value === valor)
   return (
@@ -571,7 +586,7 @@ export default function TesteIfood() {
             <div style={s.row}>
               <SelectField label="Método (method)" valor={pg.method} onChange={v => setPagamento(i, 'method', v)} opcoes={METODO_OPCOES} />
               <SelectField label="Tipo (type)" valor={pg.type} onChange={v => setPagamento(i, 'type', v)} opcoes={TIPO_OPCOES} />
-              {campo('Card Brand (card.brand)', pg.cardBrand, v => setPagamento(i, 'cardBrand', v))}
+              <SelectField label="Card Brand (card.brand)" valor={pg.cardBrand} onChange={v => setPagamento(i, 'cardBrand', v)} opcoes={CARDBRAND_OPCOES} />
               {campo('Parcelas (installments)', pg.installments, v => setPagamento(i, 'installments', v), { style: { ...s.input, width: 70 } })}
               {campo('Valor', pg.value, v => setPagamento(i, 'value', v), { style: { ...s.input, width: 110 } })}
               {campo('Troco para (cash.changeFor)', pg.changeFor, v => setPagamento(i, 'changeFor', v), { style: { ...s.input, width: 90 } })}
