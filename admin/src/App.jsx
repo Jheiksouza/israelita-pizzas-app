@@ -660,7 +660,7 @@ function AdminOrders() {
                             <div key={i} className="detalhe-row">
                               <CreditCard size={14} />
                               <span className="detalhe-label">Pagamento</span>
-                              <span>
+                              <span className="detalhe-pagamento">
                                 {PAGAMENTO_LABELS[p.metodo] || p.metodo}{p.bandeira ? ` - ${p.bandeira}` : ''}{p.cardBrand ? ` - ${p.cardBrand}` : ''}
                                 <span className="detalhe-valor">R$ {p.valor?.toFixed(2)}</span>
                                 {p.prepago && <CheckCircle size={12} className="detalhe-pago" />}

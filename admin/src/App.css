@@ -802,10 +802,17 @@ body {
   letter-spacing: 0.04em;
 }
 
+.detalhe-pagamento {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
 .detalhe-valor {
   font-family: var(--font-mono);
   font-weight: 600;
-  margin-left: 6px;
 }
 
 .detalhe-pago {
