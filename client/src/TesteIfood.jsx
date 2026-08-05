@@ -180,14 +180,10 @@ const SelectField = ({ label, valor, onChange, opcoes }) => {
   )
 }
 
-export default function TesteIfood() {
-  const [pedidos, setPedidos] = useState([])
-  const [log, setLog] = useState([])
-  const [syncLog, setSyncLog] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [resposta, setResposta] = useState('')
+const STORAGE_KEY = 'testeifood_form'
 
-  const [form, setForm] = useState(() => ({
+function formInicial() {
+  return {
     oid: `pedido_teste_${Date.now()}`,
     displayId: 'Teste-001',
     orderType: 'DELIVERY',
@@ -216,7 +212,44 @@ export default function TesteIfood() {
         { nome: 'Calabresa', grupo: 'Sabores', qtd: 1, unitPrice: '0' }
       ]
     }]
-  }))
+  }
+}
+
+export default function TesteIfood() {
+  const [pedidos, setPedidos] = useState([])
+  const [log, setLog] = useState([])
+  const [syncLog, setSyncLog] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [resposta, setResposta] = useState('')
+
+  const [form, setForm] = useState(() => {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY)
+      if (raw) {
+        const salvo = JSON.parse(raw)
+        const base = formInicial()
+        if (salvo.oid) delete salvo.oid
+        if (salvo.displayId === 'Teste-001') delete salvo.displayId
+        return { ...base, ...salvo }
+      }
+    } catch (e) {
+      localStorage.removeItem(STORAGE_KEY)
+    }
+    return formInicial()
+  })
+
+  useEffect(() => {
+    try {
+      const { oid, ...salvar } = form
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(salvar))
+    } catch (e) {}
+  }, [form])
+
+  const resetarForm = () => {
+    try { localStorage.removeItem(STORAGE_KEY) } catch (e) {}
+    setForm(formInicial())
+    setResposta('Formulário restaurado para o padrão.')
+  }
 
   const setF = (path) => (valor) => {
     const keys = path.split('.')
@@ -645,6 +678,10 @@ export default function TesteIfood() {
           <button style={{ ...s.button, background: '#409EFF', color: '#fff', padding: '10px 18px', fontSize: 15 }} onClick={criarPedido}>
             🚀 Criar pedido de teste
           </button>
+          <button style={{ ...s.button, background: '#eee', padding: '10px 14px', fontSize: 13, marginLeft: 8 }} onClick={resetarForm} title="Apaga os dados salvos e volta aos valores padrão">
+            🔄 Limpar / Padrão
+          </button>
+          <span style={{ fontSize: 12, color: '#888', marginLeft: 8 }}>Os campos são salvos automaticamente.</span>
         </div>
       </div>
 
