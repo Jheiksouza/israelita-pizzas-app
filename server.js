@@ -937,7 +937,6 @@ app.post('/marketplace/:platform/webhook', async (req, res) => {
                 }
               }
               orderPayload = orderData || event.metadata
-              eventosParaAck.push(event.id)
               if (orderData) {
                 addWebhookLog(platform, { type: 'FETCH_ORDER_DATA', orderId: event.orderId, preview: JSON.stringify(orderData).substring(0, 1000) })
               }
@@ -952,6 +951,7 @@ app.post('/marketplace/:platform/webhook', async (req, res) => {
             const extId = orderData.cliente?.marketplace_order_id
             if (!extId) {
               addWebhookLog(platform, { type: 'SKIP_NO_ORDER_ID' })
+              if (event.id) eventosParaAck.push(event.id)
               continue
             }
 
@@ -962,6 +962,7 @@ app.post('/marketplace/:platform/webhook', async (req, res) => {
               .maybeSingle()
             if (existente) {
               addWebhookLog(platform, { type: 'DUPLICATE', extId })
+              if (event.id) eventosParaAck.push(event.id)
               continue
             }
 
@@ -980,6 +981,7 @@ app.post('/marketplace/:platform/webhook', async (req, res) => {
             const { data, error } = await supabase.from('orders').insert(pedido).select()
             if (error) throw error
             addWebhookLog(platform, { type: 'IMPORTED', orderId: data[0].id, extId })
+            if (event.id) eventosParaAck.push(event.id)
             console.log(`[ifood] Pedido #${data[0].id} importado: ${extId}`)
           } catch (err) {
             addWebhookLog(platform, { type: 'ERROR', eventId: event.id, error: err.message })
@@ -993,8 +995,8 @@ app.post('/marketplace/:platform/webhook', async (req, res) => {
               updatedAt: new Date().toISOString()
             }).filter('cliente->>marketplace_order_id', 'eq', event.orderId)
             addWebhookLog(platform, { type: 'STATUS_UPDATED', orderId: event.orderId, status: 'entregue' })
-            eventosParaAck.push(event.id)
           }
+          if (event.id) eventosParaAck.push(event.id)
         } else if (event.code === 'CANCELLED') {
           // iFood cancelou -> atualiza local
           if (event.orderId) {
@@ -1003,10 +1005,42 @@ app.post('/marketplace/:platform/webhook', async (req, res) => {
               updatedAt: new Date().toISOString()
             }).filter('cliente->>marketplace_order_id', 'eq', event.orderId)
             addWebhookLog(platform, { type: 'STATUS_UPDATED', orderId: event.orderId, status: 'cancelado' })
-            eventosParaAck.push(event.id)
           }
+          if (event.id) eventosParaAck.push(event.id)
+        } else if (event.code === 'CANCELLATION_REQUEST_FAILED') {
+          // Confirmar/cancelar recusado pelo iFood -> feedback para a administração
+          addSyncLog(platform, { type: 'cancellationRequestFailed', orderId: event.orderId, eventId: event.id, status: 'erro' })
+          addWebhookLog(platform, { type: 'CANCELLATION_FAILED', orderId: event.orderId, eventId: event.id })
+          if (event.id) eventosParaAck.push(event.id)
+        } else if (event.code === 'ORDER_PATCHED') {
+          // Pedido alterado no iFood -> logar (ajuste de comanda pode entrar depois)
+          addWebhookLog(platform, { type: 'ORDER_PATCHED', orderId: event.orderId, eventId: event.id })
+          if (event.id) eventosParaAck.push(event.id)
+        } else if (event.code === 'ASSIGN_DRIVER' || event.code === 'DRIVER_ASSIGNED') {
+          // Motorista atribuído -> salvar no cliente do pedido p/ rastreio futuro
+          if (event.orderId) {
+            const meta = event.metadata || {}
+            const driver = meta.driver || meta.attendant || null
+            if (driver) {
+              const { data: pedidoExistente } = await supabase
+                .from('orders')
+                .select('cliente')
+                .filter('cliente->>marketplace_order_id', 'eq', event.orderId)
+                .maybeSingle()
+              if (pedidoExistente) {
+                const novoCliente = { ...pedidoExistente.cliente, driver, estimatedDeliveryTime: meta.estimatedDeliveryTime || pedidoExistente.cliente?.estimatedDeliveryTime || null }
+                await supabase.from('orders').update({ cliente: novoCliente, updatedAt: new Date().toISOString() }).filter('cliente->>marketplace_order_id', 'eq', event.orderId)
+              }
+            }
+          }
+          addWebhookLog(platform, { type: 'ASSIGN_DRIVER', orderId: event.orderId, eventId: event.id })
+          if (event.id) eventosParaAck.push(event.id)
         } else if (event.code === 'PRESENCE') {
-          eventosParaAck.push(event.id)
+          if (event.id) eventosParaAck.push(event.id)
+        } else {
+          // Qualquer outro evento (informativos): loga e ack para evitar redelivery infinito
+          addWebhookLog(platform, { type: 'EVENT_PROCESSED', code: event.code, orderId: event.orderId, eventId: event.id })
+          if (event.id) eventosParaAck.push(event.id)
         }
       }
 
@@ -1015,7 +1049,7 @@ app.post('/marketplace/:platform/webhook', async (req, res) => {
       }
     }
 
-    res.json({ received: true })
+    res.status(202).json({ received: true })
   } catch (err) {
     console.error('[Marketplace Webhook] Erro ao processar:', err)
     res.status(500).json({ error: err.message || 'Erro interno' })
@@ -1047,27 +1081,58 @@ app.post('/marketplace/:platform/poll', async (req, res) => {
     console.log(`[${platform}] 🔄 Eventos recebidos no polling:`, JSON.stringify(events, null, 2))
 
     const imported = []
+    const acks = []
 
     for (const event of events) {
+      addWebhookLog(platform, { type: 'POLL_EVENT', code: event.code, orderId: event.orderId, eventId: event.id })
+
       if (event.code === 'CONFIRMED' || event.code === 'PLACED') {
         try {
-          const orderData = await adapter.fetchOrderDetails(event.orderId, config)
-          console.log(`[${platform}] 🔄 Raw payload antes do toInternalOrder (polling):`, JSON.stringify(orderData, null, 2))
+          // Retry: PLACED/CONFIRMED podem chegar antes dos detalhes estarem prontos
+          let orderData = null
+          for (let attempt = 0; attempt < 3; attempt++) {
+            try {
+              orderData = await adapter.fetchOrderDetails(event.orderId, config)
+              break
+            } catch (err) {
+              if (attempt < 2) {
+                const delay = Math.pow(2, attempt) * 2000
+                addWebhookLog(platform, { type: 'FETCH_RETRY', orderId: event.orderId, attempt: attempt + 1, delay })
+                await new Promise(r => setTimeout(r, delay))
+              } else {
+                addWebhookLog(platform, { type: 'FETCH_FAIL', orderId: event.orderId, error: err.message })
+                throw err
+              }
+            }
+          }
+
           const internal = await adapter.toInternalOrder(orderData, config)
+          internal.cliente.marketplace_order_id = event.orderId || internal.cliente.marketplace_order_id
+
+          const extId = internal.cliente?.marketplace_order_id
+          if (!extId) {
+            addWebhookLog(platform, { type: 'SKIP_NO_ORDER_ID', eventId: event.id })
+            if (event.id) acks.push(event.id)
+            continue
+          }
 
           const { data: existente } = await supabase
             .from('orders')
             .select('id')
-            .filter('cliente->>marketplace_order_id', 'eq', event.orderId)
+            .filter('cliente->>marketplace_order_id', 'eq', extId)
             .maybeSingle()
-          if (existente) continue
+          if (existente) {
+            addWebhookLog(platform, { type: 'DUPLICATE', extId })
+            if (event.id) acks.push(event.id)
+            continue
+          }
 
           const pedido = {
             store_id: storeId(req),
             data: new Date().toISOString(),
             status: 'pendente',
             updatedAt: new Date().toISOString(),
-            cliente: { ...internal.cliente, marketplace_order_id: event.orderId, totalDetalhe: internal.totalDetalhe || null },
+            cliente: { ...internal.cliente, marketplace_order_id: extId, totalDetalhe: internal.totalDetalhe || null },
             itens: internal.itens,
             total: internal.total,
             user_id: null,
@@ -1075,16 +1140,42 @@ app.post('/marketplace/:platform/poll', async (req, res) => {
             entrega_lng: internal.entrega_lng
           }
           const { data } = await supabase.from('orders').insert(pedido).select()
-          if (data) imported.push(data[0].id)
+          if (data && data[0]) {
+            imported.push(data[0].id)
+            if (event.id) acks.push(event.id)
+            addWebhookLog(platform, { type: 'IMPORTED', orderId: data[0].id, extId })
+          }
         } catch (err) {
           console.error(`[poll/${platform}] Erro evento ${event.id}:`, err.message)
+          // NÃO faz ack: o evento volta no próximo poll
         }
+      } else if (event.code === 'CONCLUDED') {
+        if (event.orderId) {
+          await supabase.from('orders').update({
+            status: 'entregue',
+            updatedAt: new Date().toISOString()
+          }).filter('cliente->>marketplace_order_id', 'eq', event.orderId)
+          addWebhookLog(platform, { type: 'STATUS_UPDATED', orderId: event.orderId, status: 'entregue' })
+        }
+        if (event.id) acks.push(event.id)
+      } else if (event.code === 'CANCELLED') {
+        if (event.orderId) {
+          await supabase.from('orders').update({
+            status: 'cancelado',
+            updatedAt: new Date().toISOString()
+          }).filter('cliente->>marketplace_order_id', 'eq', event.orderId)
+          addWebhookLog(platform, { type: 'STATUS_UPDATED', orderId: event.orderId, status: 'cancelado' })
+        }
+        if (event.id) acks.push(event.id)
+      } else {
+        // Qualquer outro evento: loga e ack
+        addWebhookLog(platform, { type: 'EVENT_PROCESSED', code: event.code, orderId: event.orderId, eventId: event.id })
+        if (event.id) acks.push(event.id)
       }
     }
 
-    if (events.length > 0) {
-      const ids = events.map(e => e.id).filter(Boolean)
-      adapter.acknowledgeEvents(ids, config).catch(() => {})
+    if (acks.length > 0) {
+      adapter.acknowledgeEvents(acks, config).catch(() => {})
     }
 
     res.json({ importedCount: imported.length, imported, totalEvents: events.length })

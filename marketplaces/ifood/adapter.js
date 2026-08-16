@@ -101,7 +101,9 @@ class IfoodAdapter extends MarketplaceAdapter {
     }
     const path = pathMap[status]
     if (!path) return
-    await this.apiFetch(path, config, { method: 'POST' })
+    const body = status === 'dispatched' ? { deliveredBy: 'MERCHANT' } : undefined
+    const options = body ? { method: 'POST', body: JSON.stringify(body) } : { method: 'POST' }
+    await this.apiFetch(path, config, options)
   }
 
   async getCancellationReasons(orderId, config) {
@@ -117,14 +119,37 @@ class IfoodAdapter extends MarketplaceAdapter {
   }
 
   async pollOrders(config) {
+    const token = await this.getAccessToken(config)
     const body = { events: ['PLACED', 'CONFIRMED'], groups: 'ALL' }
     if (config.merchant_id) {
       body.merchantId = config.merchant_id
     }
-    const res = await this.apiFetch('/order/v1.0/orders:polling', config, {
+
+    const baseHeaders = { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
+
+    let res = await fetch(`${IFOOD_API}/order/v1.0/orders:polling`, {
+      headers: baseHeaders,
       method: 'POST',
       body: JSON.stringify(body)
     })
+
+    // Fallback: alguns gateways do iFood só aceitam GET /orders:polling?limit=N
+    if (res.status === 404 || res.status === 405) {
+      console.warn('[ifood] POST /order/v1.0/orders:polling recusado, tentando GET ?limit=100')
+      res = await fetch(`${IFOOD_API}/order/v1.0/orders:polling?limit=100`, {
+        headers: baseHeaders
+      })
+    }
+
+    if (!res.ok) {
+      if (res.status === 401) {
+        this._token = null
+        this._tokenExpiresAt = 0
+      }
+      const err = await res.json().catch(() => ({}))
+      throw new Error(err.error?.message || `iFood API ${res.status}`)
+    }
+
     const data = await res.json()
     return data.events || []
   }
@@ -139,7 +164,10 @@ class IfoodAdapter extends MarketplaceAdapter {
     if (signature && config.client_secret) {
       const rawBody = req.rawBody || JSON.stringify(body)
       const expected = crypto.createHmac('sha256', config.client_secret).update(rawBody).digest('hex')
-      if (signature !== expected) {
+      const a = Buffer.from(signature, 'hex')
+      const b = Buffer.from(expected, 'hex')
+      const valido = a.length === b.length && crypto.timingSafeEqual(a, b)
+      if (!valido) {
         return { valid: false, eventType: 'INVALID' }
       }
     }
@@ -280,7 +308,7 @@ class IfoodAdapter extends MarketplaceAdapter {
 
     const totalObj = orderData.total || {}
     const total = parseFloat(totalObj.orderAmount || 0) ||
-      (parseFloat(totalObj.subTotal || 0) + parseFloat(totalObj.deliveryFee || 0) - parseFloat(totalObj.benefits || 0))
+      (parseFloat(totalObj.subTotal || 0) + parseFloat(totalObj.deliveryFee || 0) + parseFloat(totalObj.additionalFees || 0) - parseFloat(totalObj.benefits || 0))
 
     const pagamento = formatPayments(orderData.payments)
 
