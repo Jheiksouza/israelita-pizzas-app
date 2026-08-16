@@ -191,6 +191,7 @@ function formInicial() {
     orderTiming: 'IMMEDIATE',
     salesChannel: 'IFOOD',
     isTest: true,
+    eventoPuro: false,
     deliveryFee: '0',
     benefits: '0',
     merchant: { id: 'loja_teste_001', name: 'Israelita Pizzas' },
@@ -405,7 +406,7 @@ export default function TesteIfood() {
     const nowIso = new Date().toISOString()
     const deliveryDateTime = form.entrega.data ? new Date(form.entrega.data).toISOString() : nowIso
 
-    const body = {
+    const bodyInline = {
       id: form.oid,
       code: 'PLC',
       fullCode: 'PLACED',
@@ -421,9 +422,9 @@ export default function TesteIfood() {
       merchant: { id: form.merchant.id, name: form.merchant.name },
       customer: {
         name: form.cliente.nome,
-        cpf: form.cliente.cpf,
         documentNumber: form.cliente.cpf,
         documentType: form.cliente.documentType,
+        taxPayerIdentificationNumber: form.cliente.cpf,
         phone: { number: form.cliente.telefone, localizer: form.cliente.phoneLocalizer }
       },
       items: itens,
@@ -462,7 +463,18 @@ export default function TesteIfood() {
         : {})
     }
 
-    setResposta(`Enviando pedido de teste (${form.oid}) para o webhook...\n`)
+    const body = form.eventoPuro
+      ? {
+          id: form.oid,
+          code: 'PLC',
+          fullCode: 'PLACED',
+          orderId: form.oid,
+          createdAt: nowIso,
+          metadata: { orderId: form.oid, status: 'PLACED', reason: 'Simulação manual pela página /testeifood' }
+        }
+      : bodyInline
+
+    setResposta(`Enviando ${form.eventoPuro ? 'evento PURO (envelope iFood, sem pedido inline)' : 'pedido de teste'} (${form.oid}) para o webhook...\n`)
     try {
       const r = await fetch(`${API}/marketplace/ifood/webhook`, {
         method: 'POST',
@@ -470,7 +482,7 @@ export default function TesteIfood() {
         body: JSON.stringify(body)
       })
       const text = await r.text()
-      setResposta(`Pedido enviado → HTTP ${r.status}\n${text}\n\nTotal enviado: ${fmt(totalOrder)}\nRecarregando lista...`)
+      setResposta(`${form.eventoPuro ? 'Evento puro enviado' : 'Pedido enviado'} → HTTP ${r.status}\n${text}\n${form.eventoPuro ? '\n(Neste modo o servidor busca o pedido no iFood; se não achar, o evento fica sem ack e volta no próximo poll)' : `\nTotal enviado: ${fmt(totalOrder)}`}\nRecarregando lista...`)
       setTimeout(async () => {
         await carregar()
         await carregarLog()
@@ -534,7 +546,8 @@ export default function TesteIfood() {
       <div style={s.hint}>
         <b>Como testar:</b> use o formulário abaixo para criar um pedido no padrão iFood (ele aparece na plataforma
         como pedido do iFood). Depois mude o status no admin e veja no painel <b>📤 Enviado para o iFood</b> o que foi
-        sincronizado. A página atualiza sozinha a cada 5s.
+        sincronizado. A página atualiza sozinha a cada 5s. Marque <b>Evento puro</b> para enviar apenas o envelope
+        (como o iFood faz de verdade) e testar o caminho real de busca do pedido no servidor.
       </div>
 
       {/* ===== FORMULÁRIO DE CRIAÇÃO ===== */}
@@ -551,6 +564,10 @@ export default function TesteIfood() {
           <label style={{ ...s.label, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
             <input type="checkbox" checked={!!form.isTest} onChange={e => setF('isTest')(e.target.checked)} />
             Pedido de teste (isTest)
+          </label>
+          <label style={{ ...s.label, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <input type="checkbox" checked={!!form.eventoPuro} onChange={e => setF('eventoPuro')(e.target.checked)} />
+            Evento puro (só envelope, sem pedido)
           </label>
         </div>
 
