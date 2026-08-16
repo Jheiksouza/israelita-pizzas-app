@@ -19,7 +19,8 @@ class IfoodAdapter extends MarketplaceAdapter {
       enabled: false,
       client_id: '',
       client_secret: '',
-      merchant_id: ''
+      merchant_id: '',
+      auto_confirm: true
     }
   }
 
@@ -28,7 +29,8 @@ class IfoodAdapter extends MarketplaceAdapter {
       { key: 'enabled', label: 'Habilitar integração', type: 'toggle' },
       { key: 'client_id', label: 'Client ID', type: 'text', section: 'credentials' },
       { key: 'client_secret', label: 'Client Secret', type: 'password', section: 'credentials' },
-      { key: 'merchant_id', label: 'Merchant ID', type: 'text', section: 'credentials', hint: 'ID da sua loja no iFood' }
+      { key: 'merchant_id', label: 'Merchant ID', type: 'text', section: 'credentials', hint: 'ID da sua loja no iFood' },
+      { key: 'auto_confirm', label: 'Confirmar automaticamente ao receber pedido', type: 'toggle', section: 'behavior', hint: 'Evita cancelamento automático do iFood (SLA máx. de 8 min). Desligue para confirmar manualmente no admin.' }
     ]
   }
 
@@ -161,14 +163,25 @@ class IfoodAdapter extends MarketplaceAdapter {
     }
 
     const signature = req.headers['x-ifood-signature']
-    if (signature && config.client_secret) {
-      const rawBody = req.rawBody || JSON.stringify(body)
-      const expected = crypto.createHmac('sha256', config.client_secret).update(rawBody).digest('hex')
-      const a = Buffer.from(signature, 'hex')
-      const b = Buffer.from(expected, 'hex')
-      const valido = a.length === b.length && crypto.timingSafeEqual(a, b)
-      if (!valido) {
+    if (config.client_secret) {
+      // Payloads do /testeifood (pedido inline ou simulação com marcador) são isentos,
+      // pois o iFood real nunca manda detalhes do pedido inline no webhook.
+      const isTestPayload = !!(body && (
+        (body.items && Array.isArray(body.items)) ||
+        String(body?.metadata?.reason || '').includes('/testeifood')
+      ))
+      if (!signature && !isTestPayload) {
         return { valid: false, eventType: 'INVALID' }
+      }
+      if (signature) {
+        const rawBody = req.rawBody || JSON.stringify(body)
+        const expected = crypto.createHmac('sha256', config.client_secret).update(rawBody).digest('hex')
+        const a = Buffer.from(signature, 'hex')
+        const b = Buffer.from(expected, 'hex')
+        const valido = a.length === b.length && crypto.timingSafeEqual(a, b)
+        if (!valido) {
+          return { valid: false, eventType: 'INVALID' }
+        }
       }
     }
 
@@ -262,27 +275,42 @@ class IfoodAdapter extends MarketplaceAdapter {
           externalCode: sub.externalCode || ''
         }))
 
+        const precoLinha = (o) => {
+          const qty = o.quantity || 1
+          const price = parseFloat(o.price || 0)
+          const unitPrice = parseFloat(o.unitPrice || 0)
+          const addition = parseFloat(o.addition || 0)
+          let unit = unitPrice + addition
+          if (!unitPrice && price > 0) unit = price / qty
+          const total = parseFloat(o.totalPrice || price || unit * qty)
+          return { unit, total }
+        }
+
         const opcoes = (item.options || []).flatMap((opt, optIdx) => {
+          const p = precoLinha(opt)
           const base = {
             id: `ifood_${itemPrefix}_${idx}_opt_${optIdx}`,
             qtd: opt.quantity || 1,
             nome: opt.name || 'Opção',
             grupo: opt.groupName || '',
-            preco: parseFloat(opt.price || opt.unitPrice || 0),
-            total: parseFloat(opt.totalPrice || optPreco(opt) * (opt.quantity || 1) || 0),
+            preco: p.unit,
+            total: p.total,
             externalCode: opt.externalCode || '',
             type: opt.type || ''
           }
-          const customs = (opt.customizations || []).map((cust, custIdx) => ({
-            id: `ifood_${itemPrefix}_${idx}_opt_${optIdx}_cust_${custIdx}`,
-            qtd: cust.quantity || 1,
-            nome: cust.name || 'Customização',
-            grupo: opt.groupName || cust.groupName || '',
-            preco: parseFloat(cust.price || cust.unitPrice || 0),
-            total: parseFloat(cust.totalPrice || optPreco(cust) * (cust.quantity || 1) || 0),
-            externalCode: cust.externalCode || '',
-            type: cust.type || ''
-          }))
+          const customs = (opt.customizations || opt.customization || []).map((cust, custIdx) => {
+            const cp = precoLinha(cust)
+            return {
+              id: `ifood_${itemPrefix}_${idx}_opt_${optIdx}_cust_${custIdx}`,
+              qtd: cust.quantity || 1,
+              nome: cust.name || 'Customização',
+              grupo: opt.groupName || cust.groupName || '',
+              preco: cp.unit,
+              total: cp.total,
+              externalCode: cust.externalCode || '',
+              type: cust.type || ''
+            }
+          })
           return [base, ...customs]
         })
 
@@ -300,10 +328,6 @@ class IfoodAdapter extends MarketplaceAdapter {
           opcoes
         }
       })
-    }
-
-    function optPreco(opt) {
-      return parseFloat(opt.price || opt.unitPrice || 0)
     }
 
     const totalObj = orderData.total || {}

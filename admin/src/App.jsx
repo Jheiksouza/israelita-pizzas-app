@@ -1507,6 +1507,7 @@ function AdminConfiguracoes() {
     const hasWebhook = mp.fields.some(f => f.section === 'webhook')
     const credentialsFields = mp.fields.filter(f => f.section === 'credentials')
     const webhookFields = mp.fields.filter(f => f.section === 'webhook')
+    const behaviorFields = mp.fields.filter(f => f.section === 'behavior')
     const topFields = mp.fields.filter(f => f.key === 'enabled')
 
     const statusColors = {
@@ -1563,6 +1564,23 @@ function AdminConfiguracoes() {
                   <div className="form-group" key={field.key}>
                     <label className="form-label">{field.label}</label>
                     <input className="form-input" type={field.type === 'password' ? 'text' : 'text'} autoComplete="off" placeholder={field.label} value={platformConfig[field.key] || ''} disabled={!isEnabled} onChange={e => handleFieldChange(mp.platform, field.key, e.target.value)} />
+                    {field.hint && <span className="form-hint">{field.hint}</span>}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {behaviorFields.length > 0 && (
+              <div className="config-section">
+                <h4 className="config-subtitle">Comportamento</h4>
+                {behaviorFields.map(field => (
+                  <div className="form-group" key={field.key}>
+                    <label className="form-label">{field.label}</label>
+                    <label className="toggle-label">
+                      <input type="checkbox" disabled={!isEnabled} checked={platformConfig[field.key] !== false} onChange={e => handleFieldChange(mp.platform, field.key, e.target.checked)} />
+                      <span className="toggle-slider"></span>
+                      <span className="toggle-text">{platformConfig[field.key] !== false ? 'Ativado' : 'Desativado'}</span>
+                    </label>
                     {field.hint && <span className="form-hint">{field.hint}</span>}
                   </div>
                 ))}

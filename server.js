@@ -699,7 +699,7 @@ app.patch('/orders/:id', async (req, res) => {
           if (order.status === 'cancelado' && extId) {
             addSyncLog(origem, { type: 'requestCancellation', orderId: extId, localStatus: order.status, action: 'requestCancellation', endpoint: `/order/v1.0/orders/${extId}/requestCancellation`, status: 'enviando' })
             adapter.getCancellationReasons(extId, config).then(reasons => {
-              const reason = (reasons?.reasons || []).find(r => r.code === '503') || { code: '503' }
+              const reason = (reasons?.reasons || []).find(r => r.code === '503') || (reasons?.reasons || [])[0] || { code: '503' }
               addSyncLog(origem, { type: 'requestCancellation', orderId: extId, localStatus: order.status, reason: reason.code, endpoint: `/order/v1.0/orders/${extId}/requestCancellation`, status: 'enviando' })
               adapter.requestCancellation(extId, reason.code, config)
                 .then(() => addSyncLog(origem, { type: 'requestCancellation', orderId: extId, localStatus: order.status, reason: reason.code, endpoint: `/order/v1.0/orders/${extId}/requestCancellation`, status: 'ok' }))
@@ -839,6 +839,23 @@ const syncLog = []
 function addSyncLog(platform, entry) {
   syncLog.unshift({ platform, ...entry, timestamp: new Date().toISOString() })
   if (syncLog.length > 50) syncLog.pop()
+}
+
+// Confirma automaticamente o pedido no iFood (evita cancelamento pelo SLA de 8 min),
+// respeitando a flag auto_confirm da config do marketplace.
+async function autoConfirmIfNeeded(adapter, config, platform, extId) {
+  if (!extId || config.auto_confirm === false) return
+  for (const s of ['confirmed', 'preparation_started']) {
+    const endpoint = `/order/v1.0/orders/${extId}/${s === 'confirmed' ? 'confirm' : 'startPreparation'}`
+    addSyncLog(platform, { type: 'updateOrderStatus', orderId: extId, localStatus: 'pendente', ifoodStatus: s, endpoint, status: 'enviando' })
+    try {
+      await adapter.updateOrderStatus(extId, s, config)
+      addSyncLog(platform, { type: 'updateOrderStatus', orderId: extId, localStatus: 'pendente', ifoodStatus: s, endpoint, status: 'ok' })
+    } catch (err) {
+      addSyncLog(platform, { type: 'updateOrderStatus', orderId: extId, localStatus: 'pendente', ifoodStatus: s, endpoint, status: 'erro', error: err.message })
+      console.error(`[${platform}] auto-confirm ${s} falhou:`, err.message)
+    }
+  }
 }
 
 // GET para teste de conectividade do webhook (iFood faz presença)
@@ -983,6 +1000,7 @@ app.post('/marketplace/:platform/webhook', async (req, res) => {
             addWebhookLog(platform, { type: 'IMPORTED', orderId: data[0].id, extId })
             if (event.id) eventosParaAck.push(event.id)
             console.log(`[ifood] Pedido #${data[0].id} importado: ${extId}`)
+            await autoConfirmIfNeeded(adapter, config, platform, extId)
           } catch (err) {
             addWebhookLog(platform, { type: 'ERROR', eventId: event.id, error: err.message })
             console.error(`[ifood] Erro ao processar evento ${event.id}:`, err.message || err)
@@ -1035,6 +1053,26 @@ app.post('/marketplace/:platform/webhook', async (req, res) => {
           }
           addWebhookLog(platform, { type: 'ASSIGN_DRIVER', orderId: event.orderId, eventId: event.id })
           if (event.id) eventosParaAck.push(event.id)
+        } else if (event.code === 'DISPATCHED' || event.code === 'READY_TO_PICKUP') {
+          // Outra aplicação despachou/preparou -> refletir no status local
+          if (event.orderId) {
+            await supabase.from('orders').update({
+              status: 'liberado',
+              updatedAt: new Date().toISOString()
+            }).filter('cliente->>marketplace_order_id', 'eq', event.orderId)
+            addWebhookLog(platform, { type: 'STATUS_UPDATED', orderId: event.orderId, status: 'liberado' })
+          }
+          if (event.id) eventosParaAck.push(event.id)
+        } else if (event.code === 'PREPARATION_STARTED' || event.code === 'SEPARATION_STARTED') {
+          // Preparação iniciada por outra aplicação -> refletir no status local
+          if (event.orderId) {
+            await supabase.from('orders').update({
+              status: 'aceito',
+              updatedAt: new Date().toISOString()
+            }).filter('cliente->>marketplace_order_id', 'eq', event.orderId)
+            addWebhookLog(platform, { type: 'STATUS_UPDATED', orderId: event.orderId, status: 'aceito' })
+          }
+          if (event.id) eventosParaAck.push(event.id)
         } else if (event.code === 'PRESENCE') {
           if (event.id) eventosParaAck.push(event.id)
         } else {
@@ -1056,7 +1094,7 @@ app.post('/marketplace/:platform/webhook', async (req, res) => {
   }
 })
 
-app.post('/marketplace/:platform/poll', async (req, res) => {
+app.all('/marketplace/:platform/poll', async (req, res) => {
   if (!checkSupabase(res)) return res.status(500).json({ error: 'Banco não configurado' })
   try {
     const { platform } = req.params
@@ -1144,6 +1182,7 @@ app.post('/marketplace/:platform/poll', async (req, res) => {
             imported.push(data[0].id)
             if (event.id) acks.push(event.id)
             addWebhookLog(platform, { type: 'IMPORTED', orderId: data[0].id, extId })
+            await autoConfirmIfNeeded(adapter, config, platform, extId)
           }
         } catch (err) {
           console.error(`[poll/${platform}] Erro evento ${event.id}:`, err.message)
@@ -1165,6 +1204,24 @@ app.post('/marketplace/:platform/poll', async (req, res) => {
             updatedAt: new Date().toISOString()
           }).filter('cliente->>marketplace_order_id', 'eq', event.orderId)
           addWebhookLog(platform, { type: 'STATUS_UPDATED', orderId: event.orderId, status: 'cancelado' })
+        }
+        if (event.id) acks.push(event.id)
+      } else if (event.code === 'DISPATCHED' || event.code === 'READY_TO_PICKUP') {
+        if (event.orderId) {
+          await supabase.from('orders').update({
+            status: 'liberado',
+            updatedAt: new Date().toISOString()
+          }).filter('cliente->>marketplace_order_id', 'eq', event.orderId)
+          addWebhookLog(platform, { type: 'STATUS_UPDATED', orderId: event.orderId, status: 'liberado' })
+        }
+        if (event.id) acks.push(event.id)
+      } else if (event.code === 'PREPARATION_STARTED' || event.code === 'SEPARATION_STARTED') {
+        if (event.orderId) {
+          await supabase.from('orders').update({
+            status: 'aceito',
+            updatedAt: new Date().toISOString()
+          }).filter('cliente->>marketplace_order_id', 'eq', event.orderId)
+          addWebhookLog(platform, { type: 'STATUS_UPDATED', orderId: event.orderId, status: 'aceito' })
         }
         if (event.id) acks.push(event.id)
       } else {

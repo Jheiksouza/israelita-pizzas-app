@@ -86,7 +86,16 @@ const campo = (label, valor, onChange, props = {}) => (
 const ORDERTYPE_OPCOES = [
   { value: 'DELIVERY', desc: 'Entrega: a loja entrega na casa do cliente.' },
   { value: 'TAKEOUT', desc: 'Retirada: o cliente vai retirar na loja.' },
-  { value: 'INDOOR', desc: 'Consumo no local (balcão/mesa da loja).' }
+  { value: 'DINE_IN', desc: 'Consumo no local (mesa da loja).' }
+]
+
+const DELIVERY_MODE_OPCOES = [
+  { value: 'DEFAULT', desc: 'Padrão.' },
+  { value: 'EXPRESS', desc: 'Rápida — 20% mais rápida, custo variável.' },
+  { value: 'TURBO', desc: 'Turbo — até 20 min, custo fixo.' },
+  { value: 'PRIORITY', desc: 'Prioridade.' },
+  { value: 'FAST_DELIVERY', desc: 'Entrega rápida.' },
+  { value: 'ECONOMIC', desc: 'Econômica.' }
 ]
 
 const CATEGORY_OPCOES = [
@@ -117,23 +126,16 @@ const METODO_OPCOES = [
   { value: 'DEBIT', desc: 'Cartão de débito.' },
   { value: 'CASH', desc: 'Dinheiro.' },
   { value: 'PIX', desc: 'Pix.' },
-  { value: 'MEAL_TICKET', desc: 'Vale refeição/alimentação.' },
-  { value: 'VOUCHER', desc: 'Voucher/convênio.' },
-  { value: 'GIFT', desc: 'Vale presente.' },
-  { value: 'CARD', desc: 'Cartão cadastrado (method genérico).' },
-  { value: 'OTHERS', desc: 'Outros.' }
+  { value: 'MEAL_VOUCHER', desc: 'Vale refeição.' },
+  { value: 'FOOD_VOUCHER', desc: 'Vale alimentação.' },
+  { value: 'GIFT_CARD', desc: 'Vale presente.' },
+  { value: 'DIGITAL_WALLET', desc: 'Carteira digital (Apple Pay/Google Pay).' },
+  { value: 'OTHER', desc: 'Outros.' }
 ]
 
 const TIPO_OPCOES = [
-  { value: 'ONLINE', desc: 'Pagamento online no app.' },
-  { value: 'CARD_ON_DELIVERY', desc: 'Cartão na entrega (maquininha).' },
-  { value: 'CARD_ON_PICKUP', desc: 'Cartão na retirada (maquininha na loja).' },
-  { value: 'CASH', desc: 'Dinheiro na entrega/retirada.' },
-  { value: 'PIX', desc: 'Pix.' },
-  { value: 'MEAL_TICKET', desc: 'Vale refeição/alimentação.' },
-  { value: 'VOUCHER', desc: 'Voucher/convênio.' },
-  { value: 'GIFT', desc: 'Vale presente.' },
-  { value: 'OTHERS', desc: 'Outros.' }
+  { value: 'ONLINE', desc: 'Já pago no app — não cobrar na entrega.' },
+  { value: 'OFFLINE', desc: 'Cobrar no ato da entrega/retirada.' }
 ]
 
 const CARDBRAND_OPCOES = [
@@ -197,7 +199,7 @@ function formInicial() {
     merchant: { id: 'loja_teste_001', name: 'Israelita Pizzas' },
     cliente: { nome: 'Cliente Teste', telefone: '11999999999', phoneLocalizer: '+55', cpf: '12345678901', documentType: 'CPF' },
     endereco: { streetName: 'Rua Teste', streetNumber: '123', neighborhood: 'Centro', city: 'São Paulo', state: 'SP', complement: 'Apto 1', reference: 'Próximo ao mercado', postalCode: '01000-000', lat: '', lng: '' },
-    entrega: { mode: 'DELIVERY', deliveredBy: 'IFOOD', obs: '', pickupCode: '', table: '', data: '' },
+    entrega: { mode: 'DEFAULT', deliveredBy: 'IFOOD', obs: '', pickupCode: '', table: '', data: '' },
     pagamentos: [{ method: 'CREDIT', type: 'ONLINE', value: '', prepaid: true, changeFor: '0', cardBrand: 'VISA', authorizationCode: '123456', installments: '1' }],
     itens: [{
       nome: 'Pizza Calabresa',
@@ -460,6 +462,9 @@ export default function TesteIfood() {
         : {}),
       ...(form.orderType === 'INDOOR'
         ? { indoor: { mode: form.entrega.mode, table: form.entrega.table, deliveryDateTime } }
+        : {}),
+      ...(form.orderType === 'DINE_IN'
+        ? { dineIn: { deliveryDateTime } }
         : {})
     }
 
@@ -602,7 +607,7 @@ export default function TesteIfood() {
 
         <h3 style={{ fontSize: 13, margin: '6px 0' }}>Entrega (delivery)</h3>
         <div style={s.row}>
-          <SelectField label="Modo (delivery.mode)" valor={form.entrega.mode} onChange={setF('entrega.mode')} opcoes={ORDERTYPE_OPCOES} />
+          <SelectField label="Modo (delivery.mode)" valor={form.entrega.mode} onChange={setF('entrega.mode')} opcoes={DELIVERY_MODE_OPCOES} />
           <SelectField label="Entregue por (deliveredBy)" valor={form.entrega.deliveredBy} onChange={setF('entrega.deliveredBy')} opcoes={DELIVEREDBY_OPCOES} />
           {campo('Observações', form.entrega.obs, setF('entrega.obs'))}
           {campo('Código de coleta', form.entrega.pickupCode, setF('entrega.pickupCode'))}

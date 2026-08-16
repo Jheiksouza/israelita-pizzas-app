@@ -15,8 +15,13 @@ const PAGAMENTO_LABELS = {
   CARD_ON_PICKUP: 'Cartao na retirada',
   PIX: 'Pix',
   MEAL_TICKET: 'Vale refeicao',
+  MEAL_VOUCHER: 'Vale refeicao',
+  FOOD_VOUCHER: 'Vale alimentacao',
+  GIFT_CARD: 'Vale presente',
+  DIGITAL_WALLET: 'Carteira digital',
   VOUCHER: 'Voucher',
   GIFT: 'Vale presente',
+  OTHER: 'Outros',
   OTHERS: 'Outros',
 }
 
