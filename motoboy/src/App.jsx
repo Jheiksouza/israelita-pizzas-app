@@ -808,6 +808,9 @@ function TelaEntrega({ pedido, indice, total, onFinalizar, badgeClass, statusLab
         <div className="motoboy-entrega-corpo" style={{ textAlign: 'center', padding: '40px 20px' }}>
           <X size={48} style={{ color: 'var(--destructive)', marginBottom: 12, opacity: 0.6 }} />
           <p style={{ fontWeight: 600, fontSize: '1rem', marginBottom: 4 }}>Este pedido foi cancelado pela loja</p>
+          {pedido.cliente?.motivo_cancelamento_label && (
+            <p style={{ fontSize: '0.85rem', color: 'var(--muted-foreground)', marginTop: 6 }}>Motivo: {pedido.cliente.motivo_cancelamento_label}</p>
+          )}
           <p style={{ fontSize: '0.85rem', color: 'var(--muted-foreground)' }}>Pedido #{pedido.id} — {pedido.cliente?.nome || 'Cliente'}</p>
         </div>
         <div className="motoboy-entrega-actions">

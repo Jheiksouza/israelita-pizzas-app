@@ -949,6 +949,9 @@ function MeusPedidos({ token, onVoltar, qtdCarrinho, onCartOpen, onPagina }) {
                   </div>
                 </div>
                 <PedidoProgresso status={pedidoBuscado.status} />
+                {pedidoBuscado.status === 'cancelado' && pedidoBuscado.cliente?.motivo_cancelamento_label && (
+                  <div className="pedido-cancelado-motivo">Pedido cancelado — motivo: {pedidoBuscado.cliente.motivo_cancelamento_label}</div>
+                )}
                 <div className="pedido-total">
                   <span className="pedido-field-label">Total</span>
                   <span className="pedido-total-valor">R$ {pedidoBuscado.total?.toFixed(2)}</span>
@@ -999,6 +1002,9 @@ function MeusPedidos({ token, onVoltar, qtdCarrinho, onCartOpen, onPagina }) {
                 </div>
                 <div className="pedido-card-fixo">
                   <PedidoProgresso status={pedido.status} />
+                  {pedido.status === 'cancelado' && pedido.cliente?.motivo_cancelamento_label && (
+                    <div className="pedido-cancelado-motivo">Pedido cancelado — motivo: {pedido.cliente.motivo_cancelamento_label}</div>
+                  )}
                   <div className="pedido-total">
                     <span className="pedido-field-label">Total</span>
                     <span className="pedido-total-valor">R$ {pedido.total?.toFixed(2)}</span>

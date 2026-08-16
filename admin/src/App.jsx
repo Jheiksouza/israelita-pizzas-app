@@ -519,6 +519,10 @@ function AdminOrders() {
   const [, setTick] = useState(0)
   const [marketplaceInfo, setMarketplaceInfo] = useState({})
   const [expandido, setExpandido] = useState(null)
+  const [cancelando, setCancelando] = useState(null)
+  const [motivosCancel, setMotivosCancel] = useState([])
+  const [motivoSel, setMotivoSel] = useState('')
+  const [carregandoMotivos, setCarregandoMotivos] = useState(false)
 
   useEffect(() => {
     fetch(`${API}/marketplaces/info`)
@@ -551,10 +555,10 @@ function AdminOrders() {
     return () => clearInterval(id)
   }, [pedidos])
 
-  const atualizarStatus = async (id, status) => {
+  const atualizarStatus = async (id, status, extra = {}) => {
     const res = await fetch(`${API}/orders/${id}`, {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status })
+      body: JSON.stringify({ status, ...extra })
     })
     if (res.ok && status === 'aceito') {
       const pedido = pedidosDoDia.find(p => p.id === id)
@@ -567,6 +571,32 @@ function AdminOrders() {
       }
     }
     carregar()
+  }
+
+  const abrirCancelar = (pedido) => {
+    setCancelando(pedido)
+    setMotivoSel('')
+    setMotivosCancel([])
+    setCarregandoMotivos(true)
+    fetch(`${API}/orders/${pedido.id}/motivos-cancelamento`)
+      .then(r => r.json())
+      .then(data => {
+        const lista = data.motivos || []
+        setMotivosCancel(lista)
+        setMotivoSel(lista[0]?.code || '')
+      })
+      .catch(() => {
+        setMotivosCancel([{ code: '503', label: 'Outros' }])
+        setMotivoSel('503')
+      })
+      .finally(() => setCarregandoMotivos(false))
+  }
+
+  const confirmarCancelamento = () => {
+    if (!cancelando || !motivoSel) return
+    const motivo = motivosCancel.find(m => String(m.code) === String(motivoSel)) || { code: motivoSel, label: motivoSel }
+    atualizarStatus(cancelando.id, 'cancelado', { motivo_cancelamento: motivo.code, motivo_cancelamento_label: motivo.label })
+    setCancelando(null)
   }
 
   const hojeStr = () => new Date().toLocaleDateString('pt-BR')
@@ -655,6 +685,9 @@ function AdminOrders() {
                       <span className={badgeClass[pedido.status]}>{statusLabelFor(pedido)}</span>
                     </div>
                     <div className="pedido-card-body">
+                      {pedido.status === 'cancelado' && pedido.cliente?.motivo_cancelamento_label && (
+                        <div className="pedido-cancelado-motivo">Cancelado — motivo: {pedido.cliente.motivo_cancelamento_label}</div>
+                      )}
                       <div className="pedido-info-row">
                         <div className="pedido-info-icon"><MapPin size={18} /></div>
                         <div className="pedido-info-content">
@@ -793,25 +826,25 @@ function AdminOrders() {
                       {pedido.status === 'pendente' && (
                         <>
                           <button className="btn btn-approve btn-sm" onClick={() => atualizarStatus(pedido.id, 'aceito')}><Check size={16} /> Aceitar</button>
-                          <button className="btn btn-destructive btn-sm" onClick={() => atualizarStatus(pedido.id, 'cancelado')}><X size={16} /> Cancelar</button>
+                          <button className="btn btn-destructive btn-sm" onClick={() => abrirCancelar(pedido)}><X size={16} /> Cancelar</button>
                         </>
                       )}
                       {pedido.status === 'aceito' && (
                         <>
                           <button className="btn btn-liberar btn-sm" onClick={() => atualizarStatus(pedido.id, 'liberado')}><Truck size={16} /> Liberar</button>
-                          <button className="btn btn-destructive btn-sm" onClick={() => atualizarStatus(pedido.id, 'cancelado')}><X size={16} /> Cancelar</button>
+                          <button className="btn btn-destructive btn-sm" onClick={() => abrirCancelar(pedido)}><X size={16} /> Cancelar</button>
                         </>
                       )}
                       {pedido.status === 'liberado' && (
                         <>
                           <button className="btn btn-approve btn-sm" onClick={() => atualizarStatus(pedido.id, 'entregue')}><CheckCircle size={16} /> {isRetirada(pedido) ? 'Concluir' : 'Entregue'}</button>
-                          <button className="btn btn-destructive btn-sm" onClick={() => atualizarStatus(pedido.id, 'cancelado')}><X size={16} /> Cancelar</button>
+                          <button className="btn btn-destructive btn-sm" onClick={() => abrirCancelar(pedido)}><X size={16} /> Cancelar</button>
                         </>
                       )}
                       {pedido.status === 'entregador_proximo' && (
                         <>
                           <button className="btn btn-approve btn-sm" onClick={() => atualizarStatus(pedido.id, 'entregue')}><CheckCircle size={16} /> {isRetirada(pedido) ? 'Concluir' : 'Entregue'}</button>
-                          <button className="btn btn-destructive btn-sm" onClick={() => atualizarStatus(pedido.id, 'cancelado')}><X size={16} /> Cancelar</button>
+                          <button className="btn btn-destructive btn-sm" onClick={() => abrirCancelar(pedido)}><X size={16} /> Cancelar</button>
                         </>
                       )}
                     </div>
@@ -823,7 +856,52 @@ function AdminOrders() {
           })()}
         </div>
       )}
+
+      {cancelando && (
+        <ModalCancelarPedido
+          pedido={cancelando}
+          motivos={motivosCancel}
+          motivoSel={motivoSel}
+          setMotivoSel={setMotivoSel}
+          carregando={carregandoMotivos}
+          onConfirmar={confirmarCancelamento}
+          onClose={() => setCancelando(null)}
+        />
+      )}
     </>
+  )
+}
+
+function ModalCancelarPedido({ pedido, motivos, motivoSel, setMotivoSel, carregando, onConfirmar, onClose }) {
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal" onClick={e => e.stopPropagation()}>
+        <div className="modal-header"><h3>Cancelar pedido</h3><button className="modal-close" onClick={onClose}><X size={18} /></button></div>
+        <p className="form-hint">Pedido #{pedido.id} — selecione o motivo do cancelamento:</p>
+        {carregando ? (
+          <p className="form-hint">Carregando motivos disponíveis...</p>
+        ) : (
+          <div className="motivos-lista">
+            {motivos.map(m => (
+              <label key={m.code} className="motivo-item">
+                <input
+                  type="radio" name="motivoCancelamento" value={m.code}
+                  checked={String(motivoSel) === String(m.code)}
+                  onChange={() => setMotivoSel(m.code)}
+                />
+                <span>{m.label}</span>
+              </label>
+            ))}
+          </div>
+        )}
+        <div className="modal-footer">
+          <button className="btn" onClick={onClose}>Voltar</button>
+          <button className="btn btn-destructive" disabled={carregando || !motivoSel} onClick={onConfirmar}>
+            <X size={16} /> Confirmar cancelamento
+          </button>
+        </div>
+      </div>
+    </div>
   )
 }
 

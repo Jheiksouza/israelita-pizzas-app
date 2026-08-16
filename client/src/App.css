@@ -4899,6 +4899,22 @@ html.pedidos-open {
   color: #C62828;
   border: 1px solid #EF9A9A;
 }
+.pedido-cancelado-motivo {
+  margin: 10px 0;
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  background: #FFEBEE;
+  border: 1px solid #EF9A9A;
+  color: #C62828;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-align: center;
+}
+.theme-classic .pedido-cancelado-motivo {
+  background: #3A0A0A;
+  border-color: #5A1A1A;
+  color: #EF9A9A;
+}
 .status-liberado {
   background: #F3E5F5;
   color: #7B1FA2;

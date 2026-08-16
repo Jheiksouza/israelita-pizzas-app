@@ -646,15 +646,74 @@ app.post('/orders', async (req, res) => {
   }
 })
 
+// Motivos padrão de cancelamento (usado para pedidos da loja e fallback de marketplaces)
+const MOTIVOS_CANCELAMENTO_PADRAO = [
+  { code: '503', label: 'Outros' },
+  { code: '501', label: 'Falta de ingredientes' },
+  { code: '502', label: 'Loja fechada no momento' },
+  { code: '504', label: 'Impossível atender o pedido no momento' },
+  { code: '507', label: 'Falha na integração / sistema' }
+]
+
+// Motivos disponíveis para cancelar um pedido (marketplace consulta a API; loja usa a lista padrão)
+app.get('/orders/:id/motivos-cancelamento', async (req, res) => {
+  if (!checkSupabase(res)) return
+  try {
+    let q = supabase.from('orders').select('cliente').eq('id', parseInt(req.params.id))
+    if (storeId(req)) q = q.eq('store_id', storeId(req))
+    const { data, error } = await q
+    if (error) throw error
+    if (!data || data.length === 0) return res.status(404).json({ erro: 'Pedido não encontrado' })
+    const origem = data[0].cliente?.origem
+    let motivos = null
+    if (origem && origem !== 'site') {
+      const adapter = getAdapter(origem)
+      const extId = data[0].cliente?.marketplace_order_id
+      if (adapter && extId) {
+        const { data: configData } = await supabase.from('app_config').select('valor').eq('chave', 'marketplaces').maybeSingle()
+        const config = (configData?.valor || {})[origem] || {}
+        if (config.enabled) {
+          try {
+            const reasons = await adapter.getCancellationReasons(extId, config)
+            const lista = reasons?.reasons || reasons || []
+            motivos = lista.map(r => ({ code: String(r.code || r.cancelCodeId || r.reasonCode), label: r.description || r.label || r.name || r.code }))
+          } catch (err) {
+            console.error(`[${origem}] Erro ao obter motivos de cancelamento:`, err.message)
+          }
+        }
+      }
+    }
+    if (!motivos || motivos.length === 0) motivos = MOTIVOS_CANCELAMENTO_PADRAO
+    res.json({ motivos, origem: origem || 'site' })
+  } catch (err) {
+    res.status(500).json({ erro: err.message })
+  }
+})
+
 app.patch('/orders/:id', async (req, res) => {
   if (!checkSupabase(res)) return
   try {
+    const id = parseInt(req.params.id)
+    let busca = supabase.from('orders').select('*').eq('id', id)
+    if (storeId(req)) busca = busca.eq('store_id', storeId(req))
+    const { data: antigo, error: errAntigo } = await busca
+    if (errAntigo) throw errAntigo
+    if (!antigo || antigo.length === 0) return res.status(404).json({ erro: 'Pedido não encontrado' })
+
     const updates = { ...req.body, updatedAt: new Date().toISOString() }
-    let query = supabase.from('orders').update(updates).eq('id', parseInt(req.params.id))
+    delete updates.motivo_cancelamento
+    delete updates.motivo_cancelamento_label
+    if (req.body.status === 'cancelado' && (req.body.motivo_cancelamento || req.body.motivo_cancelamento_label)) {
+      updates.cliente = {
+        ...(antigo[0].cliente || {}),
+        motivo_cancelamento: String(req.body.motivo_cancelamento || req.body.motivo_cancelamento_label),
+        motivo_cancelamento_label: req.body.motivo_cancelamento_label || String(req.body.motivo_cancelamento)
+      }
+    }
+    let query = supabase.from('orders').update(updates).eq('id', id)
     if (storeId(req)) query = query.eq('store_id', storeId(req))
     const { data, error } = await query.select()
     if (error) throw error
-    if (!data || data.length === 0) return res.status(404).json({ erro: 'Pedido não encontrado' })
     const order = data[0]
     if (order.status === 'entregador_proximo' && order.user_id) {
       sendPushNotification(order.user_id, 'Entregador chegou!', `Pedido #${order.id} - O entregador está próximo!`)
@@ -697,9 +756,14 @@ app.patch('/orders/:id', async (req, res) => {
           }
           // Cancelamento: se cancelado, solicita cancelamento no iFood
           if (order.status === 'cancelado' && extId) {
+            const motivoSelecionado = order.cliente?.motivo_cancelamento
             addSyncLog(origem, { type: 'requestCancellation', orderId: extId, localStatus: order.status, action: 'requestCancellation', endpoint: `/order/v1.0/orders/${extId}/requestCancellation`, status: 'enviando' })
             adapter.getCancellationReasons(extId, config).then(reasons => {
-              const reason = (reasons?.reasons || []).find(r => r.code === '503') || (reasons?.reasons || [])[0] || { code: '503' }
+              const lista = reasons?.reasons || reasons || []
+              const motivoOk = motivoSelecionado && lista.some(r => String(r.code || r.cancelCodeId || r.reasonCode) === String(motivoSelecionado))
+              const reason = motivoOk
+                ? { code: String(motivoSelecionado), description: order.cliente?.motivo_cancelamento_label }
+                : lista.find(r => String(r.code || r.cancelCodeId || r.reasonCode) === '503') || lista[0] || { code: '503' }
               addSyncLog(origem, { type: 'requestCancellation', orderId: extId, localStatus: order.status, reason: reason.code, endpoint: `/order/v1.0/orders/${extId}/requestCancellation`, status: 'enviando' })
               adapter.requestCancellation(extId, reason.code, config)
                 .then(() => addSyncLog(origem, { type: 'requestCancellation', orderId: extId, localStatus: order.status, reason: reason.code, endpoint: `/order/v1.0/orders/${extId}/requestCancellation`, status: 'ok' }))

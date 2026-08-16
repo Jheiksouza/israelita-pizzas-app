@@ -1351,6 +1351,60 @@ body {
   color: var(--foreground);
 }
 
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.modal-footer .btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.motivos-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.motivo-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: calc(var(--radius) - 1px);
+  background: var(--card);
+  cursor: pointer;
+  transition: var(--transition);
+  font-size: 0.9rem;
+  color: var(--foreground);
+}
+
+.motivo-item:hover {
+  border-color: var(--accent);
+  background: var(--accent);
+}
+
+.motivo-item input {
+  accent-color: var(--destructive);
+}
+
+.pedido-cancelado-motivo {
+  margin-bottom: 12px;
+  padding: 8px 12px;
+  border-radius: calc(var(--radius) - 1px);
+  background: color-mix(in oklch, var(--destructive) 12%, transparent);
+  border: 1px solid color-mix(in oklch, var(--destructive) 35%, transparent);
+  color: var(--destructive);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
 .modal-mapa {
   max-width: 98vw !important;
   width: 98vw;
