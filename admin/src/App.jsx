@@ -155,15 +155,18 @@ function App() {
     localStorage.removeItem('adminAba')
   }
 
-  /* --- som global de pedidos pendentes (qualquer tela) --- */
+  /* --- som global de pedidos pendentes (qualquer tela, inclusive aba minimizada) --- */
   const audioCtxRef = useRef(null)
-  const loopTimerRef = useRef(null)
+  const loopSourceRef = useRef(null)
   const loopAtivoRef = useRef(false)
+  const pendentesConhecidosRef = useRef(new Set())
 
-  /* Cria AudioContext e tenta destravar (pode precisar de clique do usuário) */
+  /* Cria AudioContext e tenta destravar (o navegador exige um clique do usuário) */
   function getAudioCtx() {
     if (!audioCtxRef.current) {
-      audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)()
+      const Ctx = window.AudioContext || window.webkitAudioContext
+      if (!Ctx) return null
+      audioCtxRef.current = new Ctx()
     }
     if (audioCtxRef.current.state === 'suspended') {
       audioCtxRef.current.resume().catch(() => {})
@@ -171,45 +174,98 @@ function App() {
     return audioCtxRef.current
   }
 
+  /* Loop contínuo via buffer de áudio: toca sem depender de setTimeout,
+     então continua soando mesmo com a aba minimizada (o navegador só
+     acelera timers, mas o áudio agendado no WebAudio segue tocando). */
   function tocarLoopPendente() {
-    loopAtivoRef.current = true
     const ctx = getAudioCtx()
-    const tocar = () => {
-      if (!loopAtivoRef.current || ctx.state === 'closed') return
-      const t = ctx.currentTime
-      for (let i = 0; i < 3; i++) {
-        const osc = ctx.createOscillator()
-        const gain = ctx.createGain()
-        osc.type = 'sine'
-        osc.frequency.value = 520 + i * 130
-        gain.gain.setValueAtTime(0.25, t + i * 0.12)
-        gain.gain.exponentialRampToValueAtTime(0.01, t + i * 0.12 + 0.25)
-        osc.connect(gain); gain.connect(ctx.destination)
-        osc.start(t + i * 0.12); osc.stop(t + i * 0.12 + 0.25)
+    if (!ctx || loopSourceRef.current) return
+    loopAtivoRef.current = true
+    if (ctx.state === 'suspended') ctx.resume().catch(() => {})
+
+    const durPat = 1.45
+    const buf = ctx.createBuffer(1, Math.floor(ctx.sampleRate * durPat), ctx.sampleRate)
+    const ch = buf.getChannelData(0)
+    const nota = (inicio, freq, dur) => {
+      const n = Math.floor(inicio * ctx.sampleRate)
+      const len = Math.floor(dur * ctx.sampleRate)
+      for (let i = 0; i < len; i++) {
+        const env = Math.pow(1 - i / len, 2)
+        ch[n + i] += Math.sin(2 * Math.PI * freq * (i / ctx.sampleRate)) * 0.6 * env
       }
-      if (loopAtivoRef.current) loopTimerRef.current = setTimeout(tocar, 3000)
     }
-    tocar()
+    nota(0.0, 520, 0.28)
+    nota(0.33, 650, 0.28)
+    nota(0.66, 780, 0.28)
+
+    const src = ctx.createBufferSource()
+    src.buffer = buf
+    src.loop = true
+    const gain = ctx.createGain()
+    gain.gain.value = 0.35
+    src.connect(gain); gain.connect(ctx.destination)
+    src.start()
+    loopSourceRef.current = src
   }
 
   function pararLoopPendente() {
     loopAtivoRef.current = false
-    if (loopTimerRef.current) { clearTimeout(loopTimerRef.current); loopTimerRef.current = null }
+    if (loopSourceRef.current) {
+      try { loopSourceRef.current.stop() } catch (e) {}
+      loopSourceRef.current = null
+    }
+  }
+
+  /* Notificação do navegador como reforço quando o pedido chega (aparece
+     mesmo com a aba em segundo plano) */
+  function notificarNovoPedido(ids) {
+    if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return
+    try {
+      new Notification('Novo pedido!', { body: `Pedido #${ids.join(', #')} aguardando confirmação`, tag: 'novo-pedido' })
+    } catch (e) { /* ignorar */ }
   }
 
   useEffect(() => {
     let mounted = true
+    /* Destrava o áudio no primeiro clique/toque (qualquer tela) e pede
+       permissão de notificação só quando o usuário já interagiu */
+    const desbloquear = () => {
+      const ctx = getAudioCtx()
+      if (ctx && ctx.state === 'suspended') ctx.resume().catch(() => {})
+      if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
+        Notification.requestPermission().catch(() => {})
+      }
+    }
+    window.addEventListener('pointerdown', desbloquear, { passive: true })
+    window.addEventListener('touchstart', desbloquear, { passive: true })
+    window.addEventListener('keydown', desbloquear)
+
     const buscar = () => {
       fetch(`${API}/orders`).then(r => r.json()).then(data => {
         if (!mounted || !Array.isArray(data)) return
-        const temPendente = data.some(p => p.status === 'pendente')
-        if (temPendente && !loopAtivoRef.current) tocarLoopPendente()
-        if (!temPendente && loopAtivoRef.current) pararLoopPendente()
+        const pendentes = data.filter(p => p.status === 'pendente')
+        const idsPendentes = pendentes.map(p => p.id)
+        const novos = idsPendentes.filter(id => !pendentesConhecidosRef.current.has(id))
+        pendentesConhecidosRef.current = new Set(idsPendentes)
+
+        if (pendentes.length > 0) {
+          if (!loopAtivoRef.current) tocarLoopPendente()
+          if (novos.length > 0) notificarNovoPedido(novos.slice(0, 3))
+        } else if (loopAtivoRef.current) {
+          pararLoopPendente()
+        }
       }).catch(() => {})
     }
     buscar()
-    const id = setInterval(buscar, 5000)
-    return () => { mounted = false; clearInterval(id); pararLoopPendente() }
+    const id = setInterval(buscar, 3000)
+    return () => {
+      mounted = false
+      clearInterval(id)
+      pararLoopPendente()
+      window.removeEventListener('pointerdown', desbloquear)
+      window.removeEventListener('touchstart', desbloquear)
+      window.removeEventListener('keydown', desbloquear)
+    }
   }, [])
 
   if (!autenticado) {
