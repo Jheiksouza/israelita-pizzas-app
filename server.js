@@ -34,7 +34,7 @@ const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || ''
 const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET)
 
 // Base URL para callbacks (muda entre Vercel e localhost)
-const BASE_URL = process.env.VERCEL ? 'https://queropizza.com' : `http://localhost:${PORT}`
+const BASE_URL = process.env.VERCEL ? 'https://queropizza.com' : `http://localhost:${process.env.PORT || 3001}`
 
 const VALID_ROLES = ['cliente', 'motoboy', 'atendente', 'financeiro', 'admin']
 
