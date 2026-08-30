@@ -290,6 +290,7 @@ app.patch('/auth/enderecos', async (req, res) => {
   try {
     const { enderecos, enderecoSelecionado } = req.body
     if (!Array.isArray(enderecos)) return res.status(400).json({ erro: 'enderecos deve ser um array' })
+    // Sem limite de quantidade de endereços - permite ilimitados
     const updates = { enderecos }
     if (enderecoSelecionado !== undefined) updates.enderecoselecionado = enderecoSelecionado
     const selecionado = enderecos.find(e => e.id === (enderecoSelecionado || undefined))
