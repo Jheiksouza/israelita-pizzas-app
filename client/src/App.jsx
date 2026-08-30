@@ -1415,7 +1415,6 @@ function AddressModal({ user, token, onClose, onSave }) {
     const novos = enderecoEditando
       ? enderecos.map(a => a.id === id ? addr : a)
       : [...enderecos, addr]
-    // Sem limite de quantidade - permite ilimitados endereços
     const novoSelecionado = enderecoEditando ? selecionado : id
     try {
       const res = await fetch(`${API}/auth/enderecos`, {
