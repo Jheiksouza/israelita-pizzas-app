@@ -128,12 +128,13 @@ Seus dados já estão no banco — a migração só precisa adicionar `store_id 
 
 A IA (opencode) deve ler o arquivo `.env` na raiz do projeto para obter as credenciais:
 
-| Variável | O que faz | Como usar |
-|----------|-----------|-----------|
-| `SUPABASE_PAT` | Personal Access Token | `POST https://api.supabase.com/v1/projects/qnttyikrbuxuhzqybmaa/database/query` — executa SQL direto (ALTER TABLE, SELECT, etc.) |
-| `SUPABASE_SERVICE_ROLE_KEY` | Service Role Key | Usar como `Authorization: Bearer <key>` no REST API para bypass de RLS |
-| `SUPABASE_URL` | URL do projeto | Base para REST API: `<URL>/rest/v1/menu` |
-| `SUPABASE_ANON_KEY` | Chave anônima | Usar como `apikey` header no REST API |
+| Variável | O que faz | Como usar | 🔐 Segurança |
+|----------|-----------|-----------|-------------|
+| `SUPABASE_URL` | URL do projeto | Base para REST API: `<URL>/rest/v1/menu` | 🟡 Pública (expor é ok) |
+| `SUPABASE_ANON_KEY` | Chave anônima | Usar como `apikey` header no REST API | 🟡 Pública (expor é ok) |
+| `SUPABASE_SERVICE_ROLE_KEY` | Service Role Key | Usar como `Authorization: Bearer <key>` no REST API para bypass de RLS | 🔴 **NUNCA EXPOR** |
+| `SUPABASE_PAT` | Personal Access Token | `POST https://api.supabase.com/v1/projects/qnttyikrbuxuhzqybmaa/database/query` — executa SQL direto | 🔴 **NUNCA EXPOR** |
+| `JWT_SECRET` | Chave de assinatura JWT | Usar em `sign()` e `verify()` do JWT | 🔴 **NUNCA EXPOR** |
 
 **Exemplo completo (ler credenciais do .env e executar SQL):**
 ```powershell
@@ -152,17 +153,26 @@ Invoke-RestMethod -Uri "https://api.supabase.com/v1/projects/qnttyikrbuxuhzqybma
 Criar arquivo `.env` na raiz com:
 
 ```
-SUPABASE_URL=https://qnttyikrbuxuhzqybmaa.supabase.co
-SUPABASE_ANON_KEY=sb_publishable_Q2jL5Q8YXlfmEU0a3RC65g_L-EVCNXW
+SUPABASE_URL=https://seu-projeto.supabase.co
+SUPABASE_ANON_KEY=sua-chave-anon-aqui
+JWT_SECRET=sua-chave-jwt-secreta-aqui
 ```
+
+> ⚠️ **NUNCA commitar credenciais reais no git!** Use `SUPABASE_SERVICE_ROLE_KEY` e `SUPABASE_PAT` apenas localmente ou em variáveis do Vercel.
 
 Essas também precisam estar configuradas no **Vercel Dashboard:**
 - Settings → Environment Variables
-- Adicionar `SUPABASE_URL`, `SUPABASE_ANON_KEY` e `DEFAULT_STORE_ID`
-- `DEFAULT_STORE_ID=1` (store padrão para desenvolvimento local / preview)
+- Adicionar as variáveis obrigatórias:
+  - `SUPABASE_URL`
+  - `SUPABASE_ANON_KEY`
+  - `JWT_SECRET` ⚠️ **Gerar no terminal:** `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`
+  - `DEFAULT_STORE_ID=1` (store padrão para desenvolvimento local / preview)
 - Marcar "Production", "Preview" e "Development"
 
-> `.env` está no `.gitignore` — nunca commitar!
+> 🔐 **Variáveis secretas (NUNCA NO VERCEL DASHBOARD, apenas local):**
+> - `SUPABASE_SERVICE_ROLE_KEY`
+> - `SUPABASE_PAT`
+> - `.env` está no `.gitignore` — nunca commitar!
 
 **Testar localmente se as credenciais funcionam:**
 ```powershell

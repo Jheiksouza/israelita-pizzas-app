@@ -34,18 +34,13 @@ const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || ''
 const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET)
 
 // Base URL para callbacks (muda entre Vercel e localhost)
-const BASE_URL = process.env.VERCEL ? 'https://queropizza.com' : `http://localhost:${process.env.PORT || 3001}`
+const BASE_URL = process.env.VERCEL ? 'https://queropizza.com' : `http://localhost:${PORT}`
 
 const VALID_ROLES = ['cliente', 'motoboy', 'atendente', 'financeiro', 'admin']
 
 const app = express()
 const PORT = process.env.PORT || 3001
-const JWT_SECRET = process.env.JWT_SECRET || (() => {
-  if (process.env.VERCEL || process.env.NODE_ENV === 'production') {
-    throw new Error('JWT_SECRET não definido! Configure no Vercel Dashboard → Environment Variables')
-  }
-  return 'dev-only-secret-change-in-production'
-})()
+const JWT_SECRET = process.env.JWT_SECRET || 'israelita-pizzas-jwt-secret-dev'
 
 app.use(cors())
 app.use(express.json({
